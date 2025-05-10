@@ -22,54 +22,244 @@
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+# Event Management System
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+A robust event management system built with NestJS, allowing organizations to manage events, marketers, and attendees efficiently.
 
-## Project setup
+## Features
+
+- 🔐 Authentication & Authorization with JWT
+- 👥 User Roles (Admin, Marketer)
+- 📅 Event Management
+- 🎫 Attendee Registration
+- 🚌 Transportation Management
+- 📧 Email Notifications
+- 🔄 Rate Limiting
+- 📝 Logging System
+- 🛡️ Input Validation
+- 📊 Pagination Support
+
+## Technical Stack
+
+- **Framework**: NestJS
+- **Database**: MongoDB with Mongoose
+- **Authentication**: JWT & Passport
+- **Email**: Nodemailer
+- **Validation**: class-validator & class-transformer
+- **Documentation**: Swagger/OpenAPI
+- **Logging**: Winston
+- **Rate Limiting**: @nestjs/throttler
+
+## Prerequisites
+
+- Node.js (v14 or higher)
+- MongoDB
+- NPM or Yarn
+- Gmail account (for email notifications)
+
+## Installation
 
 ```bash
-$ npm install
+# Clone the repository
+git clone <repository-url>
+
+# Install dependencies
+npm install
+
+# Configure environment variables
+cp .env.example .env
 ```
 
-## Compile and run the project
+## Configuration
 
-```bash
-# development
-$ npm run start
+Create a `.env` file in the root directory with the following variables:
 
-# watch mode
-$ npm run start:dev
+```env
+# Server
+PORT=3000
+NODE_ENV=development
 
-# production mode
-$ npm run start:prod
+# Database
+MONGODB_URI=your_mongodb_uri
+MONGODB_DB_NAME=EventSystem
+
+# JWT
+JWT_SECRET=your_jwt_secret
+JWT_EXPIRATION=1d
+
+# Email
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASSWORD=your_app_specific_password
+
+# Rate Limiting
+THROTTLE_TTL=60
+THROTTLE_LIMIT=10
 ```
 
-## Run tests
+## Running the Application
 
 ```bash
-# unit tests
-$ npm run test
+# Development mode
+npm run start:dev
+
+# Production mode
+npm run build
+npm run start:prod
+```
+
+## API Documentation
+
+### Authentication Endpoints
+
+#### POST /auth/register
+Register a new user
+- Body: `{ name: string, email: string, password: string, phone: string }`
+- Response: User object without password
+
+#### POST /auth/login
+Login with credentials
+- Body: `{ email: string, password: string }`
+- Response: `{ access_token: string }`
+
+### Events Endpoints
+
+#### GET /events
+Get all events
+- Auth: Required
+- Query Parameters: 
+  - page: number
+  - limit: number
+  - sort: string
+  - order: 'asc' | 'desc'
+
+#### POST /events
+Create a new event (Admin only)
+- Auth: Required
+- Role: Admin
+- Body: 
+```json
+{
+  "name": string,
+  "date": Date,
+  "state": string,
+  "maxAttendees": number,
+  "branches": Array<{
+    name: string,
+    location: string
+  }>,
+  "busPickups": Array<{
+    location: string,
+    departureTime: Date,
+    maxCapacity: number
+  }>
+}
+```
+
+#### GET /events/:id
+Get event by ID
+- Auth: Required
+
+#### POST /events/:id/bus-pickup
+Add bus pickup to event (Admin only)
+- Auth: Required
+- Role: Admin
+- Body: `{ location: string, departureTime: Date }`
+
+### Marketers Endpoints
+
+#### GET /marketers/events/available
+Get available events for marketers
+- Auth: Required
+- Role: Marketer
+
+#### POST /marketers/events/:eventId/volunteer
+Volunteer for an event
+- Auth: Required
+- Role: Marketer
+
+#### POST /marketers/events/:eventId/attendees
+Register an attendee for an event
+- Auth: Required
+- Role: Marketer
+- Body:
+```json
+{
+  "name": string,
+  "email": string,
+  "phone": string,
+  "transportPreference": "bus" | "private",
+  "busPickup": {
+    "location": string,
+    "departureTime": Date
+  }
+}
+```
+
+### Attendees Endpoints
+
+#### GET /attendees
+Get all attendees (Admin/Marketer)
+- Auth: Required
+- Role: Admin, Marketer
+- Query Parameters:
+  - eventId?: string
+  - transport?: "bus" | "private"
+
+#### PATCH /attendees/:id
+Update attendee information
+- Auth: Required
+- Role: Marketer
+- Body: Partial<AttendeeDto>
+
+## Error Handling
+
+The API uses standard HTTP status codes:
+- 200: Success
+- 201: Created
+- 400: Bad Request
+- 401: Unauthorized
+- 403: Forbidden
+- 404: Not Found
+- 429: Too Many Requests
+- 500: Internal Server Error
+
+## Rate Limiting
+
+- Short window: 10 requests per minute
+- Long window: 100 requests per hour
+
+## Testing
+
+```bash
+# Unit tests
+npm run test
 
 # e2e tests
-$ npm run test:e2e
+npm run test:e2e
 
-# test coverage
-$ npm run test:cov
+# Test coverage
+npm run test:cov
 ```
 
-## Deployment
+## Logging
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Logs are stored in the `logs` directory:
+- `error.log`: Error-level logs
+- `combined.log`: All logs
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Contributing
 
-```bash
-$ npm install -g mau
-$ mau deploy
-```
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a new Pull Request
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## License
+
+This project is licensed under the MIT License.
 
 ## Resources
 

@@ -28,18 +28,17 @@ export interface EventLocation {
 }
 
 export interface IEvent extends Document {
-  title: string;
-  description: string;
-  startDate: Date;
-  endDate: Date;
+  name: string;
+  description?: string;
+  date: Date;
   status: EventStatus;
-  location: EventLocation;
+  state: string;
   maxAttendees: number;
   currentAttendees: number;
-  branch: Branch;
+  branches: Branch[];
   busPickups?: BusPickup[];
-  createdBy: string;
-  updatedBy?: string;
+  marketers: string[];
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

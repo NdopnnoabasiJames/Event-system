@@ -16,6 +16,9 @@ export class Event {
   @Prop({ required: true })
   state: string;
 
+  @Prop({ required: true })
+  maxAttendees: number;
+
   @Prop({ type: [{ type: Object }], required: true })
   branches: Branch[];
 
@@ -30,3 +33,9 @@ export class Event {
 }
 
 export const EventSchema = SchemaFactory.createForClass(Event);
+
+// Add indexes
+EventSchema.index({ date: 1 });
+EventSchema.index({ state: 1 });
+EventSchema.index({ isActive: 1 });
+EventSchema.index({ 'marketers': 1 });

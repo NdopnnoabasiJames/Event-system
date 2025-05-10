@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model, Schema as MongooseSchema } from 'mongoose';
 import { Event, EventDocument } from '../schemas/event.schema';
 import { CreateEventDto } from './dto/create-event.dto';
 import { Role } from '../common/enums/role.enum';
@@ -38,7 +38,13 @@ export class EventsService {
     const event = await this.findOne(eventId);
     
     event.busPickups = event.busPickups || [];
-    event.busPickups.push({ location, departureTime });
+    event.busPickups.push({ 
+      location, 
+      departureTime,
+      maxCapacity: 50,
+      currentCount: 0,
+      notes: ''
+    });
     
     return event.save();
   }
@@ -55,22 +61,26 @@ export class EventsService {
 
     if (!event.marketers) {
       event.marketers = [];
-    }    if (!event.marketers.some(m => m.toString() === marketerId)) {
-      event.marketers.push(Types.ObjectId(marketerId));
+    }
+
+    const marketerId_ObjId = new MongooseSchema.Types.ObjectId(marketerId);
+    if (!event.marketers.some(m => m.toString() === marketerId_ObjId.toString())) {
+      event.marketers.push(marketerId_ObjId);
       await Promise.all([
         event.save(),
         this.usersService.addEventParticipation(marketerId, eventId),
       ]);
     }
 
-    return this.findOne(eventId); // Return populated event
+    return this.findOne(eventId);
   }
 
   async removeMarketerFromEvent(eventId: string, marketerId: string): Promise<EventDocument> {
     const event = await this.findOne(eventId);
 
+    const marketerId_ObjId = new MongooseSchema.Types.ObjectId(marketerId);
     event.marketers = event.marketers.filter(
-      (id) => id.toString() !== marketerId,
+      (id) => id.toString() !== marketerId_ObjId.toString()
     );
 
     await Promise.all([

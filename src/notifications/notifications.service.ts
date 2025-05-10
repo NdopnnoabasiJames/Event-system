@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as nodemailer from 'nodemailer';
@@ -9,25 +9,53 @@ import { EventReminderContext, EmailTemplate } from '../common/interfaces/notifi
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
-export class NotificationsService {
+export class NotificationsService implements OnModuleInit {
   private readonly logger = new Logger(NotificationsService.name);
-  private transporter: nodemailer.Transporter;
+  private transporter: nodemailer.Transporter | null = null;
+  private isEmailConfigured: boolean = false;
+  
   constructor(
-    @InjectModel(Event.name) private eventModel: Model<EventDocument>,
-    @InjectModel(Attendee.name) private attendeeModel: Model<AttendeeDocument>,
-    private configService: ConfigService,
-  ) {
-    this.initializeTransporter();
+    @InjectModel(Event.name) private readonly eventModel: Model<EventDocument>,
+    @InjectModel(Attendee.name) private readonly attendeeModel: Model<AttendeeDocument>,
+    private readonly configService: ConfigService,
+  ) {}
+
+  async onModuleInit() {
+    await this.initializeTransporter();
   }
 
   private async initializeTransporter() {
-    const emailConfig = this.configService.get('email');
-    this.transporter = nodemailer.createTransport(emailConfig);
+    const emailUser = this.configService.get<string>('email.auth.user');
+    const emailPass = this.configService.get<string>('email.auth.pass');
+
+    if (!emailUser || !emailPass) {
+      this.logger.warn('Email configuration is missing. Email notifications will be disabled.');
+      this.isEmailConfigured = false;
+      return;
+    }
+
     try {
+      this.transporter = nodemailer.createTransport({
+        host: this.configService.get('email.host', 'smtp.gmail.com'),
+        port: this.configService.get('email.port', 587),
+        secure: false,
+        auth: {
+          user: emailUser,
+          pass: emailPass,
+        },
+        tls: {
+          rejectUnauthorized: false // Only for development
+        }
+      });
+
+      // Verify connection configuration
       await this.transporter.verify();
+      this.isEmailConfigured = true;
       this.logger.log('Email transporter initialized successfully');
     } catch (error) {
-      this.logger.error('Failed to initialize email transporter:', error);
+      this.isEmailConfigured = false;
+      this.logger.error('Failed to initialize email transporter:', error.message);
+      this.logger.warn('Email notifications will be disabled');
     }
   }
 
@@ -88,7 +116,13 @@ export class NotificationsService {
       `,
     };
   }
+
   private async sendEmail(to: string, template: EmailTemplate) {
+    if (!this.isEmailConfigured || !this.transporter) {
+      this.logger.warn(`Email to ${to} was not sent: Email service is not configured`);
+      return;
+    }
+
     try {
       const emailUser = this.configService.get<string>('email.auth.user');
       await this.transporter.sendMail({
@@ -98,9 +132,11 @@ export class NotificationsService {
         text: template.text,
         html: template.html,
       });
-      this.logger.log(`Reminder email sent successfully to ${to}`);
+      this.logger.log(`Email sent successfully to ${to}`);
     } catch (error) {
-      this.logger.error(`Failed to send reminder email to ${to}:`, error);
+      this.logger.error(`Failed to send email to ${to}:`, error.message);
+      // Try to reinitialize transporter for next time
+      await this.initializeTransporter();
     }
   }
 

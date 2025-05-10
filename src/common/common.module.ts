@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { WinstonModule } from 'nest-winston';
 import { ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { createWinstonLogger } from './utils/logger.util';
 import { CustomThrottlerGuard } from './guards/throttler.guard';
 
@@ -13,16 +14,26 @@ import { CustomThrottlerGuard } from './guards/throttler.guard';
       inject: [ConfigService],
     }),
     ThrottlerModule.forRootAsync({
-      useFactory: (configService: ConfigService) => ({
-        ttl: configService.get('THROTTLE_TTL', 60),
-        limit: configService.get('THROTTLE_LIMIT', 10),
-      }),
       inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        throttlers: [
+          {
+            name: 'short',
+            ttl: config.get('THROTTLE_TTL', 60),
+            limit: config.get('THROTTLE_LIMIT', 10),
+          },
+          {
+            name: 'long',
+            ttl: config.get('THROTTLE_LONG_TTL', 3600),
+            limit: config.get('THROTTLE_LONG_LIMIT', 100),
+          },
+        ],
+      }),
     }),
   ],
   providers: [
     {
-      provide: 'ThrottlerGuard',
+      provide: APP_GUARD,
       useClass: CustomThrottlerGuard,
     },
   ],

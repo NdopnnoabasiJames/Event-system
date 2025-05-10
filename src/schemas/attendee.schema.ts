@@ -5,25 +5,34 @@ export type AttendeeDocument = Attendee & Document;
 
 @Schema({ timestamps: true })
 export class Attendee {
-  @Prop({ required: true })
+  @Prop({ required: true, index: 'text' })
   name: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   email: string;
 
   @Prop()
   phone: string;
 
-  @Prop({ required: true, enum: ['bus', 'private'], default: 'private' })
+  @Prop({ required: true, enum: ['bus', 'private'], default: 'private', index: true })
   transportPreference: string;
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Event', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Event', required: true, index: true })
   event: MongooseSchema.Types.ObjectId;
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true, index: true })
   registeredBy: MongooseSchema.Types.ObjectId;
 
-  @Prop({ type: MongooseSchema.Types.Mixed })
+  @Prop({ 
+    type: {
+      location: { type: String, required: true },
+      departureTime: { type: Date, required: true }
+    },
+    _id: false,
+    required: function() {
+      return this.transportPreference === 'bus';
+    }
+  })
   busPickup: {
     location: string;
     departureTime: Date;
@@ -31,3 +40,11 @@ export class Attendee {
 }
 
 export const AttendeeSchema = SchemaFactory.createForClass(Attendee);
+
+// Add compound indexes for common queries
+AttendeeSchema.index({ event: 1, transportPreference: 1 });
+AttendeeSchema.index({ registeredBy: 1, event: 1 });
+AttendeeSchema.index({ 'busPickup.location': 1, event: 1 });
+
+// Add unique constraint for one registration per email per event
+AttendeeSchema.index({ email: 1, event: 1 }, { unique: true });

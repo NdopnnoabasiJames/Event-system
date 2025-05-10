@@ -7,7 +7,6 @@ import { UsersModule } from './users/users.module';
 import { EventsModule } from './events/events.module';
 import { MarketersModule } from './marketers/marketers.module';
 import { AttendeesModule } from './attendees/attendees.module';
-import { NotificationsService } from './notifications/notifications.service';
 import { NotificationsModule } from './notifications/notifications.module';
 import { databaseConfig, jwtConfig, emailConfig } from './config/configuration';
 import { configValidationSchema } from './config/validation.schema';
@@ -17,7 +16,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { CommonModule } from './common/common.module';
 
 @Module({
-  imports: [
+  imports: [ 
     ConfigModule.forRoot({
       isGlobal: true,
       load: [databaseConfig, jwtConfig, emailConfig],
@@ -31,19 +30,21 @@ import { CommonModule } from './common/common.module';
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         uri: configService.get<string>('database.uri'),
+        dbName: configService.get<string>('database.dbName'),
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
       }),
       inject: [ConfigService],
-    }),    CommonModule,
-    AuthModule, 
-    UsersModule, 
-    EventsModule, 
-    MarketersModule, 
-    AttendeesModule, 
-    NotificationsModule
+    }),
+    CommonModule,
+    AuthModule,
+    UsersModule,
+    EventsModule,
+    MarketersModule,
+    AttendeesModule,
+    NotificationsModule,
   ],
-  controllers: [],
   providers: [
-    NotificationsService,
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,

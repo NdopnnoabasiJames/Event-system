@@ -9,6 +9,14 @@ import {
 import { Request, Response } from 'express';
 import { MongoError } from 'mongodb';
 
+interface ErrorResponse {
+  statusCode: number;
+  timestamp: string;
+  path: string;
+  message: string | object;
+  error?: string;
+}
+
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
@@ -20,7 +28,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
-    let errorResponse = {
+    let errorResponse: ErrorResponse = {
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
@@ -34,7 +42,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (typeof exceptionResponse === 'object') {
         errorResponse = {
           ...errorResponse,
-          ...exceptionResponse as object,
+          ...(exceptionResponse as object),
           statusCode: status,
         };
       } else {
@@ -43,8 +51,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
     } else if (exception instanceof MongoError) {
       if (exception.code === 11000) {
         status = HttpStatus.CONFLICT;
-        errorResponse.statusCode = status;
-        errorResponse.message = 'Duplicate entry';
+        errorResponse = {
+          ...errorResponse,
+          statusCode: status,
+          message: 'Duplicate entry',
+          error: 'Conflict',
+        };
       }
     }
 

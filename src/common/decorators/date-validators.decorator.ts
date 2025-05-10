@@ -10,11 +10,9 @@ export function IsFutureDate(validationOptions?: ValidationOptions) {
       options: validationOptions,
       validator: {
         validate(value: any) {
-          if (!(value instanceof Date)) {
-            value = new Date(value);
-          }
+          const date = value instanceof Date ? value : new Date(value);
           const now = new Date();
-          return value > now;
+          return date > now;
         },
         defaultMessage(args: ValidationArguments) {
           return `${args.property} must be a future date`;
@@ -35,12 +33,13 @@ export function IsValidDateRange(relatedPropertyName: string, validationOptions?
       validator: {
         validate(value: any, args: ValidationArguments) {
           const [relatedPropertyName] = args.constraints;
-          const relatedValue = (args.object as any)[relatedPropertyName];
+          const relatedPropertyValue = (args.object as any)[relatedPropertyName];
 
-          if (!(value instanceof Date)) value = new Date(value);
-          if (!(relatedValue instanceof Date)) relatedValue = new Date(relatedValue);
+          const date = value instanceof Date ? value : new Date(value);
+          const relatedDate = relatedPropertyValue instanceof Date ? 
+            relatedPropertyValue : new Date(relatedPropertyValue);
 
-          return value > relatedValue;
+          return date > relatedDate;
         },
         defaultMessage(args: ValidationArguments) {
           const [relatedPropertyName] = args.constraints;
@@ -62,13 +61,14 @@ export function MaxDateRange(maxDays: number, relatedPropertyName: string, valid
       validator: {
         validate(value: any, args: ValidationArguments) {
           const [maxDays, relatedPropertyName] = args.constraints;
-          const relatedValue = (args.object as any)[relatedPropertyName];
+          const relatedPropertyValue = (args.object as any)[relatedPropertyName];
 
-          if (!(value instanceof Date)) value = new Date(value);
-          if (!(relatedValue instanceof Date)) relatedValue = new Date(relatedValue);
+          const date = value instanceof Date ? value : new Date(value);
+          const relatedDate = relatedPropertyValue instanceof Date ? 
+            relatedPropertyValue : new Date(relatedPropertyValue);
 
-          const maxDate = addDays(relatedValue, maxDays);
-          return value <= maxDate;
+          const maxDate = addDays(relatedDate, maxDays);
+          return date <= maxDate;
         },
         defaultMessage(args: ValidationArguments) {
           const [maxDays, relatedPropertyName] = args.constraints;

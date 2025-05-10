@@ -32,5 +32,5 @@ export const createWinstonLogger = (configService: ConfigService): WinstonModule
         ),
       }),
     ],
-  });
+  };
 };
