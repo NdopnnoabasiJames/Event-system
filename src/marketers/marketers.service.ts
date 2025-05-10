@@ -24,23 +24,22 @@ export class MarketersService {
   }
 
   async getMarketerEvents(marketerId: string) {
-    const user = await this.usersService.findById(marketerId);
-    return this.eventsService.findAll().then(events => 
-      events.filter(event => event.marketers.some(m => m._id.toString() === marketerId))
+    const user = await this.usersService.findById(marketerId);    return this.eventsService.findAll().then(events => 
+      events.filter(event => event.marketers.some(m => m.toString() === marketerId))
     );
   }
 
-  async registerAttendee(marketerId: string, eventId: string, attendeeData: any) {
-    // Verify marketer is assigned to this event
+  async registerAttendee(marketerId: string, eventId: string, attendeeData: any) {    // Verify marketer is assigned to this event
     const event = await this.eventsService.findOne(eventId);
-    if (!event.marketers.some(m => m._id.toString() === marketerId)) {
+    if (!event.marketers.some(m => m.toString() === marketerId)) {
       throw new UnauthorizedException('You are not authorized to register attendees for this event');
     }
 
     // If bus pickup is selected, validate the pickup location exists
-    if (attendeeData.transportPreference === 'bus' && attendeeData.busPickupId) {
+    if (attendeeData.transportPreference === 'bus' && attendeeData.busPickup) {
       const validPickup = event.busPickups.some(
-        pickup => pickup._id.toString() === attendeeData.busPickupId
+        pickup => pickup.location === attendeeData.busPickup.location &&
+        pickup.departureTime.getTime() === new Date(attendeeData.busPickup.departureTime).getTime()
       );
       if (!validPickup) {
         throw new NotFoundException('Invalid bus pickup location');
@@ -61,13 +60,12 @@ export class MarketersService {
     // Verify marketer registered this attendee
     if (attendee.registeredBy.toString() !== marketerId) {
       throw new UnauthorizedException('You can only edit attendees you registered');
-    }
-
-    // If updating bus pickup, validate the new pickup location
-    if (updateData.transportPreference === 'bus' && updateData.busPickupId) {
+    }    // If updating bus pickup, validate the new pickup location
+    if (updateData.transportPreference === 'bus' && updateData.busPickup) {
       const event = await this.eventsService.findOne(attendee.event.toString());
       const validPickup = event.busPickups.some(
-        pickup => pickup._id.toString() === updateData.busPickupId
+        pickup => pickup.location === updateData.busPickup.location &&
+        pickup.departureTime.getTime() === new Date(updateData.busPickup.departureTime).getTime()
       );
       if (!validPickup) {
         throw new NotFoundException('Invalid bus pickup location');

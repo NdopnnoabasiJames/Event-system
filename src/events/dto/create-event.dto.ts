@@ -1,7 +1,8 @@
-import { IsString, IsDateString, IsArray, IsOptional, ValidateNested } from 'class-validator';
+import { IsString, IsDateString, IsArray, IsOptional, ValidateNested, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
+import { BusPickup, Branch } from '../../common/interfaces/event.interface';
 
-class BusPickupDto {
+class BusPickupDto implements BusPickup {
   @IsString()
   location: string;
 
@@ -9,7 +10,7 @@ class BusPickupDto {
   departureTime: Date;
 }
 
-class BranchDto {
+class BranchDto implements Branch {
   @IsString()
   name: string;
 
@@ -30,11 +31,15 @@ export class CreateEventDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => BranchDto)
-  branches: BranchDto[];
+  branches: Branch[];
 
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => BusPickupDto)
-  busPickups?: BusPickupDto[];
+  busPickups?: BusPickup[];
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }

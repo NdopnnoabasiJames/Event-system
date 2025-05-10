@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { User, UserDocument } from '../schemas/user.schema';
 import { Role } from '../common/enums/role.enum';
 
@@ -64,20 +64,20 @@ export class UsersService {
     }
   }
 
-  async addEventParticipation(userId: string, eventId: string): Promise<UserDocument> {
-    const user = await this.userModel.findById(userId).exec();
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    if (!user.eventParticipation.includes(eventId)) {
-      user.eventParticipation.push(eventId);
-      await user.save();
-    }
-
-    return user;
+async addEventParticipation(userId: string, eventId: string): Promise<UserDocument> {
+  const user = await this.userModel.findById(userId).exec();
+  if (!user) {
+    throw new NotFoundException('User not found');
   }
 
+  if (!user.eventParticipation.some(e => e.toString() === eventId)) {
+    // Create a proper Mongoose ObjectId
+    user.eventParticipation.push(new Types.ObjectId(eventId));
+    await user.save();
+  }
+
+  return user;
+}
   async removeEventParticipation(userId: string, eventId: string): Promise<UserDocument> {
     const user = await this.userModel.findById(userId).exec();
     if (!user) {

@@ -3,15 +3,7 @@ import { Document, Schema as MongooseSchema } from 'mongoose';
 
 export type EventDocument = Event & Document;
 
-interface BusPickup {
-  location: string;
-  departureTime: Date;
-}
-
-interface Branch {
-  name: string;
-  location: string;
-}
+import { BusPickup, Branch } from '../common/interfaces/event.interface';
 
 @Schema({ timestamps: true })
 export class Event {
