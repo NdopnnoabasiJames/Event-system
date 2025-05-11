@@ -26,9 +26,16 @@ export class AuthController {
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
-
   @UseGuards(LocalAuthGuard)
   @Post('/login')
+  @ApiOperation({ summary: 'Login user' })
+  @ApiBody({ type: LoginDto })
+  @ApiResponse({
+    status: 200,
+    description: 'User successfully logged in',
+    type: LoginResponseDto
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid credentials' })
   @ApiOperation({ summary: 'Login user and get access token' })
   @ApiBody({ type: LoginDto })
   @ApiResponse({

@@ -32,12 +32,19 @@ export class UsersService {
     console.error('Error creating user:', error);
     throw new Error(`Failed to create user: ${error.message}`);
   }
-}
-  async findByEmail(email: string): Promise<UserDocument> {
+}  async findByEmail(email: string): Promise<UserDocument> {
   try {
+    console.log('Searching for user by email:', email);
     const user = await this.userModel.findOne({ email }).exec();
+    console.log('User found:', user ? 'Yes' : 'No');
+    
+    if (!user) {
+      console.log('No user found with email:', email);
+    }
+    
     return user;
   } catch (error) {
+    console.error('Error finding user by email:', error);
     throw new HttpException(`Failed to find user by email: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }

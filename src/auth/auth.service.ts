@@ -9,22 +9,55 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-  ) {}
+  ) {}  async validateUser(email: string, password: string): Promise<any> {
+    try {
+      console.log('Attempting to validate user:', email);
+      
+      const user = await this.usersService.findByEmail(email);
+      if (!user) {
+        console.log('User not found:', email);
+        throw new UnauthorizedException('User not found');
+      }
+      
+      console.log('User found, validating password');
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        console.log('Invalid password for user:', email);
+        throw new UnauthorizedException('Invalid password');
+      }
 
-  async validateUser(email: string, password: string): Promise<any> {
-    const user = await this.usersService.findByEmail(email);
-    if (user && (await bcrypt.compare(password, user.password))) {
-      const { password, ...result } = user;
+      console.log('Password valid, login successful');
+      const { password: _, ...result } = user.toJSON();
       return result;
+    } catch (error) {
+      console.error('Login error:', error.message);
+      throw new UnauthorizedException(error.message);
     }
-    return null;
   }
-
   async login(user: any) {
-    const payload = { email: user.email, sub: user._id, role: user.role };
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
+    try {
+      console.log('Creating JWT payload for user:', user.email);
+      const payload = { 
+        email: user.email, 
+        sub: user._id ? user._id.toString() : user.id, // Handle both Mongoose _id and plain id
+        role: user.role 
+      };
+      console.log('JWT Payload:', payload);
+        const access_token = this.jwtService.sign(payload, { expiresIn: '24h' });
+      console.log('JWT Token generated successfully');
+      
+      return {
+        access_token,
+        user: {
+          id: payload.sub,
+          email: payload.email,
+          role: payload.role
+        }
+      };
+    } catch (error) {
+      console.error('Error generating JWT token:', error);
+      throw new Error('Failed to generate authentication token: ' + error.message);
+    }
   }
   async register(userData: RegisterDto) {
     // Check if user with this email already exists

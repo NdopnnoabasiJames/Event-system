@@ -11,13 +11,12 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 @Module({
   imports: [
     UsersModule,
-    PassportModule,
-    JwtModule.registerAsync({
+    PassportModule,    JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
+        secret: configService.get<string>('JWT_SECRET') || 'your-fallback-secret-key',
         signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRES_IN'),
+          expiresIn: '24h', // Set a default expiration time
         },
       }),
       inject: [ConfigService],
