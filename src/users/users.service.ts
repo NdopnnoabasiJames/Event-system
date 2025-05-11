@@ -3,6 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Schema as MongooseSchema } from 'mongoose';
 import { User, UserDocument } from '../schemas/user.schema';
 import { Role } from '../common/enums/role.enum';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -10,7 +12,7 @@ export class UsersService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {}
 
- async create(createUserDto: any): Promise<UserDocument> {
+ async create(createUserDto: CreateUserDto): Promise<UserDocument> {
   try {
     const user = new this.userModel(createUserDto);
     return await user.save();
@@ -43,15 +45,10 @@ export class UsersService {
   }
 }
 
-  async update(id: string, updateUserDto: any, currentUser: any): Promise<UserDocument> {
+  async update(id: string, updateUserDto: UpdateUserDto, currentUser: any): Promise<UserDocument> {
     // Only admin can update other users, marketers can only update their own profile
     if (currentUser.role !== Role.ADMIN && currentUser.userId !== id) {
       throw new UnauthorizedException('You can only update your own profile');
-    }
-
-    // Prevent role modification through update
-    if (updateUserDto.role && currentUser.role !== Role.ADMIN) {
-      delete updateUserDto.role;
     }
 
     const user = await this.userModel

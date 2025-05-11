@@ -9,15 +9,15 @@ import {
   Request,
   HttpStatus,
 } from '@nestjs/common';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
   ApiBearerAuth,
   ApiBody,
   ApiParam,
   ApiQuery,
-  ApiProperty
+  ApiProperty,
 } from '@nestjs/swagger';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
@@ -30,13 +30,13 @@ import { EventDocument } from '../schemas/event.schema';
 class BusPickupRequest {
   @ApiProperty({
     example: 'Central Station',
-    description: 'The pickup location name'
+    description: 'The pickup location name',
   })
   location: string;
 
   @ApiProperty({
     example: '2025-07-15T09:00:00Z',
-    description: 'The departure time for the bus pickup'
+    description: 'The departure time for the bus pickup',
   })
   departureTime: Date;
 }
@@ -51,45 +51,51 @@ export class EventsController {
   @Post()
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Create a new event (Admin only)' })
-  @ApiBody({ 
+  @ApiBody({
     type: CreateEventDto,
     description: 'Event creation data',
     examples: {
       example1: {
         value: {
-          name: "Summer Tech Conference 2025",
-          date: "2025-07-15T09:00:00Z",
-          state: "California",
+          name: 'Summer Tech Conference 2025',
+          date: '2025-07-15T09:00:00Z',
+          state: 'California',
           maxAttendees: 500,
           branches: [
             {
-              name: "Downtown Branch",
-              location: "123 Main St",
-              manager: "John Smith",
-              contact: "+1234567890"
-            }
+              name: 'Downtown Branch',
+              location: '123 Main St',
+              manager: 'John Smith',
+              contact: '+1234567890',
+            },
           ],
           busPickups: [
             {
-              location: "Central Station",
-              departureTime: "2025-07-15T07:00:00Z",
+              location: 'Central Station',
+              departureTime: '2025-07-15T07:00:00Z',
               maxCapacity: 50,
-              currentCount: 0
-            }
+              currentCount: 0,
+            },
           ],
-          isActive: true
-        }
-      }
-    }
+          isActive: true,
+        },
+      },
+    },
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: 'Event successfully created',
-    type: CreateEventDto
+    type: CreateEventDto,
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Forbidden - Admin access required' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Forbidden - Admin access required',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid input data',
+  })
   create(@Body() createEventDto: CreateEventDto) {
     return this.eventsService.create(createEventDto);
   }
@@ -99,7 +105,7 @@ export class EventsController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'List of all events',
-    type: [CreateEventDto]
+    type: [CreateEventDto],
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
   findAll() {
@@ -111,7 +117,7 @@ export class EventsController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'List of active events',
-    type: [CreateEventDto]
+    type: [CreateEventDto],
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
   getActiveEvents() {
@@ -123,15 +129,18 @@ export class EventsController {
   @ApiParam({
     name: 'state',
     description: 'The state name to filter events by',
-    example: 'California'
+    example: 'California',
   })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'List of events in the specified state',
-    type: [CreateEventDto]
+    type: [CreateEventDto],
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'No events found in the specified state' })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'No events found in the specified state',
+  })
   getEventsByState(@Param('state') state: string) {
     return this.eventsService.getEventsByState(state);
   }
@@ -141,12 +150,12 @@ export class EventsController {
   @ApiParam({
     name: 'id',
     description: 'The ID of the event to retrieve',
-    example: '645f3c7e8d6e5a7b1c9d2e3f'
+    example: '645f3c7e8d6e5a7b1c9d2e3f',
   })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'The event details',
-    type: CreateEventDto
+    type: CreateEventDto,
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Event not found' })
@@ -156,11 +165,13 @@ export class EventsController {
 
   @Post(':id/bus-pickup')
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Add a bus pickup location to an event (Admin only)' })
+  @ApiOperation({
+    summary: 'Add a bus pickup location to an event (Admin only)',
+  })
   @ApiParam({
     name: 'id',
     description: 'The ID of the event to add a bus pickup to',
-    example: '645f3c7e8d6e5a7b1c9d2e3f'
+    example: '645f3c7e8d6e5a7b1c9d2e3f',
   })
   @ApiBody({
     type: BusPickupRequest,
@@ -168,21 +179,27 @@ export class EventsController {
     examples: {
       example1: {
         value: {
-          location: "Central Station",
-          departureTime: "2025-07-15T07:00:00Z"
-        }
-      }
-    }
+          location: 'Central Station',
+          departureTime: '2025-07-15T07:00:00Z',
+        },
+      },
+    },
   })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Bus pickup successfully added',
-    type: CreateEventDto
+    type: CreateEventDto,
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Forbidden - Admin access required' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Forbidden - Admin access required',
+  })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Event not found' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input data' })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid input data',
+  })
   addBusPickup(
     @Param('id') id: string,
     @Body() busPickupData: BusPickupRequest,
@@ -200,17 +217,23 @@ export class EventsController {
   @ApiParam({
     name: 'id',
     description: 'The ID of the event to join',
-    example: '645f3c7e8d6e5a7b1c9d2e3f'
+    example: '645f3c7e8d6e5a7b1c9d2e3f',
   })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Successfully joined the event',
-    type: CreateEventDto
+    type: CreateEventDto,
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Forbidden - Marketer access required' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Forbidden - Marketer access required',
+  })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Event not found' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Already joined this event' })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Already joined this event',
+  })
   joinEvent(@Param('id') id: string, @Request() req) {
     return this.eventsService.addMarketerToEvent(id, req.user.userId);
   }
@@ -221,17 +244,23 @@ export class EventsController {
   @ApiParam({
     name: 'id',
     description: 'The ID of the event to leave',
-    example: '645f3c7e8d6e5a7b1c9d2e3f'
+    example: '645f3c7e8d6e5a7b1c9d2e3f',
   })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Successfully left the event',
-    type: CreateEventDto
+    type: CreateEventDto,
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Forbidden - Marketer access required' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Forbidden - Marketer access required',
+  })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Event not found' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Not a participant in this event' })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Not a participant in this event',
+  })
   leaveEvent(@Param('id') id: string, @Request() req) {
     return this.eventsService.removeMarketerFromEvent(id, req.user.userId);
   }
