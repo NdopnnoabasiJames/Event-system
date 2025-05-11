@@ -36,24 +36,23 @@
                 <div class="card shadow">
                     <div class="card-body p-4">
                         <h2 class="text-center mb-4">Create Account</h2>
-                        <form id="registrationForm">
-                            <div class="row">
+                        <form id="registrationForm">                            <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="firstName" class="form-label">First Name</label>
-                                    <input type="text" class="form-control" id="firstName" required>
+                                    <input type="text" class="form-control" id="firstName" name="firstName" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="lastName" class="form-label">Last Name</label>
-                                    <input type="text" class="form-control" id="lastName" required>
+                                    <input type="text" class="form-control" id="lastName" name="lastName" required>
                                 </div>
                             </div>
                             <div class="mb-3">
                                 <label for="email" class="form-label">Email address</label>
-                                <input type="email" class="form-control" id="email" required>
+                                <input type="email" class="form-control" id="email" name="email" required>
                             </div>                            <div class="mb-3">
                                 <label for="password" class="form-label">Password</label>
                                 <div class="password-field">
-                                    <input type="password" class="form-control password-input" id="password" required>
+                                    <input type="password" class="form-control password-input" id="password" name="password" required>
                                     <button type="button" class="password-toggle" id="togglePassword">
                                         <i class="fas fa-eye"></i>
                                     </button>
@@ -64,7 +63,7 @@
                             <div class="mb-3">
                                 <label for="confirmPassword" class="form-label">Confirm Password</label>
                                 <div class="password-field">
-                                    <input type="password" class="form-control password-input" id="confirmPassword" required>
+                                    <input type="password" class="form-control password-input" id="confirmPassword" name="confirmPassword" required>
                                     <button type="button" class="password-toggle" id="toggleConfirmPassword">
                                         <i class="fas fa-eye"></i>
                                     </button>
@@ -72,7 +71,7 @@
                             </div>
                             <div class="mb-3">
                                 <label for="role" class="form-label">Register as</label>
-                                <select class="form-select" id="role" required>
+                                <select class="form-select" id="role" name="role" required>
                                     <option value="attendee">Attendee</option>
                                     <option value="marketer">Event Marketer</option>
                                 </select>
