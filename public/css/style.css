@@ -50,6 +50,71 @@ body {
     padding: 10px 15px;
 }
 
+/* Password input styling */
+.password-field {
+    position: relative;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: none;
+    color: #6c757d;
+    cursor: pointer;
+    z-index: 10;
+    padding: 0;
+}
+
+.password-toggle:hover {
+    color: #495057;
+}
+
+.password-input {
+    padding-right: 40px;
+}
+
+/* Password strength indicator */
+.password-strength {
+    height: 5px;
+    margin-top: 5px;
+    border-radius: 3px;
+    transition: all 0.3s ease;
+}
+
+.password-strength-weak {
+    background: #dc3545;
+    width: 25%;
+}
+
+.password-strength-fair {
+    background: #ffc107;
+    width: 50%;
+}
+
+.password-strength-good {
+    background: #0dcaf0;
+    width: 75%;
+}
+
+.password-strength-strong {
+    background: #198754;
+    width: 100%;
+}
+
+.password-strength-text {
+    font-size: 0.8rem;
+    margin-top: 5px;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.password-strength-text::before {
+    content: '💡 ';
+}
+
 /* Footer */
 footer {
     margin-top: auto;
