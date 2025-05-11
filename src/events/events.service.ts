@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Schema as MongooseSchema } from 'mongoose';
 import { Event, EventDocument } from '../schemas/event.schema';
@@ -14,13 +14,21 @@ export class EventsService {
   ) {}
 
   async create(createEventDto: CreateEventDto): Promise<EventDocument> {
+  try {
     const event = new this.eventModel(createEventDto);
-    return event.save();
+    return await event.save();
+  } catch (error) {
+    throw new HttpException(`Failed to create event: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
+}
 
   async findAll(): Promise<EventDocument[]> {
-    return this.eventModel.find().populate('marketers', '-password').exec();
+  try {
+    return await this.eventModel.find().populate('marketers', '-password').exec();
+  } catch (error) {
+    throw new HttpException(`Failed to retrieve events: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
+}
 
   async findOne(id: string): Promise<EventDocument> {
     const event = await this.eventModel
@@ -34,9 +42,13 @@ export class EventsService {
     return event;
   }
 
-  async addBusPickup(eventId: string, location: string, departureTime: Date): Promise<EventDocument> {
+ async addBusPickup(eventId: string, location: string, departureTime: Date): Promise<EventDocument> {
+  try {
     const event = await this.findOne(eventId);
-    
+    if (!event) {
+      throw new HttpException('Event not found', HttpStatus.NOT_FOUND);
+    }
+
     event.busPickups = event.busPickups || [];
     event.busPickups.push({ 
       location, 
@@ -45,9 +57,12 @@ export class EventsService {
       currentCount: 0,
       notes: ''
     });
-    
-    return event.save();
+
+    return await event.save();
+  } catch (error) {
+    throw new HttpException(`Failed to add bus pickup: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
+}
 
   async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocument> {
     const [event, marketer] = await Promise.all([
@@ -76,7 +91,11 @@ export class EventsService {
   }
 
   async removeMarketerFromEvent(eventId: string, marketerId: string): Promise<EventDocument> {
+  try {
     const event = await this.findOne(eventId);
+    if (!event) {
+      throw new HttpException('Event not found', HttpStatus.NOT_FOUND);
+    }
 
     const marketerId_ObjId = new MongooseSchema.Types.ObjectId(marketerId);
     event.marketers = event.marketers.filter(
@@ -89,19 +108,42 @@ export class EventsService {
     ]);
 
     return this.findOne(eventId);
+  } catch (error) {
+    throw new HttpException(`Failed to remove marketer from event: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
+}
 
-  async getEventsByState(state: string): Promise<EventDocument[]> {
-    return this.eventModel
+ async getEventsByState(state: string): Promise<EventDocument[]> {
+  try {
+    const events = await this.eventModel
       .find({ state })
       .populate('marketers', '-password')
       .exec();
+
+    if (!events || events.length === 0) {
+      throw new HttpException('No events found for the specified state', HttpStatus.NOT_FOUND);
+    }
+
+    return events;
+  } catch (error) {
+    throw new HttpException(`Failed to get events by state: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
+}
 
   async getActiveEvents(): Promise<EventDocument[]> {
-    return this.eventModel
+  try {
+    const events = await this.eventModel
       .find({ isActive: true })
       .populate('marketers', '-password')
       .exec();
+
+    if (!events || events.length === 0) {
+      throw new HttpException('No active events found', HttpStatus.NOT_FOUND);
+    }
+
+    return events;
+  } catch (error) {
+    throw new HttpException(`Failed to retrieve active events: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
+}
 }

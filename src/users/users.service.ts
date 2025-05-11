@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Schema as MongooseSchema } from 'mongoose';
 import { User, UserDocument } from '../schemas/user.schema';
@@ -10,15 +10,23 @@ export class UsersService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {}
 
-  async create(createUserDto: any): Promise<UserDocument> {
+ async create(createUserDto: any): Promise<UserDocument> {
+  try {
     const user = new this.userModel(createUserDto);
-    return user.save();
+    return await user.save();
+  } catch (error) {
+    // You can log the error or throw a custom exception
+    throw new Error(`Failed to create user: ${error.message}`);
   }
-
+}
   async findByEmail(email: string): Promise<UserDocument> {
-    return this.userModel.findOne({ email }).exec();
+  try {
+    const user = await this.userModel.findOne({ email }).exec();
+    return user;
+  } catch (error) {
+    throw new HttpException(`Failed to find user by email: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
-
+}
   async findById(id: string): Promise<UserDocument> {
     const user = await this.userModel.findById(id).exec();
     if (!user) {
@@ -28,8 +36,12 @@ export class UsersService {
   }
 
   async findAllMarketers(): Promise<UserDocument[]> {
-    return this.userModel.find({ role: Role.MARKETER }).exec();
+  try {
+    return await this.userModel.find({ role: Role.MARKETER }).exec();
+  } catch (error) {
+    throw new HttpException(`Failed to retrieve marketers: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
+}
 
   async update(id: string, updateUserDto: any, currentUser: any): Promise<UserDocument> {
     // Only admin can update other users, marketers can only update their own profile
