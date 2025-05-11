@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events - Event Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../css/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="../index.html">EventSystem</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="../index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="events.html">Events</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="attendees.html">Attendees</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <a href="login.html" class="btn btn-outline-light me-2">Login</a>
+                    <a href="register.html" class="btn btn-light">Register</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Events List -->
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Upcoming Events</h2>
+            <button class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Create Event
+            </button>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="Search events...">
+                    <button class="btn btn-outline-secondary" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <select class="form-select d-inline-block w-auto">
+                    <option>All Categories</option>
+                    <option>Conferences</option>
+                    <option>Workshops</option>
+                    <option>Seminars</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Events Grid -->
+        <div class="row g-4">
+            <!-- Event Card 1 -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <img src="https://placehold.co/400x200" class="card-img-top" alt="Event 1">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title mb-0">Tech Conference 2025</h5>
+                            <span class="badge bg-primary">Conference</span>
+                        </div>
+                        <p class="card-text">Join us for the biggest tech conference of the year featuring industry experts.</p>
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-calendar-alt text-primary me-2"></i>
+                            <span>May 15, 2025</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-map-marker-alt text-primary me-2"></i>
+                            <span>Convention Center, City</span>
+                        </div>
+                        <a href="#" class="btn btn-outline-primary w-100">View Details</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Event Card 2 -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <img src="https://placehold.co/400x200" class="card-img-top" alt="Event 2">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title mb-0">Digital Workshop</h5>
+                            <span class="badge bg-success">Workshop</span>
+                        </div>
+                        <p class="card-text">Learn the latest digital marketing strategies from industry professionals.</p>
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-calendar-alt text-primary me-2"></i>
+                            <span>June 1, 2025</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-map-marker-alt text-primary me-2"></i>
+                            <span>Business Center, Downtown</span>
+                        </div>
+                        <a href="#" class="btn btn-outline-primary w-100">View Details</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Event Card 3 -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <img src="https://placehold.co/400x200" class="card-img-top" alt="Event 3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title mb-0">Leadership Summit</h5>
+                            <span class="badge bg-info">Seminar</span>
+                        </div>
+                        <p class="card-text">Develop your leadership skills with guidance from successful leaders.</p>
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-calendar-alt text-primary me-2"></i>
+                            <span>June 15, 2025</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-map-marker-alt text-primary me-2"></i>
+                            <span>Grand Hotel, City Center</span>
+                        </div>
+                        <a href="#" class="btn btn-outline-primary w-100">View Details</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1">Previous</a>
+                </li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="#">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-light py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>EventSystem</h5>
+                    <p>Making event management simple and efficient.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p>&copy; 2025 EventSystem. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
