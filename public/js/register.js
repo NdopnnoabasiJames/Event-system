@@ -75,12 +75,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     return;
                 }
-                
-                // Remove confirmPassword from data before sending to API
+                  // Remove confirmPassword from data before sending to API
                 delete formData.confirmPassword;
                 
+                // Format the data for the API
+                const userData = {
+                    name: `${formData.firstName} ${formData.lastName}`,
+                    email: formData.email,
+                    password: formData.password,
+                    role: formData.role || 'user'
+                };
+                
                 // Submit registration
-                await auth.register(formData);
+                await auth.register(userData);
                 showToast('success', 'Registration successful! Please login.');
                 
                 setTimeout(() => {

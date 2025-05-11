@@ -13,13 +13,19 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
             method,
             headers,
-            body: data ? JSON.stringify(data) : null
+            body: data ? JSON.stringify(data) : null,
+            credentials: 'include'
         });
 
-        const responseData = await response.json();
+        let responseData;
+        try {
+            responseData = await response.json();
+        } catch (e) {
+            responseData = { message: 'Unable to parse server response' };
+        }
 
         if (!response.ok) {
-            const error = new Error();
+            const error = new Error(responseData.message || 'An error occurred');
             error.response = {
                 status: response.status,
                 data: responseData
@@ -29,8 +35,21 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
 
         return responseData;
     } catch (error) {
-        const errorMessage = ErrorHandler.handle(error, `API_${method}_${endpoint}`);
-        showToast('error', errorMessage);
+        console.error('API Error:', error);
+        
+        if (!window.navigator.onLine) {
+            showToast('error', 'You are offline. Please check your internet connection.');
+            throw error;
+        }
+        
+        if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+            showToast('error', 'Unable to connect to the server. Please check if the server is running at ' + API_BASE_URL);
+        } else if (error.response?.status === 500) {
+            showToast('error', 'Internal server error. Please try again later.');
+        } else {
+            const errorMessage = error.response?.data?.message || error.message || 'An error occurred';
+            showToast('error', errorMessage);
+        }
         throw error;
     }
 }

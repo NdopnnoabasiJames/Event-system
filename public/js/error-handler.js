@@ -158,6 +158,50 @@ class ErrorHandler {
     }
 }
 
+// Error Types
+const ErrorHandler = {
+    handle(error, context = '') {
+        if (!error) return 'An unknown error occurred';
+
+        // Network errors
+        if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+            return ErrorMessages[ErrorTypes.NETWORK].OFFLINE;
+        }
+
+        // Server response errors
+        if (error.response) {
+            switch (error.response.status) {
+                case 400:
+                    return this.handleValidationError(error.response.data);
+                case 401:
+                    return ErrorMessages[ErrorTypes.AUTH].UNAUTHORIZED;
+                case 403:
+                    return ErrorMessages[ErrorTypes.AUTH].UNAUTHORIZED;
+                case 404:
+                    return 'Resource not found';
+                case 409:
+                    return error.response.data.message || 'Resource already exists';
+                case 422:
+                    return this.handleValidationError(error.response.data);
+                case 500:
+                    return 'Internal server error. Please try again later.';
+                default:
+                    return error.response.data.message || 'An error occurred';
+            }
+        }
+
+        // Default error message
+        return error.message || 'An unknown error occurred';
+    },
+
+    handleValidationError(data) {
+        if (data.message && Array.isArray(data.message)) {
+            return data.message[0];
+        }
+        return data.message || 'Invalid input data';
+    }
+};
+
 // Form Validation Rules
 const ValidationRules = {
     login: {

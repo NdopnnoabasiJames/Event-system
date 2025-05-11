@@ -11,13 +11,25 @@ export class UsersService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {}
-
  async create(createUserDto: CreateUserDto): Promise<UserDocument> {
   try {
-    const user = new this.userModel(createUserDto);
+    // Ensure required fields are present
+    if (!createUserDto.name || !createUserDto.email || !createUserDto.password) {
+      throw new Error('Missing required fields');
+    }
+
+    const user = new this.userModel({
+      ...createUserDto,
+      role: createUserDto.role || Role.USER
+    });
+
     return await user.save();
   } catch (error) {
-    // You can log the error or throw a custom exception
+    if (error.code === 11000) { // MongoDB duplicate key error
+      throw new Error('Email already exists');
+    }
+    // Log the error for debugging
+    console.error('Error creating user:', error);
     throw new Error(`Failed to create user: ${error.message}`);
   }
 }

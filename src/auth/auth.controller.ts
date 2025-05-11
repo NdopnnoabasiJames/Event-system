@@ -10,10 +10,10 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto, LoginResponseDto } from './dto/login.dto';
 
 @ApiTags('Authentication')
-@Controller('auth')
+@Controller('/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-  @Post('register')
+  @Post('/register')
   @ApiOperation({ summary: 'Register a new user' })
   @ApiBody({ type: RegisterDto })
   @ApiResponse({
@@ -28,7 +28,7 @@ export class AuthController {
   }
 
   @UseGuards(LocalAuthGuard)
-  @Post('login')
+  @Post('/login')
   @ApiOperation({ summary: 'Login user and get access token' })
   @ApiBody({ type: LoginDto })
   @ApiResponse({
@@ -62,7 +62,7 @@ export class AuthController {
     });
   }
   @UseGuards(JwtAuthGuard)
-  @Get('profile')
+  @Get('/profile')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiResponse({
