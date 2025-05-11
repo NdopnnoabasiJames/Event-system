@@ -29,10 +29,22 @@ import { CommonModule } from './common/common.module';
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        uri: configService.get<string>('database.uri'),
-        dbName: configService.get<string>('database.dbName'),
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
+        uri: configService.get<string>('MONGODB_URI'),
+        dbName: configService.get<string>('MONGODB_DB_NAME'),
+                retryWrites: true,
+        connectionFactory: (connection) => {
+          connection.on('error', (error) => {
+            console.error('MongoDB connection error:', error);
+          });
+          connection.on('disconnected', () => {
+            console.log('MongoDB disconnected');
+          });
+          connection.on('connected', () => {
+            console.log('MongoDB connected');
+          });
+          return connection;
+        },
+
       }),
       inject: [ConfigService],
     }),
