@@ -25,8 +25,7 @@ export class AuthController {
   @ApiResponse({ status: 409, description: 'Conflict - User already exists' })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
-  }
-  @UseGuards(LocalAuthGuard)
+  }  @UseGuards(LocalAuthGuard)
   @Post('/login')
   @ApiOperation({ summary: 'Login user' })
   @ApiBody({ type: LoginDto })
@@ -36,16 +35,11 @@ export class AuthController {
     type: LoginResponseDto
   })
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid credentials' })
-  @ApiOperation({ summary: 'Login user and get access token' })
-  @ApiBody({ type: LoginDto })
-  @ApiResponse({
-    status: 200,
-    description: 'User successfully logged in',
-    type: LoginResponseDto
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid credentials' })
   async login(@Request() req) {
-    return this.authService.login(req.user);
+    console.log('Login request user:', req.user);
+    const result = await this.authService.login(req.user);
+    console.log('Login response:', result);
+    return result;
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

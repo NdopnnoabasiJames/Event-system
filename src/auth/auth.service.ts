@@ -33,19 +33,20 @@ export class AuthService {
       console.error('Login error:', error.message);
       throw new UnauthorizedException(error.message);
     }
-  }
-  async login(user: any) {
+  }  async login(user: any) {
     try {
       console.log('Creating JWT payload for user:', user.email);
       const payload = { 
         email: user.email, 
-        sub: user._id ? user._id.toString() : user.id, // Handle both Mongoose _id and plain id
+        sub: user._id ? user._id.toString() : user.id,
         role: user.role 
       };
       console.log('JWT Payload:', payload);
-        const access_token = this.jwtService.sign(payload, { expiresIn: '24h' });
+      
+      const access_token = this.jwtService.sign(payload, { expiresIn: '24h' });
       console.log('JWT Token generated successfully');
       
+      // Direct format, not nested inside data property
       return {
         access_token,
         user: {

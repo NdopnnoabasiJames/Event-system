@@ -39,15 +39,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         input.parentNode.appendChild(errorElement);
                     });
                     return;
-                }
-
-                const response = await auth.login(formData.email, formData.password);
-                
-                if (response.access_token) {
-                    showToast('success', 'Login successful!');
-                    setTimeout(() => {
-                        window.location.href = '../pages/events.html';
-                    }, 1000);
+                }                try {
+                    const loginResponse = await auth.login(formData.email, formData.password);
+                    console.log('Login successful:', loginResponse);
+                    
+                    // Make sure user data is available in localStorage
+                    if (auth.getUser() && auth.getToken()) {
+                        showToast('success', 'Login successful!');
+                        setTimeout(() => {
+                            window.location.href = '../pages/events.html';
+                        }, 1000);
+                    } else {
+                        throw new Error('Failed to store authentication data');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    showToast('error', error.message || 'Login failed. Please try again.');
                 }
             } catch (error) {
                 // Error is already handled by the API call

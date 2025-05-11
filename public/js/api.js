@@ -9,8 +9,7 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
 
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
-    }    try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    }    try {        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
             method,
             headers,
             body: data ? JSON.stringify(data) : null,
@@ -18,10 +17,15 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
         });
 
         let responseData;
-        try {
-            responseData = await response.json();
+        try {            responseData = await response.json();
+            console.log('API Response:', { 
+                status: response.status, 
+                data: responseData,
+                structure: JSON.stringify(responseData)
+            });
         } catch (e) {
-            responseData = { message: 'Unable to parse server response' };
+            console.error('Failed to parse response:', e);
+            throw new Error('Unable to parse server response');
         }
 
         if (!response.ok) {
@@ -55,13 +59,44 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
 }
 
 // Auth functions
-const auth = {
-    async login(email, password) {
-        const response = await apiCall('/auth/login', 'POST', { email, password });
-        if (response.access_token) {
-            localStorage.setItem('token', response.access_token);
-            localStorage.setItem('user', JSON.stringify(response.user));
-            return response;
+const auth = {    async login(email, password) {
+        try {
+            const response = await apiCall('/auth/login', 'POST', { email, password });
+            console.log('Login response from server:', response);
+            console.log('Response type:', typeof response);
+            console.log('Response keys:', Object.keys(response));
+            
+            // Try multiple response formats to handle different structures
+            let token, user;
+            
+            // Format 1: { data: { access_token, user } }
+            if (response && response.data && response.data.access_token) {
+                token = response.data.access_token;
+                user = response.data.user;
+                console.log("Found format 1 (nested data object)");
+            } 
+            // Format 2: { access_token, user }
+            else if (response && response.access_token) {
+                token = response.access_token;
+                user = response.user;
+                console.log("Found format 2 (direct properties)");
+            }
+            
+            if (!token || !user) {
+                console.error('Invalid response structure:', response);
+                throw new Error('Invalid server response format');
+            }
+            
+            // Store authentication data
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify(user));
+            
+            return { access_token: token, user };
+        } catch (error) {
+            console.error('Login error:', error);
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            throw error;
         }
     },
 
