@@ -107,12 +107,14 @@ const auth = {    async login(email, password) {
 
     async register(userData) {
         return await apiCall('/auth/register', 'POST', userData);
-    },
-
-    logout() {
+    },    logout() {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/index.html';
+        
+        // Determine correct path for redirection
+        const isInPages = window.location.pathname.includes('/pages/');
+        const redirectPath = isInPages ? '../index.html' : 'index.html';
+        window.location.href = redirectPath;
     },
 
     getToken() {

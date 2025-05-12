@@ -55,7 +55,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadTopMarketers() {
     try {
-        const marketers = await marketersApi.getTopMarketers();
+        const response = await marketersApi.getTopMarketers();
+        const marketers = Array.isArray(response) ? response : (response.data || []);
+        
         const tableBody = document.getElementById('marketers-table-body');
         const noMarketersMessage = document.getElementById('no-marketers');
         
@@ -103,10 +105,17 @@ async function loadTopMarketers() {
 
 async function loadEventsData() {
     try {
-        const events = await eventsApi.getAllEvents();
+        const response = await eventsApi.getAllEvents();
+        const events = Array.isArray(response) ? response : (response.data || []);
+        
         const tableBody = document.getElementById('events-table-body');
         
         tableBody.innerHTML = '';
+        
+        if (!events || events.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No events found</td></tr>';
+            return;
+        }
         
         for (const event of events) {
             const row = document.createElement('tr');
@@ -152,12 +161,18 @@ async function loadEventsData() {
 
 async function setupEventFilter() {
     try {
-        const events = await eventsApi.getAllEvents();
+        const response = await eventsApi.getAllEvents();
+        const events = Array.isArray(response) ? response : (response.data || []);
+        
         const selectElement = document.getElementById('event-filter');
         
         // Clear existing options except the first one
         while (selectElement.options.length > 1) {
             selectElement.remove(1);
+        }
+        
+        if (!events || events.length === 0) {
+            return;
         }
         
         // Sort events by date (newest first)
@@ -180,10 +195,17 @@ async function loadAttendeesData() {
         const eventId = document.getElementById('event-filter').value;
         const endpoint = eventId ? `/attendees?eventId=${eventId}` : '/attendees';
         
-        const attendees = await apiCall(endpoint, 'GET', null, auth.getToken());
+        const response = await apiCall(endpoint, 'GET', null, auth.getToken());
+        const attendees = Array.isArray(response) ? response : (response.data || []);
+        
         const tableBody = document.getElementById('attendees-table-body');
         
         tableBody.innerHTML = '';
+        
+        if (!attendees || attendees.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No attendees found</td></tr>';
+            return;
+        }
         
         // Sort attendees by registration date (newest first)
         attendees.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
