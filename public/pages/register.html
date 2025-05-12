@@ -45,10 +45,18 @@
                                     <label for="lastName" class="form-label">Last Name</label>
                                     <input type="text" class="form-control" id="lastName" name="lastName" required>
                                 </div>
-                            </div>
-                            <div class="mb-3">
+                            </div>                            <div class="mb-3">
                                 <label for="email" class="form-label">Email address</label>
                                 <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="role" class="form-label">Register as</label>
+                                <select class="form-select" id="role" name="role" required>
+                                    <option value="user">Regular User</option>
+                                    <option value="marketer">Marketer</option>
+                                </select>
+                                <div class="form-text text-muted">Marketers can register attendees for events and track their performance</div>
                             </div>                            <div class="mb-3">
                                 <label for="password" class="form-label">Password</label>
                                 <div class="password-field">

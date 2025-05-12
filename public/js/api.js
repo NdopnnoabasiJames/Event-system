@@ -6,10 +6,15 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
     const headers = {
         'Content-Type': 'application/json'
     };
-
+    
+    // Always try to get token if not provided - ensures consistent auth for all requests
+    if (!token) {
+        token = auth.getToken();
+    }
+    
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
-    }    try {        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    }    try {const response = await fetch(`${API_BASE_URL}${endpoint}`, {
             method,
             headers,
             body: data ? JSON.stringify(data) : null,
@@ -127,11 +132,11 @@ const auth = {    async login(email, password) {
 // Events API functions
 const eventsApi = {
     async getAllEvents() {
-        return await apiCall('/events');
+        return await apiCall('/events', 'GET', null, auth.getToken());
     },
 
     async getEvent(id) {
-        return await apiCall(`/events/${id}`);
+        return await apiCall(`/events/${id}`, 'GET', null, auth.getToken());
     },
 
     async createEvent(eventData) {
@@ -172,6 +177,47 @@ const attendeesApi = {
 
     async getByBusPickup(eventId, location) {
         return await apiCall(`/attendees/bus-pickups/${location}?eventId=${eventId}`, 'GET', null, auth.getToken());
+    }
+};
+
+// Marketers API functions
+const marketersApi = {
+    async getAvailableEvents() {
+        return await apiCall('/marketers/events/available', 'GET', null, auth.getToken());
+    },
+
+    async getMyEvents() {
+        return await apiCall('/marketers/events/my', 'GET', null, auth.getToken());
+    },
+
+    async volunteerForEvent(eventId) {
+        return await apiCall(`/marketers/events/${eventId}/volunteer`, 'POST', null, auth.getToken());
+    },
+
+    async leaveEvent(eventId) {
+        return await apiCall(`/marketers/events/${eventId}/leave`, 'DELETE', null, auth.getToken());
+    },
+
+    async registerAttendee(eventId, attendeeData) {
+        return await apiCall(`/marketers/attendees/${eventId}`, 'POST', attendeeData, auth.getToken());
+    },
+
+    async getMyAttendees(eventId = null) {
+        const endpoint = eventId ? `/marketers/attendees?eventId=${eventId}` : '/marketers/attendees';
+        return await apiCall(endpoint, 'GET', null, auth.getToken());
+    },
+
+    // Analytics endpoints
+    async getPerformanceStats() {
+        return await apiCall('/marketers/analytics/performance', 'GET', null, auth.getToken());
+    },
+
+    async getEventPerformance(eventId) {
+        return await apiCall(`/marketers/analytics/event/${eventId}`, 'GET', null, auth.getToken());
+    },
+
+    async getTopMarketers() {
+        return await apiCall('/marketers/analytics/top', 'GET', null, auth.getToken());
     }
 };
 
@@ -216,12 +262,29 @@ function updateAuthState() {
     const authButtons = document.querySelector('.auth-buttons');
     const protectedElements = document.querySelectorAll('[data-requires-auth]');
 
-    if (authButtons) {
-        authButtons.innerHTML = isAuthenticated
-            ? `<span class="navbar-text me-3">Welcome, ${user.firstName || 'User'}</span>
-               <button onclick="auth.logout()" class="btn btn-outline-light">Logout</button>`
-            : `<a href="pages/login.html" class="btn btn-outline-light me-2">Login</a>
-               <a href="pages/register.html" class="btn btn-light">Register</a>`;
+    if (authButtons) {        if (isAuthenticated) {
+            let dashboardLink = '';
+            // Check if we're in the root directory or pages directory
+            const isInPages = window.location.pathname.includes('/pages/');
+            const pathPrefix = isInPages ? '' : 'pages/';
+            
+            if (user.role === 'marketer') {
+                dashboardLink = `<a href="${pathPrefix}marketer-dashboard.html" class="btn btn-outline-info me-2">Marketer Dashboard</a>`;
+            } else if (user.role === 'admin') {
+                dashboardLink = `<a href="${pathPrefix}admin-dashboard.html" class="btn btn-outline-warning me-2">Admin Dashboard</a>`;
+            }
+            
+            authButtons.innerHTML = `
+                <span class="navbar-text me-3">Welcome, ${user.name || 'User'}</span>
+                ${dashboardLink}
+                <button onclick="auth.logout()" class="btn btn-outline-light">Logout</button>
+            `;
+        } else {
+            authButtons.innerHTML = `
+                <a href="pages/login.html" class="btn btn-outline-light me-2">Login</a>
+                <a href="pages/register.html" class="btn btn-light">Register</a>
+            `;
+        }
     }
 
     protectedElements.forEach(element => {

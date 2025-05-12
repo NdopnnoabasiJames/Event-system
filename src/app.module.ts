@@ -8,6 +8,7 @@ import { EventsModule } from './events/events.module';
 import { MarketersModule } from './marketers/marketers.module';
 import { AttendeesModule } from './attendees/attendees.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { SeedModule } from './seed/seed.module';
 import { databaseConfig, jwtConfig, emailConfig } from './config/configuration';
 import { configValidationSchema } from './config/validation.schema';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
@@ -50,11 +51,11 @@ import { CommonModule } from './common/common.module';
     }),
     CommonModule,
     AuthModule,
-    UsersModule,
-    EventsModule,
+    UsersModule,    EventsModule,
     MarketersModule,
     AttendeesModule,
     NotificationsModule,
+    SeedModule,
   ],
   providers: [
     {

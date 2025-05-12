@@ -49,11 +49,24 @@ export class UsersService {
   }
 }
   async findById(id: string): Promise<UserDocument> {
-    const user = await this.userModel.findById(id).exec();
-    if (!user) {
-      throw new NotFoundException('User not found');
+    try {
+      const user = await this.userModel.findById(id).exec();
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+      return user;
+    } catch (error) {
+      throw new HttpException(`Failed to find user by ID: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
-    return user;
+  }
+  
+  async findByRole(role: string): Promise<UserDocument[]> {
+    try {
+      const users = await this.userModel.find({ role }).exec();
+      return users;
+    } catch (error) {
+      throw new HttpException(`Failed to find users by role: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 
   async findAllMarketers(): Promise<UserDocument[]> {

@@ -1,12 +1,25 @@
 let currentEvents = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Check if user is authenticated
     if (!auth.isAuthenticated()) {
         showToast('error', 'Please login to view events');
         setTimeout(() => {
             window.location.href = 'login.html';
         }, 1000);
         return;
+    }
+
+    // Redirect admin users to admin dashboard
+    const user = auth.getUser();
+    if (user && user.role === 'admin') {
+        // Check if the user just logged in and was redirected here
+        const justLoggedIn = sessionStorage.getItem('justLoggedIn');
+        if (justLoggedIn) {
+            sessionStorage.removeItem('justLoggedIn');
+            window.location.href = 'admin-dashboard.html';
+            return;
+        }
     }
 
     await loadEvents();

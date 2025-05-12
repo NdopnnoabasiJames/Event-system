@@ -41,13 +41,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }                try {
                     const loginResponse = await auth.login(formData.email, formData.password);
-                    console.log('Login successful:', loginResponse);
-                    
-                    // Make sure user data is available in localStorage
+                    console.log('Login successful:', loginResponse);                    // Make sure user data is available in localStorage
                     if (auth.getUser() && auth.getToken()) {
                         showToast('success', 'Login successful!');
+                        
+                        // Set a flag to indicate the user just logged in
+                        sessionStorage.setItem('justLoggedIn', 'true');
+                        
+                        // Redirect based on user role
+                        const user = auth.getUser();
                         setTimeout(() => {
-                            window.location.href = '../pages/events.html';
+                            if (user.role === 'admin') {
+                                window.location.href = '../pages/admin-dashboard.html';
+                            } else if (user.role === 'marketer') {
+                                window.location.href = '../pages/marketer-dashboard.html';
+                            } else {
+                                window.location.href = '../pages/events.html';
+                            }
                         }, 1000);
                     } else {
                         throw new Error('Failed to store authentication data');

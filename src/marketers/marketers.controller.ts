@@ -254,4 +254,59 @@ export class MarketersController {
   ) {
     return this.marketersService.removeAttendee(req.user.userId, id);
   }
+
+  @Get('analytics/performance')
+  @ApiOperation({ summary: 'Get performance statistics for the current marketer' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Performance statistics for the marketer',
+    schema: {
+      type: 'object',
+      properties: {
+        totalAttendeesRegistered: { type: 'number' },
+        attendeesPerEvent: { type: 'object' },
+        eventsParticipated: { type: 'number' },
+        averageAttendeesPerEvent: { type: 'number' }
+      }
+    }
+  })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Forbidden - Marketer access required' })
+  getMyPerformance(@Request() req) {
+    return this.marketersService.getMarketerPerformanceStats(req.user.userId);
+  }
+
+  @Get('analytics/event/:eventId')
+  @ApiOperation({ summary: 'Get marketer performance for specific event' })
+  @ApiParam({
+    name: 'eventId',
+    description: 'The ID of the event to check performance for',
+    example: '645f3c7e8d6e5a7b1c9d2e3f'
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Event performance statistics'
+  })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Forbidden - Marketer access required' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Event not found' })
+  getEventPerformance(
+    @Param('eventId') eventId: string,
+    @Request() req,
+  ) {
+    return this.marketersService.getMarketerEventPerformance(req.user.userId, eventId);
+  }
+
+  @Get('analytics/top')
+  @ApiOperation({ summary: 'Get top performing marketers' })
+  @Roles(Role.ADMIN)
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'List of top performing marketers'
+  })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Forbidden - Admin access required' })
+  getTopMarketers() {
+    return this.marketersService.getTopPerformingMarketers(10);
+  }
 }
