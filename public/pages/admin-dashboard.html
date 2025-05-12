@@ -93,7 +93,12 @@
             <div class="tab-pane fade" id="events" role="tabpanel">
                 <div class="card shadow-sm mb-4">
                     <div class="card-body">
-                        <h2 class="card-title">Events Performance</h2>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h2 class="card-title mb-0">Events Performance</h2>
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createEventModal">
+                                <i class="bi bi-plus-circle"></i> Create Event
+                            </button>
+                        </div>
                         <div class="table-responsive">
                             <table class="table">
                                 <thead>
@@ -207,6 +212,113 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Event Modal -->
+    <div class="modal fade" id="createEventModal" tabindex="-1" aria-labelledby="createEventModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createEventModalLabel">Create New Event</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createEventForm">
+                        <div class="mb-3">
+                            <label for="eventName" class="form-label">Event Name*</label>
+                            <input type="text" class="form-control" id="eventName" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="eventDate" class="form-label">Event Date*</label>
+                            <input type="datetime-local" class="form-control" id="eventDate" name="date" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="eventState" class="form-label">State*</label>
+                            <input type="text" class="form-control" id="eventState" name="state" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="maxAttendees" class="form-label">Maximum Attendees</label>
+                            <input type="number" class="form-control" id="maxAttendees" name="maxAttendees" min="1">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="isActive" id="statusActive" value="true" checked>
+                                <label class="form-check-label" for="statusActive">
+                                    Active
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="isActive" id="statusInactive" value="false">
+                                <label class="form-check-label" for="statusInactive">
+                                    Inactive
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Branch Information -->
+                        <div class="card mb-3">
+                            <div class="card-header">Branch Information</div>
+                            <div class="card-body" id="branchesContainer">
+                                <div class="branch-entry mb-3 p-3 border rounded">
+                                    <div class="mb-2">
+                                        <label class="form-label">Branch Name*</label>
+                                        <input type="text" class="form-control" name="branches[0].name" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Location*</label>
+                                        <input type="text" class="form-control" name="branches[0].location" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Manager Name</label>
+                                        <input type="text" class="form-control" name="branches[0].manager">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Contact</label>
+                                        <input type="tel" class="form-control" name="branches[0].contact">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <button type="button" class="btn btn-outline-primary" id="addBranchBtn">
+                                    <i class="bi bi-plus"></i> Add Another Branch
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Bus Pickup Information -->
+                        <div class="card mb-3">
+                            <div class="card-header">Bus Pickup Locations</div>
+                            <div class="card-body" id="busPickupsContainer">
+                                <div class="bus-pickup-entry mb-3 p-3 border rounded">
+                                    <div class="mb-2">
+                                        <label class="form-label">Pickup Location*</label>
+                                        <input type="text" class="form-control" name="busPickups[0].location" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Departure Time*</label>
+                                        <input type="datetime-local" class="form-control" name="busPickups[0].departureTime" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Maximum Capacity</label>
+                                        <input type="number" class="form-control" name="busPickups[0].maxCapacity" min="1">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <button type="button" class="btn btn-outline-primary" id="addBusPickupBtn">
+                                    <i class="bi bi-plus"></i> Add Another Bus Pickup
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveEventBtn">Create Event</button>
                 </div>
             </div>
         </div>

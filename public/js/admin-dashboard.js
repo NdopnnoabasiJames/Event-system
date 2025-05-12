@@ -44,9 +44,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Load initial attendees data
         await loadAttendeesData();
+          // Add event listener for event filter
+        const eventFilter = document.getElementById('event-filter');
+        if (eventFilter) {
+            eventFilter.addEventListener('change', loadAttendeesData);
+        }
         
-        // Add event listener for event filter
-        document.getElementById('event-filter').addEventListener('change', loadAttendeesData);
+        // Setup event creation handlers with better error handling
+        try {
+            await setupEventCreationHandlers();
+        } catch (error) {
+            console.error('Error setting up event creation handlers:', error);
+            // We don't need to show another toast here since setupEventCreationHandlers already does
+        }
     } catch (error) {
         console.error('Error loading admin dashboard:', error);
         showToast('error', 'Failed to load dashboard data');
@@ -307,4 +317,309 @@ async function showMarketerDetails(marketerId) {
         console.error(`Error loading marketer details for ${marketerId}:`, error);
         showToast('error', 'Failed to load marketer details');
     }
+}
+
+async function setupEventCreationHandlers() {
+    try {
+        console.log('Setting up event creation handlers');
+        
+        // Add Branch button handler
+        const addBranchBtn = document.getElementById('addBranchBtn');
+        if (!addBranchBtn) {
+            console.error('Cannot find addBranchBtn element');
+            return;
+        }
+        
+        let branchCount = 1;
+        
+        addBranchBtn.addEventListener('click', () => {
+            const branchesContainer = document.getElementById('branchesContainer');
+            if (!branchesContainer) {
+                console.error('Cannot find branchesContainer element');
+                return;
+            }
+            
+            const newBranch = document.createElement('div');
+            newBranch.className = 'branch-entry mb-3 p-3 border rounded';
+            newBranch.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Branch ${branchCount + 1}</h6>
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-branch">
+                        <i class="bi bi-trash"></i> Remove
+                    </button>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Branch Name*</label>
+                    <input type="text" class="form-control" name="branches[${branchCount}].name" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Location*</label>
+                    <input type="text" class="form-control" name="branches[${branchCount}].location" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Manager Name</label>
+                    <input type="text" class="form-control" name="branches[${branchCount}].manager">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Contact</label>
+                    <input type="tel" class="form-control" name="branches[${branchCount}].contact">
+                </div>
+            `;
+            
+            branchesContainer.appendChild(newBranch);
+            branchCount++;
+            
+            // Add event listener to remove button
+            const removeBtn = newBranch.querySelector('.remove-branch');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', () => {
+                    branchesContainer.removeChild(newBranch);
+                });
+            }
+        });
+        
+        // Add Bus Pickup button handler
+        const addBusPickupBtn = document.getElementById('addBusPickupBtn');
+        if (!addBusPickupBtn) {
+            console.error('Cannot find addBusPickupBtn element');
+            return;
+        }
+        
+        let pickupCount = 1;
+        
+        addBusPickupBtn.addEventListener('click', () => {
+            const busPickupsContainer = document.getElementById('busPickupsContainer');
+            if (!busPickupsContainer) {
+                console.error('Cannot find busPickupsContainer element');
+                return;
+            }
+            
+            const newPickup = document.createElement('div');
+            newPickup.className = 'bus-pickup-entry mb-3 p-3 border rounded';
+            newPickup.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Pickup ${pickupCount + 1}</h6>
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-pickup">
+                        <i class="bi bi-trash"></i> Remove
+                    </button>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Pickup Location*</label>
+                    <input type="text" class="form-control" name="busPickups[${pickupCount}].location" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Departure Time*</label>
+                    <input type="datetime-local" class="form-control" name="busPickups[${pickupCount}].departureTime" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Maximum Capacity</label>
+                    <input type="number" class="form-control" name="busPickups[${pickupCount}].maxCapacity" min="1">
+                </div>
+            `;
+            
+            busPickupsContainer.appendChild(newPickup);
+            pickupCount++;
+            
+            // Add event listener to remove button
+            const removeBtn = newPickup.querySelector('.remove-pickup');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', () => {
+                    busPickupsContainer.removeChild(newPickup);
+                });
+            }
+        });
+        
+        // Form submission handler
+        const saveEventBtn = document.getElementById('saveEventBtn');
+        if (!saveEventBtn) {
+            console.error('Cannot find saveEventBtn element');
+            return;
+        }
+          saveEventBtn.addEventListener('click', async () => {
+            try {
+                const form = document.getElementById('createEventForm');
+                if (!form) {
+                    console.error('Cannot find createEventForm element');
+                    return;
+                }
+                
+                // Basic validation
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+                
+                // Get form data and convert to appropriate format
+                const formData = getFormDataAsObject(form);
+                // Log raw formData for debugging
+                console.log('Raw formData:', formData);
+                // Log raw and ISO-formatted date values for debugging
+                console.log('Raw event date:', formData.date);
+                const isoEventDate = toFullISOString(formData.date);
+                console.log('ISO event date:', isoEventDate);
+                let hasInvalidDate = false;
+                if (!isoEventDate) {
+                    showToast('error', 'Event date is missing or invalid. Please select a valid date and time.');
+                    hasInvalidDate = true;
+                }
+                if (formData.busPickups && Array.isArray(formData.busPickups)) {
+                    formData.busPickups.forEach((pickup, idx) => {
+                        console.log(`Raw busPickups[${idx}].departureTime:`, pickup.departureTime);
+                        const isoPickup = toFullISOString(pickup.departureTime);
+                        console.log(`ISO busPickups[${idx}].departureTime:`, isoPickup);
+                        if (!isoPickup) {
+                            showToast('error', `Bus pickup ${idx + 1} departure time is missing or invalid. Please select a valid date and time.`);
+                            hasInvalidDate = true;
+                        }
+                    });
+                }
+                if (hasInvalidDate) return;
+                const eventData = formatEventData(formData);
+                // Log formatted eventData for debugging
+                console.log('Formatted eventData:', eventData);
+                // Removed all date ISO validation checks here
+                // Create the event
+                await eventsApi.createEvent(eventData);
+                
+                // Show success message
+                showToast('success', 'Event created successfully!');
+                
+                // Close the modal and reload events data
+                const modalElement = document.getElementById('createEventModal');
+                if (modalElement) {
+                    const modal = bootstrap.Modal.getInstance(modalElement);
+                    if (modal) {
+                        modal.hide();
+                    } else {
+                        console.warn('Could not find Bootstrap modal instance');
+                    }
+                }
+                
+                // Reset the form
+                form.reset();
+                
+                // Reload events data
+                await loadEventsData();
+                await setupEventFilter();
+            } catch (error) {
+                showToast('error', 'Failed to create event: ' + (error.message || 'Unknown error'));
+                console.error('Error creating event:', error);
+            }
+        });
+        
+        console.log('Event creation handlers set up successfully');
+    } catch (error) {
+        console.error('Error in setupEventCreationHandlers:', error);
+        showToast('error', 'Failed to set up event creation functionality');
+    }
+}
+
+// Helper function to validate dates
+function isValidDate(dateString) {
+    if (!dateString) return false;
+    
+    try {
+        const date = new Date(dateString);
+        return !isNaN(date.getTime());
+    } catch (error) {
+        return false;
+    }
+}
+
+function getFormDataAsObject(form) {
+    const formData = new FormData(form);
+    const data = {};
+    
+    for (const [key, value] of formData.entries()) {
+        // Handle nested properties using bracket notation (e.g., branches[0].name)
+        if (key.includes('[') && key.includes('].')) {
+            const mainKey = key.substring(0, key.indexOf('['));
+            const index = parseInt(key.substring(key.indexOf('[') + 1, key.indexOf(']')));
+            const subKey = key.substring(key.indexOf('].') + 2);
+            
+            if (!data[mainKey]) {
+                data[mainKey] = [];
+            }
+            
+            if (!data[mainKey][index]) {
+                data[mainKey][index] = {};
+            }
+            
+            data[mainKey][index][subKey] = value;
+        } else {
+            data[key] = value;
+        }
+    }
+    
+    return data;
+}
+
+// Helper to convert any value to full ISO 8601 string (yyyy-mm-ddTHH:MM:SS.sssZ)
+function toFullISOString(val) {
+    if (!val) return undefined;
+    // If format is dd/mm/yyyy, convert to yyyy-mm-dd
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
+        const [day, month, year] = val.split('/');
+        val = `${year}-${month}-${day}`;
+    }
+    // If format is yyyy-mm-ddTHH:MM (from datetime-local), treat as local and convert to ISO
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(val)) {
+        // Chrome/Edge: new Date('2025-05-12T10:00') is local time
+        // Safari: new Date('2025-05-12T10:00') is UTC
+        // To ensure local time, split and use Date parts
+        const [datePart, timePart] = val.split('T');
+        const [year, month, day] = datePart.split('-');
+        const [hour, minute] = timePart.split(':');
+        const d = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
+        return d.toISOString();
+    }
+    // Fallback: try to parse and format as ISO string
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return undefined;
+    return d.toISOString();
+}
+
+// Helper to convert any value to ISO date string (YYYY-MM-DD)
+function toISODateString(val) {
+    if (!val) return undefined;
+    // If format is dd/mm/yyyy, convert to yyyy-mm-dd
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
+        const [day, month, year] = val.split('/');
+        return `${year}-${month}-${day}`;
+    }
+    // If format is yyyy-mm-ddTHH:MM (from datetime-local), extract date part
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(val)) {
+        return val.split('T')[0];
+    }
+    // If already yyyy-mm-dd, return as is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+        return val;
+    }
+    // Fallback: try to parse and format as yyyy-mm-dd
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return undefined;
+    return d.toISOString().split('T')[0];
+}
+
+function formatEventData(formData) {
+    const eventData = {
+        name: formData.name,
+        date: toISODateString(formData.date),
+        state: formData.state,
+        maxAttendees: formData.maxAttendees ? parseInt(formData.maxAttendees) : undefined,
+        isActive: formData.isActive === 'true',
+        branches: formData.branches || [],
+        busPickups: []
+    };
+
+    if (formData.busPickups && Array.isArray(formData.busPickups)) {
+        eventData.busPickups = formData.busPickups.map(pickup => ({
+            location: pickup.location,
+            departureTime: toISODateString(pickup.departureTime),
+            maxCapacity: pickup.maxCapacity ? parseInt(pickup.maxCapacity) : undefined,
+            currentCount: 0
+        }));
+    }
+
+    return eventData;
 }
