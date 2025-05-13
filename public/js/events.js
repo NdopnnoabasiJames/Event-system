@@ -28,18 +28,68 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadEvents() {
     try {
-        const events = await eventsApi.getAllEvents();
+        // Get events from the API
+        const response = await eventsApi.getAllEvents();
+        
+        // Handle different response formats
+        let events = [];
+        if (Array.isArray(response)) {
+            events = response;
+        } else if (response && response.data && Array.isArray(response.data)) {
+            events = response.data;
+        } else if (response && typeof response === 'object') {
+            events = [response]; // Single event object
+        }
+        
+        // Log the events for debugging
+        console.log('Events loaded from database:', events);
+        
+        // Update the events list
         currentEvents = events;
         displayEvents(events);
     } catch (error) {
-        showToast('error', 'Failed to load events');
+        console.error('Error loading events:', error);
+        showToast('error', 'Failed to load events from the database');
+        
+        // Display error message in the events container
+        const eventsContainer = document.querySelector('.row.g-4');
+        if (eventsContainer) {
+            eventsContainer.innerHTML = `
+                <div class="col-12 text-center py-5">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Unable to load events. Please try again later.
+                    </div>
+                </div>
+            `;
+        }
     }
 }
 
 function displayEvents(events) {
     const eventsContainer = document.querySelector('.row.g-4');
     if (!eventsContainer) return;
-
+    
+    // Hide the loading placeholder
+    const loadingPlaceholder = document.getElementById('loading-placeholder');
+    if (loadingPlaceholder) {
+        loadingPlaceholder.style.display = 'none';
+    }
+    
+    // If no events are available, show a message
+    if (!events || events.length === 0) {
+        eventsContainer.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No events are currently available. Please check back later.
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    // Display the events from the database
     eventsContainer.innerHTML = events.map(event => `
         <div class="col-md-6 col-lg-4">
             <div class="card h-100">
@@ -47,16 +97,16 @@ function displayEvents(events) {
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <h5 class="card-title mb-0">${event.name}</h5>
-                        <span class="badge bg-${getStatusBadgeColor(event.status)}">${event.status}</span>
+                        <span class="badge bg-${getStatusBadgeColor(event.status || 'UPCOMING')}">${event.status || 'UPCOMING'}</span>
                     </div>
-                    <p class="card-text">${event.description}</p>
+                    <p class="card-text">${event.description || 'No description available'}</p>
                     <div class="d-flex align-items-center mb-3">
                         <i class="fas fa-calendar-alt text-primary me-2"></i>
                         <span>${new Date(event.date).toLocaleDateString()}</span>
                     </div>
                     <div class="d-flex align-items-center mb-3">
                         <i class="fas fa-map-marker-alt text-primary me-2"></i>
-                        <span>${event.location}</span>
+                        <span>${event.state || event.location || 'Location not specified'}</span>
                     </div>
                     <a href="event-details.html?id=${event._id}" class="btn btn-outline-primary w-100">View Details</a>
                 </div>

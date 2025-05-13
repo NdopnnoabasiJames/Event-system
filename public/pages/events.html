@@ -63,77 +63,14 @@
                     <option>Seminars</option>
                 </select>
             </div>
-        </div>
-
-        <!-- Events Grid -->
+        </div>        <!-- Events Grid -->
         <div class="row g-4">
-            <!-- Event Card 1 -->
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100">
-                    <img src="https://placehold.co/400x200" class="card-img-top" alt="Event 1">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="card-title mb-0">Tech Conference 2025</h5>
-                            <span class="badge bg-primary">Conference</span>
-                        </div>
-                        <p class="card-text">Join us for the biggest tech conference of the year featuring industry experts.</p>
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="fas fa-calendar-alt text-primary me-2"></i>
-                            <span>May 15, 2025</span>
-                        </div>
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="fas fa-map-marker-alt text-primary me-2"></i>
-                            <span>Convention Center, City</span>
-                        </div>
-                        <a href="#" class="btn btn-outline-primary w-100">View Details</a>
-                    </div>
+            <!-- Events will be loaded from the database -->
+            <div id="loading-placeholder" class="col-12 text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading events...</span>
                 </div>
-            </div>
-
-            <!-- Event Card 2 -->
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100">
-                    <img src="https://placehold.co/400x200" class="card-img-top" alt="Event 2">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="card-title mb-0">Digital Workshop</h5>
-                            <span class="badge bg-success">Workshop</span>
-                        </div>
-                        <p class="card-text">Learn the latest digital marketing strategies from industry professionals.</p>
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="fas fa-calendar-alt text-primary me-2"></i>
-                            <span>June 1, 2025</span>
-                        </div>
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="fas fa-map-marker-alt text-primary me-2"></i>
-                            <span>Business Center, Downtown</span>
-                        </div>
-                        <a href="#" class="btn btn-outline-primary w-100">View Details</a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Event Card 3 -->
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100">
-                    <img src="https://placehold.co/400x200" class="card-img-top" alt="Event 3">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="card-title mb-0">Leadership Summit</h5>
-                            <span class="badge bg-info">Seminar</span>
-                        </div>
-                        <p class="card-text">Develop your leadership skills with guidance from successful leaders.</p>
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="fas fa-calendar-alt text-primary me-2"></i>
-                            <span>June 15, 2025</span>
-                        </div>
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="fas fa-map-marker-alt text-primary me-2"></i>
-                            <span>Grand Hotel, City Center</span>
-                        </div>
-                        <a href="#" class="btn btn-outline-primary w-100">View Details</a>
-                    </div>
-                </div>
+                <p class="mt-3">Loading events...</p>
             </div>
         </div>
 
