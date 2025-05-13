@@ -140,14 +140,29 @@ function setupEventListeners() {
                 : currentEvents.filter(event => event.category === category);
             displayEvents(filteredEvents);
         });
-    }
-
-    // Create Event button
+    }    // Create Event button
     const createEventBtn = document.querySelector('button.btn-primary');
     if (createEventBtn) {
         createEventBtn.addEventListener('click', () => {
-            // Implement create event modal or navigation
-            window.location.href = 'create-event.html';
+            // Check if user is authenticated
+            if (!auth.isAuthenticated()) {
+                // Redirect to login page with a return URL
+                showToast('info', 'Please login to create an event');
+                setTimeout(() => {
+                    // Store the intended destination in session storage
+                    sessionStorage.setItem('returnToAfterLogin', 'admin-dashboard.html');
+                    window.location.href = 'login.html';
+                }, 1000);
+            } else if (auth.getUser().role !== 'admin') {
+                // Only admins can create events
+                showToast('error', 'Only administrators can create events');
+            } else {
+                // User is authenticated and is an admin, proceed to admin dashboard
+                showToast('success', 'Redirecting to admin dashboard...');
+                setTimeout(() => {
+                    window.location.href = 'admin-dashboard.html';
+                }, 1000);
+            }
         });
     }
 }

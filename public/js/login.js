@@ -48,15 +48,31 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Set a flag to indicate the user just logged in
                         sessionStorage.setItem('justLoggedIn', 'true');
                         
-                        // Redirect based on user role
-                        const user = auth.getUser();
+                        // Redirect based on user role                        const user = auth.getUser();
                         setTimeout(() => {
-                            if (user.role === 'admin') {
-                                window.location.href = '../pages/admin-dashboard.html';
-                            } else if (user.role === 'marketer') {
-                                window.location.href = '../pages/marketer-dashboard.html';
+                            // Check if there's a return URL in the session storage
+                            const returnTo = sessionStorage.getItem('returnToAfterLogin');
+                            
+                            if (returnTo) {
+                                // Clear the return URL from session storage
+                                sessionStorage.removeItem('returnToAfterLogin');
+                                  // Check if the user is authorized to access the requested page
+                                if (returnTo === 'admin-dashboard.html' && user.role !== 'admin') {
+                                    showToast('error', 'Only administrators can access the dashboard');
+                                    window.location.href = '../pages/events.html';
+                                } else {
+                                    // Redirect to the requested page
+                                    window.location.href = '../pages/' + returnTo;
+                                }
                             } else {
-                                window.location.href = '../pages/events.html';
+                                // Default redirection based on user role
+                                if (user.role === 'admin') {
+                                    window.location.href = '../pages/admin-dashboard.html';
+                                } else if (user.role === 'marketer') {
+                                    window.location.href = '../pages/marketer-dashboard.html';
+                                } else {
+                                    window.location.href = '../pages/events.html';
+                                }
                             }
                         }, 1000);
                     } else {
