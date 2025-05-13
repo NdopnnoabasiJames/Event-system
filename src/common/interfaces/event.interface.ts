@@ -3,7 +3,7 @@ import { Document } from 'mongoose';
 
 export interface BusPickup {
   location: string;
-  departureTime: Date;
+  departureTime: string; // changed from Date to string for DTO compatibility
   maxCapacity: number;
   currentCount: number;
   notes?: string;
@@ -30,7 +30,7 @@ export interface EventLocation {
 export interface IEvent extends Document {
   name: string;
   description?: string;
-  date: Date;
+  date: string; // changed from Date to string for DTO compatibility
   status: EventStatus;
   state: string;
   maxAttendees: number;

@@ -29,7 +29,7 @@ class BusPickupDto implements BusPickup {
     description: 'The departure time from the pickup location',
   })
   @IsDateString()
-  departureTime: Date;
+  departureTime: string;
 
   @ApiProperty({
     example: 50,
@@ -110,7 +110,7 @@ export class CreateEventDto {
   })
   @IsDateString()
   @IsFutureDate()
-  date: Date;
+  date: string;
 
   @ApiProperty({
     example: 'California',

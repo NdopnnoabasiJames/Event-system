@@ -58,7 +58,6 @@ export class NotificationsService implements OnModuleInit {
       this.logger.warn('Email notifications will be disabled');
     }
   }
-
   private generateEventReminderTemplate(context: EventReminderContext): EmailTemplate {
     const { attendeeName, eventName, eventDate, eventLocation, transportDetails } = context;
     const formattedDate = new Date(eventDate).toLocaleDateString();
@@ -66,11 +65,15 @@ export class NotificationsService implements OnModuleInit {
     let transportInfo = '';
     if (transportDetails) {
       if (transportDetails.type === 'bus') {
+        // Format the departure time string (which is ISO 8601) to a readable time
+        const departureTimeFormatted = transportDetails.departureTime ? 
+          new Date(transportDetails.departureTime).toLocaleTimeString() : 'TBD';
+        
         transportInfo = `
           <p>Your bus details:</p>
           <ul>
             <li>Pickup Location: ${transportDetails.location}</li>
-            <li>Departure Time: ${transportDetails.departureTime.toLocaleTimeString()}</li>
+            <li>Departure Time: ${departureTimeFormatted}</li>
           </ul>
         `;
       } else {
@@ -86,11 +89,10 @@ export class NotificationsService implements OnModuleInit {
         This is a friendly reminder that ${eventName} is happening in 3 days on ${formattedDate}.
         
         Location: ${eventLocation}
-        
-        ${transportDetails ? `Transport: ${transportDetails.type}` : ''}
+          ${transportDetails ? `Transport: ${transportDetails.type}` : ''}
         ${transportDetails?.type === 'bus' ? `
         Pickup Location: ${transportDetails.location}
-        Departure Time: ${transportDetails.departureTime.toLocaleTimeString()}
+        Departure Time: ${transportDetails.departureTime ? new Date(transportDetails.departureTime).toLocaleTimeString() : 'TBD'}
         ` : ''}
         
         We look forward to seeing you there!
@@ -139,37 +141,51 @@ export class NotificationsService implements OnModuleInit {
       await this.initializeTransporter();
     }
   }
-
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
-  async sendEventReminders() {
-    try {
+  async sendEventReminders() {    try {
       const threeDaysFromNow = new Date();
       threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
       
-      // Find events happening in 3 days
+      // Create separate date objects to avoid mutating the same one
+      const startDate = new Date(threeDaysFromNow);
+      const endDate = new Date(threeDaysFromNow);
+      
+      // Convert date to ISO string for comparison with stored string dates
+      const startOfDay = new Date(startDate.setHours(0, 0, 0, 0)).toISOString();
+      const endOfDay = new Date(endDate.setHours(23, 59, 59, 999)).toISOString();
+        // Find events happening in 3 days
       const upcomingEvents = await this.eventModel.find({
         date: {
-          $gte: new Date(threeDaysFromNow.setHours(0, 0, 0, 0)),
-          $lt: new Date(threeDaysFromNow.setHours(23, 59, 59, 999)),
+          $gte: startOfDay,
+          $lt: endOfDay,
         },
         isActive: true,
       });
-
+      
       for (const event of upcomingEvents) {
         const attendees = await this.attendeeModel
           .find({ event: event._id })
           .populate('event')
           .exec();
-
+          
         for (const attendee of attendees) {
           const reminderContext: EventReminderContext = {
             attendeeName: attendee.name,
             eventName: event.name,
-            eventDate: event.date,
+            eventDate: event.date, // Already a string now
             eventLocation: event.branches[0]?.location || 'TBD',
             transportDetails: attendee.transportPreference === 'bus' ? {
               type: 'bus',
-              ...attendee.busPickup,
+              location: attendee.busPickup.location,
+              departureTime: typeof attendee.busPickup.departureTime === 'string' 
+                ? attendee.busPickup.departureTime
+                : (attendee.busPickup.departureTime instanceof Date 
+                  ? attendee.busPickup.departureTime.toISOString() 
+                  : String(attendee.busPickup.departureTime)),
+              // Copy other properties if needed
+              pickupPoint: attendee.busPickup.pickupPoint,
+              busNumber: attendee.busPickup.busNumber,
+              driverContact: attendee.busPickup.driverContact,
             } : { type: 'private' },
           };
 

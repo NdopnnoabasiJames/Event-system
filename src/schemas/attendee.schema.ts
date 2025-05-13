@@ -22,11 +22,10 @@ export class Attendee {
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true, index: true })
   registeredBy: MongooseSchema.Types.ObjectId;
-
   @Prop({ 
     type: {
       location: { type: String, required: true },
-      departureTime: { type: Date, required: true }
+      departureTime: { type: String, required: true }  // Changed from Date to string
     },
     _id: false,
     required: function() {
@@ -35,7 +34,7 @@ export class Attendee {
   })
   busPickup: {
     location: string;
-    departureTime: Date;
+    departureTime: string;  // Changed from Date to string
   };
 }
 

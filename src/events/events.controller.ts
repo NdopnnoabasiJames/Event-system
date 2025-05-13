@@ -38,7 +38,7 @@ class BusPickupRequest {
     example: '2025-07-15T09:00:00Z',
     description: 'The departure time for the bus pickup',
   })
-  departureTime: Date;
+  departureTime: string;
 }
 
 @ApiTags('events')

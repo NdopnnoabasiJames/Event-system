@@ -9,7 +9,7 @@ import { UpdateAttendeeDto } from './dto/update-attendee.dto';
 export class AttendeesService {
   constructor(
     @InjectModel(Attendee.name) private attendeeModel: Model<AttendeeDocument>,
-  ) {}
+  ) {} 
 
   async create(createAttendeeDto: CreateAttendeeDto & { event: string; registeredBy: string }): Promise<AttendeeDocument> {
   try {

@@ -11,7 +11,7 @@ export class Event {
   name: string;
 
   @Prop({ required: true })
-  date: Date;
+  date: string;
 
   @Prop({ required: true })
   state: string;

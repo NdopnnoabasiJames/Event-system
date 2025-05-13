@@ -7,7 +7,7 @@ import { UsersModule } from './users/users.module';
 import { EventsModule } from './events/events.module';
 import { MarketersModule } from './marketers/marketers.module';
 import { AttendeesModule } from './attendees/attendees.module';
-import { NotificationsModule } from './notifications/notifications.module';
+// import { NotificationsModule } from './notifications/notifications.module';
 import { SeedModule } from './seed/seed.module';
 import { databaseConfig, jwtConfig, emailConfig } from './config/configuration';
 import { configValidationSchema } from './config/validation.schema';
@@ -54,7 +54,7 @@ import { CommonModule } from './common/common.module';
     UsersModule,    EventsModule,
     MarketersModule,
     AttendeesModule,
-    NotificationsModule,
+    // NotificationsModule,
     SeedModule,
   ],
   providers: [

@@ -477,7 +477,23 @@ async function setupEventCreationHandlers() {
                 const eventData = formatEventData(formData);
                 // Log formatted eventData for debugging
                 console.log('Formatted eventData:', eventData);
-                // Removed all date ISO validation checks here
+
+                // Defensive validation for ISO 8601 strings
+                if (!eventData.date || isNaN(Date.parse(eventData.date))) {
+                    showToast('error', 'Event date is missing or invalid. Please select a valid date and time.');
+                    return;
+                }
+                if (eventData.busPickups && Array.isArray(eventData.busPickups)) {
+                    for (let i = 0; i < eventData.busPickups.length; i++) {
+                        const pickup = eventData.busPickups[i];
+                        if (!pickup.departureTime || isNaN(Date.parse(pickup.departureTime))) {
+                            showToast('error', `Bus pickup ${i + 1} departure time is missing or invalid. Please select a valid date and time.`);
+                            return;
+                        }
+                    }
+                }
+                // Log the final payload being sent
+                console.log('Final eventData payload to API:', eventData);
                 // Create the event
                 await eventsApi.createEvent(eventData);
                 
@@ -604,7 +620,7 @@ function toISODateString(val) {
 function formatEventData(formData) {
     const eventData = {
         name: formData.name,
-        date: toISODateString(formData.date),
+        date: toFullISOString(formData.date), // Use full ISO string
         state: formData.state,
         maxAttendees: formData.maxAttendees ? parseInt(formData.maxAttendees) : undefined,
         isActive: formData.isActive === 'true',
@@ -615,7 +631,7 @@ function formatEventData(formData) {
     if (formData.busPickups && Array.isArray(formData.busPickups)) {
         eventData.busPickups = formData.busPickups.map(pickup => ({
             location: pickup.location,
-            departureTime: toISODateString(pickup.departureTime),
+            departureTime: toFullISOString(pickup.departureTime), // Use full ISO string
             maxCapacity: pickup.maxCapacity ? parseInt(pickup.maxCapacity) : undefined,
             currentCount: 0
         }));

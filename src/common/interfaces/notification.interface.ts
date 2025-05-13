@@ -37,12 +37,12 @@ export interface INotification extends Document {
 export interface EventReminderContext {
   attendeeName: string;
   eventName: string;
-  eventDate: Date;
+  eventDate: string; // Changed from Date to string
   eventLocation: string;
   transportDetails?: {
     type: 'bus' | 'private';
     location?: string;
-    departureTime?: Date;
+    departureTime?: string; // Changed from Date to string
     pickupPoint?: string;
     busNumber?: string;
     driverContact?: string;

@@ -41,8 +41,7 @@ export class EventsService {
     }
     return event;
   }
-
- async addBusPickup(eventId: string, location: string, departureTime: Date): Promise<EventDocument> {
+ async addBusPickup(eventId: string, location: string, departureTime: string): Promise<EventDocument> {
   try {
     const event = await this.findOne(eventId);
     if (!event) {
@@ -52,7 +51,7 @@ export class EventsService {
     event.busPickups = event.busPickups || [];
     event.busPickups.push({ 
       location, 
-      departureTime,
+      departureTime, // departureTime is already a string
       maxCapacity: 50,
       currentCount: 0,
       notes: ''
