@@ -54,26 +54,38 @@ export class NotificationsService implements OnModuleInit {
       this.logger.log('Email transporter initialized successfully');
     } catch (error) {
       this.isEmailConfigured = false;
-      this.logger.error('Failed to initialize email transporter:', error.message);
+      this.logger.error('Failed to initialize email transporter:', error?.message || 'Unknown error');
       this.logger.warn('Email notifications will be disabled');
     }
   }
+
   private generateEventReminderTemplate(context: EventReminderContext): EmailTemplate {
     const { attendeeName, eventName, eventDate, eventLocation, transportDetails } = context;
-    const formattedDate = new Date(eventDate).toLocaleDateString();
+    
+    // Ensure we have a proper Date object for formatting
+    const dateObj = new Date(eventDate);
+    const formattedDate = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString() : eventDate;
     
     let transportInfo = '';
     if (transportDetails) {
       if (transportDetails.type === 'bus') {
-        // Format the departure time string (which is ISO 8601) to a readable time
-        const departureTimeFormatted = transportDetails.departureTime ? 
-          new Date(transportDetails.departureTime).toLocaleTimeString() : 'TBD';
+        // Safe access to properties with null coalescing
+        const pickupLocation = transportDetails.location || 'TBD';
+        let departureTime = 'TBD';
+        
+        if (transportDetails.departureTime) {
+          // Ensure we have a proper Date object for the departure time
+          const departureTimeObj = new Date(transportDetails.departureTime);
+          
+          departureTime = !isNaN(departureTimeObj.getTime()) ? 
+            departureTimeObj.toLocaleTimeString() : 'TBD';
+        }
         
         transportInfo = `
           <p>Your bus details:</p>
           <ul>
-            <li>Pickup Location: ${transportDetails.location}</li>
-            <li>Departure Time: ${departureTimeFormatted}</li>
+            <li>Pickup Location: ${pickupLocation}</li>
+            <li>Departure Time: ${departureTime}</li>
           </ul>
         `;
       } else {
@@ -91,8 +103,9 @@ export class NotificationsService implements OnModuleInit {
         Location: ${eventLocation}
           ${transportDetails ? `Transport: ${transportDetails.type}` : ''}
         ${transportDetails?.type === 'bus' ? `
-        Pickup Location: ${transportDetails.location}
-        Departure Time: ${transportDetails.departureTime ? new Date(transportDetails.departureTime).toLocaleTimeString() : 'TBD'}
+        Pickup Location: ${transportDetails.location || 'TBD'}
+        Departure Time: ${transportDetails.departureTime ? 
+          new Date(transportDetails.departureTime).toLocaleTimeString() : 'TBD'}
         ` : ''}
         
         We look forward to seeing you there!
@@ -136,24 +149,26 @@ export class NotificationsService implements OnModuleInit {
       });
       this.logger.log(`Email sent successfully to ${to}`);
     } catch (error) {
-      this.logger.error(`Failed to send email to ${to}:`, error.message);
+      this.logger.error(`Failed to send email to ${to}:`, error?.message || 'Unknown error');
       // Try to reinitialize transporter for next time
       await this.initializeTransporter();
     }
   }
+
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
-  async sendEventReminders() {    try {
+  async sendEventReminders() {
+    try {
       const threeDaysFromNow = new Date();
       threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
       
-      // Create separate date objects to avoid mutating the same one
-      const startDate = new Date(threeDaysFromNow);
-      const endDate = new Date(threeDaysFromNow);
+      // Create date objects for start and end of the target day
+      const startOfDay = new Date(threeDaysFromNow);
+      startOfDay.setHours(0, 0, 0, 0);
       
-      // Convert date to ISO string for comparison with stored string dates
-      const startOfDay = new Date(startDate.setHours(0, 0, 0, 0)).toISOString();
-      const endOfDay = new Date(endDate.setHours(23, 59, 59, 999)).toISOString();
-        // Find events happening in 3 days
+      const endOfDay = new Date(threeDaysFromNow);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      // Find events happening in 3 days - using Date objects for query
       const upcomingEvents = await this.eventModel.find({
         date: {
           $gte: startOfDay,
@@ -162,31 +177,67 @@ export class NotificationsService implements OnModuleInit {
         isActive: true,
       });
       
+      this.logger.log(`Found ${upcomingEvents.length} events scheduled for ${startOfDay.toISOString().split('T')[0]}`);
+      
       for (const event of upcomingEvents) {
+        // Safeguard in case we somehow got an event without an _id
+        if (!event._id) {
+          this.logger.warn('Found event without ID, skipping');
+          continue;
+        }
+        
         const attendees = await this.attendeeModel
           .find({ event: event._id })
           .populate('event')
           .exec();
           
+        this.logger.log(`Processing ${attendees.length} attendees for event: ${event.name}`);
+        
         for (const attendee of attendees) {
-          const reminderContext: EventReminderContext = {
-            attendeeName: attendee.name,
-            eventName: event.name,
-            eventDate: event.date, // Already a string now
-            eventLocation: event.branches[0]?.location || 'TBD',
-            transportDetails: attendee.transportPreference === 'bus' ? {
+          // Skip if the attendee doesn't have an email
+          if (!attendee.email) {
+            this.logger.warn(`Attendee ${attendee._id} has no email, skipping notification`);
+            continue;
+          }
+          
+          // Safely access nested properties
+          const eventLocation = event.branches && event.branches.length > 0 
+            ? (event.branches[0].location || 'TBD') 
+            : 'TBD';
+          
+          let transportDetails = null;
+          if (attendee.transportPreference === 'bus' && attendee.busPickup) {
+            // We need to be very careful about the typing here
+            // Create a transport details object with only the properties we know exist from the interface
+            transportDetails = {
               type: 'bus',
-              location: attendee.busPickup.location,
-              departureTime: typeof attendee.busPickup.departureTime === 'string' 
-                ? attendee.busPickup.departureTime
-                : (attendee.busPickup.departureTime instanceof Date 
-                  ? attendee.busPickup.departureTime.toISOString() 
-                  : String(attendee.busPickup.departureTime)),
-              // Copy other properties if needed
-              pickupPoint: attendee.busPickup.pickupPoint,
-              busNumber: attendee.busPickup.busNumber,
-              driverContact: attendee.busPickup.driverContact,
-            } : { type: 'private' },
+              location: attendee.busPickup.location || 'TBD',
+              departureTime: attendee.busPickup.departureTime || null,
+            };
+            
+            // Only add optional properties if they exist in the schema
+            if ('pickupPoint' in attendee.busPickup) {
+              transportDetails['pickupPoint'] = attendee.busPickup['pickupPoint'];
+            }
+            
+            if ('busNumber' in attendee.busPickup) {
+              transportDetails['busNumber'] = attendee.busPickup['busNumber'];
+            }
+            
+            if ('driverContact' in attendee.busPickup) {
+              transportDetails['driverContact'] = attendee.busPickup['driverContact'];
+            }
+          } else if (attendee.transportPreference) {
+            transportDetails = { type: attendee.transportPreference };
+          }
+          
+          const reminderContext: EventReminderContext = {
+            attendeeName: attendee.name || 'Attendee',
+            eventName: event.name,
+            eventDate: typeof event.date === 'string' ? event.date : 
+                       new Date(event.date).toISOString(),
+            eventLocation: eventLocation,
+            transportDetails: transportDetails,
           };
 
           const template = this.generateEventReminderTemplate(reminderContext);
@@ -194,7 +245,7 @@ export class NotificationsService implements OnModuleInit {
         }
       }
     } catch (error) {
-      this.logger.error('Failed to send event reminders:', error);
+      this.logger.error('Failed to send event reminders:', error?.message || 'Unknown error', error?.stack);
     }
   }
 }
