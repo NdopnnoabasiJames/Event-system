@@ -82,14 +82,12 @@ async function loadTopMarketers() {
         
         marketers.forEach((item, index) => {
             const row = document.createElement('tr');
-            
-            row.innerHTML = `
+              row.innerHTML = `
                 <td>${index + 1}</td>
                 <td>${item.marketer.name}</td>
                 <td>${item.marketer.email}</td>
                 <td>${item.stats.totalAttendeesRegistered}</td>
                 <td>${item.stats.eventsParticipated}</td>
-                <td>${item.stats.averageAttendeesPerEvent.toFixed(1)}</td>
                 <td>
                     <button class="btn btn-sm btn-info view-marketer" data-marketer-id="${item.marketer.id}">
                         <i class="bi bi-info-circle"></i> Details
@@ -264,13 +262,11 @@ async function showMarketerDetails(marketerId) {
         
         // Get marketer events
         const events = await apiCall(`/marketers/events/my?marketerId=${marketerId}`, 'GET', null, auth.getToken());
-        
-        // Update modal content
+          // Update modal content
         document.getElementById('marketer-name').textContent = marketer.name;
         document.getElementById('marketer-email').textContent = marketer.email;
         document.getElementById('marketer-total-attendees').textContent = stats.totalAttendeesRegistered;
         document.getElementById('marketer-events').textContent = stats.eventsParticipated;
-        document.getElementById('marketer-avg').textContent = stats.averageAttendeesPerEvent.toFixed(1);
         
         // Populate events table
         const eventsTable = document.getElementById('marketer-events-table');

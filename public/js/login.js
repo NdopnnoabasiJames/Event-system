@@ -40,15 +40,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     return;
                 }                try {
-                    const loginResponse = await auth.login(formData.email, formData.password);
-                    console.log('Login successful:', loginResponse);                    // Make sure user data is available in localStorage
+                    const loginResponse = await auth.login(formData.email, formData.password);                    console.log('Login successful:', loginResponse);                    // Make sure user data is available in localStorage
                     if (auth.getUser() && auth.getToken()) {
                         showToast('success', 'Login successful!');
                         
                         // Set a flag to indicate the user just logged in
                         sessionStorage.setItem('justLoggedIn', 'true');
                         
-                        // Redirect based on user role                        const user = auth.getUser();
+                        // Redirect based on user role
+                        const user = auth.getUser();
+                        console.log('User for redirection:', user);
                         setTimeout(() => {
                             // Check if there's a return URL in the session storage
                             const returnTo = sessionStorage.getItem('returnToAfterLogin');
@@ -64,13 +65,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                     // Redirect to the requested page
                                     window.location.href = '../pages/' + returnTo;
                                 }
-                            } else {
-                                // Default redirection based on user role
+                            } else {                            // Default redirection based on user role
+                                console.log('No return URL found, redirecting based on role:', user.role);
                                 if (user.role === 'admin') {
+                                    console.log('Redirecting to admin dashboard');
                                     window.location.href = '../pages/admin-dashboard.html';
                                 } else if (user.role === 'marketer') {
+                                    console.log('Redirecting to marketer dashboard');
                                     window.location.href = '../pages/marketer-dashboard.html';
                                 } else {
+                                    console.log('Redirecting to events page');
                                     window.location.href = '../pages/events.html';
                                 }
                             }

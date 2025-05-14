@@ -64,12 +64,11 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
 }
 
 // Auth functions
-const auth = {    async login(email, password) {
+const auth = {    
+    async login(email, password) {
         try {
             const response = await apiCall('/auth/login', 'POST', { email, password });
             console.log('Login response from server:', response);
-            console.log('Response type:', typeof response);
-            console.log('Response keys:', Object.keys(response));
             
             // Try multiple response formats to handle different structures
             let token, user;
@@ -78,19 +77,27 @@ const auth = {    async login(email, password) {
             if (response && response.data && response.data.access_token) {
                 token = response.data.access_token;
                 user = response.data.user;
-                console.log("Found format 1 (nested data object)");
+                console.log("Found format 1 (nested data object):", user);
             } 
             // Format 2: { access_token, user }
             else if (response && response.access_token) {
                 token = response.access_token;
                 user = response.user;
-                console.log("Found format 2 (direct properties)");
+                console.log("Found format 2 (direct properties):", user);
             }
             
             if (!token || !user) {
                 console.error('Invalid response structure:', response);
                 throw new Error('Invalid server response format');
             }
+            
+            // Make sure user has a role property
+            if (!user.role) {
+                console.warn('User object missing role, using default');
+                user.role = 'user'; // Default role
+            }
+            
+            console.log('Storing user with role:', user.role);
             
             // Store authentication data
             localStorage.setItem('token', token);
@@ -119,11 +126,23 @@ const auth = {    async login(email, password) {
 
     getToken() {
         return localStorage.getItem('token');
-    },
-
-    getUser() {
-        const user = localStorage.getItem('user');
-        return user ? JSON.parse(user) : null;
+    },    getUser() {
+        try {
+            const userJson = localStorage.getItem('user');
+            if (!userJson) {
+                console.warn('No user found in localStorage');
+                return null;
+            }
+            
+            const user = JSON.parse(userJson);
+            console.log('Retrieved user from localStorage:', user);
+            return user;
+        } catch (error) {
+            console.error('Error parsing user from localStorage:', error);
+            // Clear corrupted data
+            localStorage.removeItem('user');
+            return null;
+        }
     },
 
     isAuthenticated() {

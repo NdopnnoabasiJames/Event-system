@@ -9,6 +9,8 @@ import {
   UseGuards,
   Request,
   HttpStatus,
+  Query,
+  ForbiddenException,
 } from '@nestjs/common';
 import { 
   ApiTags, 
@@ -32,7 +34,7 @@ import { UpdateAttendeeDto } from '../attendees/dto/update-attendee.dto';
 @ApiBearerAuth()
 @Controller('marketers')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.MARKETER)
+@Roles(Role.MARKETER, Role.ADMIN)
 export class MarketersController {
   constructor(private readonly marketersService: MarketersService) {}
 
@@ -48,9 +50,9 @@ export class MarketersController {
   getAvailableEvents() {
     return this.marketersService.getAvailableEvents();
   }
-
   @Get('events/my')
   @ApiOperation({ summary: 'Get events where the marketer is volunteering' })
+  @ApiQuery({ name: 'marketerId', required: false, description: 'Specific marketer ID (Admin only)' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'List of events where marketer is participating',
@@ -58,8 +60,15 @@ export class MarketersController {
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Forbidden - Marketer access required' })
-  getMyEvents(@Request() req) {
-    return this.marketersService.getMarketerEvents(req.user.userId);
+  getMyEvents(@Request() req, @Query('marketerId') marketerId?: string) {
+    const userId = marketerId || req.user.userId;
+    // If marketerId is provided and user is not admin, verify access
+    if (marketerId && req.user.role !== Role.ADMIN) {
+      if (marketerId !== req.user.userId) {
+        throw new ForbiddenException('Cannot access another marketer\'s events');
+      }
+    }
+    return this.marketersService.getMarketerEvents(userId);
   }
 
   @Post('events/:eventId/volunteer')
@@ -254,9 +263,9 @@ export class MarketersController {
   ) {
     return this.marketersService.removeAttendee(req.user.userId, id);
   }
-
   @Get('analytics/performance')
-  @ApiOperation({ summary: 'Get performance statistics for the current marketer' })
+  @ApiOperation({ summary: 'Get performance statistics for a marketer' })
+  @ApiQuery({ name: 'marketerId', required: false, description: 'Specific marketer ID (Admin only)' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Performance statistics for the marketer',
@@ -271,9 +280,16 @@ export class MarketersController {
     }
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
-  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Forbidden - Marketer access required' })
-  getMyPerformance(@Request() req) {
-    return this.marketersService.getMarketerPerformanceStats(req.user.userId);
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Forbidden - Cannot access another marketer\'s stats' })
+  getMyPerformance(@Request() req, @Query('marketerId') marketerId?: string) {
+    const userId = marketerId || req.user.userId;
+    // If marketerId is provided and user is not admin, verify access
+    if (marketerId && req.user.role !== Role.ADMIN) {
+      if (marketerId !== req.user.userId) {
+        throw new ForbiddenException('Cannot access another marketer\'s performance stats');
+      }
+    }
+    return this.marketersService.getMarketerPerformanceStats(userId);
   }
 
   @Get('analytics/event/:eventId')
