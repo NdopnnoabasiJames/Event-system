@@ -81,15 +81,18 @@ async function loadTopMarketers() {
         tableBody.innerHTML = '';
         
         marketers.forEach((item, index) => {
+            // Ensure we have the marketer ID
+            const marketerId = item.marketer.id || item.marketer._id;
+            
             const row = document.createElement('tr');
-              row.innerHTML = `
+            row.innerHTML = `
                 <td>${index + 1}</td>
                 <td>${item.marketer.name}</td>
                 <td>${item.marketer.email}</td>
                 <td>${item.stats.totalAttendeesRegistered}</td>
                 <td>${item.stats.eventsParticipated}</td>
                 <td>
-                    <button class="btn btn-sm btn-info view-marketer" data-marketer-id="${item.marketer.id}">
+                    <button class="btn btn-sm btn-info view-marketer" data-marketer-id="${marketerId}">
                         <i class="bi bi-info-circle"></i> Details
                     </button>
                 </td>
@@ -98,10 +101,13 @@ async function loadTopMarketers() {
             tableBody.appendChild(row);
         });
         
+        console.log('Adding event listeners to marketer detail buttons');
+        
         // Add event listeners for marketer detail buttons
         document.querySelectorAll('.view-marketer').forEach(button => {
             button.addEventListener('click', (e) => {
                 const marketerId = e.currentTarget.getAttribute('data-marketer-id');
+                console.log('Marketer details button clicked for ID:', marketerId);
                 showMarketerDetails(marketerId);
             });
         });
@@ -254,64 +260,179 @@ async function loadAttendeesData() {
 
 async function showMarketerDetails(marketerId) {
     try {
+        console.log('Showing marketer details for ID:', marketerId);
+        
         // Get marketer user info
-        const marketer = await apiCall(`/users/${marketerId}`, 'GET', null, auth.getToken());
+        const marketerResponse = await apiCall(`/users/${marketerId}`, 'GET', null, auth.getToken());
+        console.log('Marketer API response:', marketerResponse);
+        
+        // Handle different response formats
+        const marketer = marketerResponse.data || marketerResponse;
+        console.log('Processed marketer data:', marketer);
+        
+        if (!marketer) {
+            throw new Error('Could not retrieve marketer information');
+        }
         
         // Get marketer performance stats
-        const stats = await apiCall(`/marketers/analytics/performance?marketerId=${marketerId}`, 'GET', null, auth.getToken());
+        const statsResponse = await apiCall(`/marketers/analytics/performance?marketerId=${marketerId}`, 'GET', null, auth.getToken());
+        console.log('Stats API response:', statsResponse);
+        
+        // Handle different response formats
+        const stats = statsResponse.data || statsResponse;
+        console.log('Processed stats data:', stats);
+        
+        // Update modal content with marketer info and stats
+        document.getElementById('marketer-name').textContent = marketer.name || 'No name available';
+        document.getElementById('marketer-email').textContent = marketer.email || 'No email available';
+        document.getElementById('marketer-total-attendees').textContent = stats?.totalAttendeesRegistered || 0;
+        document.getElementById('marketer-events').textContent = stats?.eventsParticipated || 0;
         
         // Get marketer events
-        const events = await apiCall(`/marketers/events/my?marketerId=${marketerId}`, 'GET', null, auth.getToken());
-          // Update modal content
-        document.getElementById('marketer-name').textContent = marketer.name;
-        document.getElementById('marketer-email').textContent = marketer.email;
-        document.getElementById('marketer-total-attendees').textContent = stats.totalAttendeesRegistered;
-        document.getElementById('marketer-events').textContent = stats.eventsParticipated;
+        const eventsResponse = await apiCall(`/marketers/events/my?marketerId=${marketerId}`, 'GET', null, auth.getToken());
+        console.log('Events API response:', eventsResponse);
+        
+        // Extract events data handling different response formats
+        // First check if response is an array directly
+        let eventsArray = Array.isArray(eventsResponse) ? eventsResponse : null;
+        
+        // If not an array directly, check for data property that might be an array
+        if (!eventsArray && eventsResponse && eventsResponse.data) {
+            eventsArray = Array.isArray(eventsResponse.data) ? eventsResponse.data : null;
+        }
+        
+        // If we still don't have an array, check for events property
+        if (!eventsArray && eventsResponse && eventsResponse.events) {
+            eventsArray = Array.isArray(eventsResponse.events) ? eventsResponse.events : null;
+        }
+        
+        // Final fallback - if we still don't have an array, create an empty one
+        if (!eventsArray) {
+            console.warn('Could not extract events array from response, using empty array');
+            eventsArray = [];
+        }
+        
+        console.log('Processed events array:', eventsArray);
         
         // Populate events table
         const eventsTable = document.getElementById('marketer-events-table');
         eventsTable.innerHTML = '';
         
-        if (events.length === 0) {
+        if (eventsArray.length === 0) {
             const row = document.createElement('tr');
             row.innerHTML = '<td colspan="3" class="text-center">No events found</td>';
             eventsTable.appendChild(row);
         } else {
-            for (const event of events) {
-                // Get attendee count for this event and marketer
-                const eventStats = await apiCall(
-                    `/marketers/analytics/event/${event._id}?marketerId=${marketerId}`,
-                    'GET', 
-                    null, 
-                    auth.getToken()
-                );
-                
-                const row = document.createElement('tr');
-                
-                // Format date
-                const eventDate = new Date(event.date);
-                const formattedDate = eventDate.toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'short', 
-                    day: 'numeric' 
-                });
-                
-                row.innerHTML = `
-                    <td>${event.name}</td>
-                    <td>${formattedDate}</td>
-                    <td>${eventStats.attendeesCount}</td>
-                `;
-                
-                eventsTable.appendChild(row);
+            for (const event of eventsArray) {
+                try {
+                    // Make sure event has an _id property
+                    const eventId = event._id || event.id;
+                    
+                    if (!eventId) {
+                        console.error('Event missing ID:', event);
+                        continue;
+                    }
+                    
+                    // Get attendee count for this event and marketer
+                    const eventStatsResponse = await apiCall(
+                        `/marketers/analytics/event/${eventId}?marketerId=${marketerId}`,
+                        'GET', 
+                        null, 
+                        auth.getToken()
+                    );
+                    
+                    const eventStats = eventStatsResponse.data || eventStatsResponse;
+                    
+                    const row = document.createElement('tr');
+                    
+                    // Format date safely
+                    let formattedDate = 'Date not available';
+                    try {
+                        if (event.date) {
+                            const eventDate = new Date(event.date);
+                            formattedDate = eventDate.toLocaleDateString('en-US', { 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric' 
+                            });
+                        }
+                    } catch (dateError) {
+                        console.error('Error formatting date:', dateError);
+                    }
+                    
+                    row.innerHTML = `
+                        <td>${event.name || 'Unnamed event'}</td>
+                        <td>${formattedDate}</td>
+                        <td>${eventStats?.attendeesCount || 0}</td>
+                    `;
+                    
+                    eventsTable.appendChild(row);
+                } catch (eventError) {
+                    console.error(`Error loading stats for event:`, event, eventError);
+                    
+                    // Still create a row with available information
+                    const row = document.createElement('tr');
+                    let eventName = 'Unknown event';
+                    let formattedDate = 'Date not available';
+                    
+                    try {
+                        if (event.name) eventName = event.name;
+                        if (event.date) {
+                            const eventDate = new Date(event.date);
+                            formattedDate = eventDate.toLocaleDateString('en-US', { 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric' 
+                            });
+                        }
+                    } catch (formatError) {
+                        console.error('Error formatting event data:', formatError);
+                    }
+                    
+                    row.innerHTML = `
+                        <td>${eventName}</td>
+                        <td>${formattedDate}</td>
+                        <td>Error loading data</td>
+                    `;
+                    
+                    eventsTable.appendChild(row);
+                }
             }
         }
         
-        // Show modal
-        const modal = new bootstrap.Modal(document.getElementById('marketerDetailModal'));
-        modal.show();
+        // Show modal - Make sure we're using the right Bootstrap version API
+        const modalElement = document.getElementById('marketerDetailModal');
+        if (!modalElement) {
+            throw new Error('Modal element not found');
+        }
+        
+        try {
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        } catch (modalError) {
+            console.error('Error showing modal:', modalError);
+            // Fallback method if the bootstrap.Modal constructor fails
+            // This uses jQuery if available, otherwise falls back to setting display styles
+            if (window.$) {
+                window.$(modalElement).modal('show');
+            } else {
+                modalElement.style.display = 'block';
+                modalElement.classList.add('show');
+                document.body.classList.add('modal-open');
+                
+                // Add backdrop if it doesn't exist
+                let backdrop = document.querySelector('.modal-backdrop');
+                if (!backdrop) {
+                    backdrop = document.createElement('div');
+                    backdrop.className = 'modal-backdrop fade show';
+                    document.body.appendChild(backdrop);
+                }
+            }
+        }
+        
     } catch (error) {
         console.error(`Error loading marketer details for ${marketerId}:`, error);
-        showToast('error', 'Failed to load marketer details');
+        showToast('error', 'Failed to load marketer details: ' + (error.message || 'Unknown error'));
     }
 }
 
