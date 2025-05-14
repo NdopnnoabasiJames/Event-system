@@ -17,11 +17,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Update auth state
         updateAuthState();
         
+        // Set up tab functionality
+        setupTabs();
+        
         // Load marketer performance data
         await loadMarketerPerformance();
         
         // Load marketer's events
         await loadMarketerEvents();
+        
+        // Load available events that marketers can volunteer for
+        await loadAvailableEvents();
         
         // Load registered attendees
         await loadMarketerAttendees();
@@ -30,6 +36,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         showToast('error', 'Failed to load dashboard data');
     }
 });
+
+/**
+ * Set up tabs for the event section
+ */
+function setupTabs() {
+    // Bootstrap 5 handles tab initialization automatically
+    // This function is kept for any potential future custom tab functionality
+    
+    // Add event listener to refresh data when tabs are changed
+    const availableEventsTab = document.getElementById('available-events-tab');
+    if (availableEventsTab) {
+        availableEventsTab.addEventListener('shown.bs.tab', () => {
+            // Refresh available events when switching to that tab
+            loadAvailableEvents();
+        });
+    }
+    
+    const myEventsTab = document.getElementById('my-events-tab');
+    if (myEventsTab) {
+        myEventsTab.addEventListener('shown.bs.tab', () => {
+            // Refresh my events when switching to that tab
+            loadMarketerEvents();
+        });
+    }
+}
 
 async function loadMarketerPerformance() {
     try {
@@ -124,8 +155,7 @@ async function loadMarketerEvents() {
                     }
                 } catch (dateError) {
                     console.error('Error formatting date:', dateError);
-                }
-                  row.innerHTML = `
+                }                row.innerHTML = `
                     <td>${eventName}</td>
                     <td>${formattedDate}</td>
                     <td id="attendee-count-${eventId}">Loading...</td>
@@ -136,6 +166,9 @@ async function loadMarketerEvents() {
                             </button>
                             <button class="btn btn-sm btn-success register-attendee" data-event-id="${eventId}" data-event-name="${eventName}">
                                 <i class="bi bi-person-plus"></i> Register Attendee
+                            </button>
+                            <button class="btn btn-sm btn-danger leave-event" data-event-id="${eventId}" data-event-name="${eventName}">
+                                <i class="bi bi-box-arrow-right"></i> Leave
                             </button>
                         </div>
                     </td>
@@ -162,8 +195,7 @@ async function loadMarketerEvents() {
                 }
             });
         });
-        
-        // Add event listeners for register attendee buttons
+          // Add event listeners for register attendee buttons
         document.querySelectorAll('.register-attendee').forEach(button => {
             button.addEventListener('click', (e) => {
                 const eventId = e.currentTarget.getAttribute('data-event-id');
@@ -172,6 +204,22 @@ async function loadMarketerEvents() {
                     openRegisterAttendeeModal(eventId, eventName);
                 } else {
                     showToast('error', 'Cannot register attendee for this event');
+                }
+            });
+        });
+        
+        // Add event listeners for leave event buttons
+        document.querySelectorAll('.leave-event').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const eventId = e.currentTarget.getAttribute('data-event-id');
+                const eventName = e.currentTarget.getAttribute('data-event-name');
+                if (eventId && eventId !== 'unknown') {
+                    // Show confirmation dialog before leaving event
+                    if (confirm(`Are you sure you want to leave "${eventName}"? You will no longer be able to register attendees for this event.`)) {
+                        leaveEvent(eventId);
+                    }
+                } else {
+                    showToast('error', 'Cannot leave this event');
                 }
             });
         });
@@ -565,3 +613,156 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
+/**
+ * Loads available events that the marketer can volunteer for
+ */
+async function loadAvailableEvents() {
+    try {
+        const responseData = await marketersApi.getAvailableEvents();
+        console.log('Available events response:', responseData);
+        
+        // Extract events array handling different response formats
+        let eventsArray = Array.isArray(responseData) ? responseData : null;
+        
+        if (!eventsArray && responseData && responseData.data) {
+            eventsArray = Array.isArray(responseData.data) ? responseData.data : null;
+        }
+        
+        if (!eventsArray) {
+            console.warn('Could not extract available events array from response, using empty array');
+            eventsArray = [];
+        }
+        
+        console.log('Processed available events array:', eventsArray);
+        
+        const tableBody = document.getElementById('available-events-table-body');
+        const noEventsMessage = document.getElementById('no-available-events');
+        
+        if (!eventsArray || eventsArray.length === 0) {
+            tableBody.innerHTML = '';
+            noEventsMessage.classList.remove('d-none');
+            return;
+        }
+        
+        noEventsMessage.classList.add('d-none');
+        tableBody.innerHTML = '';
+        
+        for (const event of eventsArray) {
+            try {
+                const row = document.createElement('tr');
+                
+                // Make sure event has required properties with fallbacks
+                const eventId = event._id || event.id || 'unknown';
+                const eventName = event.name || 'Unnamed event';
+                
+                // Format date safely
+                let formattedDate = 'Date not available';
+                try {
+                    if (event.date) {
+                        const eventDate = new Date(event.date);
+                        formattedDate = eventDate.toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                        });
+                    }
+                } catch (dateError) {
+                    console.error('Error formatting date:', dateError);
+                }
+                
+                row.innerHTML = `
+                    <td>${eventName}</td>
+                    <td>${formattedDate}</td>
+                    <td>${event.state || 'Location not available'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-success volunteer-for-event" data-event-id="${eventId}">
+                            <i class="bi bi-check-circle"></i> Volunteer
+                        </button>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            } catch (eventError) {
+                console.error('Error processing available event:', event, eventError);
+            }
+        }
+        
+        // Add event listeners for volunteer buttons
+        document.querySelectorAll('.volunteer-for-event').forEach(button => {
+            button.addEventListener('click', async (e) => {
+                const eventId = e.currentTarget.getAttribute('data-event-id');
+                if (eventId && eventId !== 'unknown') {
+                    await volunteerForEvent(eventId);
+                } else {
+                    showToast('error', 'Invalid event');
+                }
+            });
+        });
+    } catch (error) {
+        console.error('Error loading available events:', error);
+        showToast('error', 'Failed to load available events');
+        
+        // Show no events message in case of error
+        const tableBody = document.getElementById('available-events-table-body');
+        const noEventsMessage = document.getElementById('no-available-events');
+        if (tableBody) tableBody.innerHTML = '';
+        if (noEventsMessage) noEventsMessage.classList.remove('d-none');
+    }
+}
+
+/**
+ * Leave an event as a marketer
+ */
+async function leaveEvent(eventId) {
+    try {
+        const response = await marketersApi.leaveEvent(eventId);
+        console.log('Leave event response:', response);
+        
+        showToast('success', 'Successfully left the event');
+        
+        // Reload both available events and my events
+        await loadAvailableEvents();
+        await loadMarketerEvents();
+        
+        // Refresh performance data
+        await loadMarketerPerformance();
+    } catch (error) {
+        console.error('Error leaving event:', error);
+        let errorMessage = 'Failed to leave event';
+        
+        if (error.response?.status === 400) {
+            errorMessage = 'You are not volunteering for this event';
+        }
+        
+        showToast('error', errorMessage);
+    }
+}
+
+/**
+ * Volunteer for an event
+ */
+async function volunteerForEvent(eventId) {
+    try {
+        const response = await marketersApi.volunteerForEvent(eventId);
+        console.log('Volunteer response:', response);
+        
+        showToast('success', 'Successfully volunteered for the event');
+        
+        // Reload both available events and my events
+        await loadAvailableEvents();
+        await loadMarketerEvents();
+        
+        // Refresh performance data
+        await loadMarketerPerformance();
+    } catch (error) {
+        console.error('Error volunteering for event:', error);
+        let errorMessage = 'Failed to volunteer for event';
+        
+        if (error.response?.status === 400) {
+            errorMessage = 'You are already volunteering for this event';
+        }
+        
+        showToast('error', errorMessage);
+    }
+}
