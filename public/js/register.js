@@ -77,13 +77,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                   // Remove confirmPassword from data before sending to API
                 delete formData.confirmPassword;
-                
-                // Format the data for the API
+                  // Format the data for the API
                 const userData = {
                     name: `${formData.firstName} ${formData.lastName}`,
                     email: formData.email,
                     password: formData.password,
-                    role: formData.role || 'user'
+                    role: 'marketer' // Always register as marketer
                 };
                 
                 // Submit registration
