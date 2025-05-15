@@ -118,6 +118,9 @@ async function loadMarketerEvents() {
         if (!eventsArray) {
             console.warn('Could not extract events array from response, using empty array');
             eventsArray = [];
+            
+            // Log the actual response for debugging
+            console.error('Unexpected response format from /marketers/events/my:', responseData);
         }
         
         console.log('Processed events array:', eventsArray);

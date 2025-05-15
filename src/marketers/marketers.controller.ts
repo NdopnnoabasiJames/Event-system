@@ -49,8 +49,7 @@ export class MarketersController {
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Forbidden - Marketer access required' })
   getAvailableEvents() {
     return this.marketersService.getAvailableEvents();
-  }
-  @Get('events/my')
+  }  @Get('events/my')
   @ApiOperation({ summary: 'Get events where the marketer is volunteering' })
   @ApiQuery({ name: 'marketerId', required: false, description: 'Specific marketer ID (Admin only)' })
   @ApiResponse({
@@ -60,7 +59,7 @@ export class MarketersController {
   })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Forbidden - Marketer access required' })
-  getMyEvents(@Request() req, @Query('marketerId') marketerId?: string) {
+  async getMyEvents(@Request() req, @Query('marketerId') marketerId?: string) {
     const userId = marketerId || req.user.userId;
     // If marketerId is provided and user is not admin, verify access
     if (marketerId && req.user.role !== Role.ADMIN) {
@@ -68,7 +67,10 @@ export class MarketersController {
         throw new ForbiddenException('Cannot access another marketer\'s events');
       }
     }
-    return this.marketersService.getMarketerEvents(userId);
+    console.log(`Fetching events for marketer: ${userId}`);
+    const events = await this.marketersService.getMarketerEvents(userId);
+    console.log(`Found ${events.length} events for marketer ${userId}`);
+    return events;
   }
 
   @Post('events/:eventId/volunteer')

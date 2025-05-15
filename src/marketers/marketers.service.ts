@@ -26,12 +26,20 @@ export class MarketersService {
   async leaveEvent(eventId: string, marketerId: string) {
     return this.eventsService.removeMarketerFromEvent(eventId, marketerId);
   }
-
   async getMarketerEvents(marketerId: string) {
     const user = await this.usersService.findById(marketerId);
-    return this.eventsService.findAll().then(events =>
-      events.filter(event => event.marketers.some(m => m.toString() === marketerId))
-    );
+    
+    // If the user has no events, return empty array
+    if (!user.eventParticipation || user.eventParticipation.length === 0) {
+      return [];
+    }
+    
+    // Get all events the user has participated in using their eventParticipation array
+    const eventIds = user.eventParticipation.map(id => id.toString());
+    
+    // Find all these events and return them
+    const events = await this.eventsService.findAll();
+    return events.filter(event => eventIds.includes(event._id.toString()));
   }
 
   async registerAttendee(marketerId: string, eventId: string, attendeeData: any) {
