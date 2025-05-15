@@ -622,14 +622,19 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function loadAvailableEvents() {
     try {
-        const responseData = await marketersApi.getAvailableEvents();
-        console.log('Available events response:', responseData);
+        // Get both available events and events the marketer has already volunteered for
+        const [availableEventsResponse, myEventsResponse] = await Promise.all([
+            marketersApi.getAvailableEvents(),
+            marketersApi.getMyEvents()
+        ]);
+        
+        console.log('Available events response:', availableEventsResponse);
         
         // Extract events array handling different response formats
-        let eventsArray = Array.isArray(responseData) ? responseData : null;
+        let eventsArray = Array.isArray(availableEventsResponse) ? availableEventsResponse : null;
         
-        if (!eventsArray && responseData && responseData.data) {
-            eventsArray = Array.isArray(responseData.data) ? responseData.data : null;
+        if (!eventsArray && availableEventsResponse && availableEventsResponse.data) {
+            eventsArray = Array.isArray(availableEventsResponse.data) ? availableEventsResponse.data : null;
         }
         
         if (!eventsArray) {
@@ -637,7 +642,17 @@ async function loadAvailableEvents() {
             eventsArray = [];
         }
         
-        console.log('Processed available events array:', eventsArray);
+        // Extract my events array for comparison
+        let myEventsArray = Array.isArray(myEventsResponse) ? myEventsResponse : null;
+        if (!myEventsArray && myEventsResponse && myEventsResponse.data) {
+            myEventsArray = Array.isArray(myEventsResponse.data) ? myEventsResponse.data : null;
+        }
+        if (!myEventsArray) {
+            myEventsArray = [];
+        }
+        
+        // Create a set of event IDs that the marketer has already volunteered for
+        const myEventIds = new Set(myEventsArray.map(event => event._id || event.id));
         
         const tableBody = document.getElementById('available-events-table-body');
         const noEventsMessage = document.getElementById('no-available-events');
@@ -673,14 +688,18 @@ async function loadAvailableEvents() {
                 } catch (dateError) {
                     console.error('Error formatting date:', dateError);
                 }
+                  // Check if the marketer has already volunteered for this event
+                const hasVolunteered = myEventIds.has(eventId);
                 
                 row.innerHTML = `
                     <td>${eventName}</td>
                     <td>${formattedDate}</td>
                     <td>${event.state || 'Location not available'}</td>
                     <td>
-                        <button class="btn btn-sm btn-success volunteer-for-event" data-event-id="${eventId}">
-                            <i class="bi bi-check-circle"></i> Volunteer
+                        <button class="btn btn-sm ${hasVolunteered ? 'btn-danger leave-available-event' : 'btn-success volunteer-for-event'}" 
+                            data-event-id="${eventId}" data-event-name="${eventName}">
+                            <i class="bi ${hasVolunteered ? 'bi-box-arrow-right' : 'bi-check-circle'}"></i> 
+                            ${hasVolunteered ? 'Leave' : 'Volunteer'}
                         </button>
                     </td>
                 `;
@@ -690,13 +709,28 @@ async function loadAvailableEvents() {
                 console.error('Error processing available event:', event, eventError);
             }
         }
-        
-        // Add event listeners for volunteer buttons
+          // Add event listeners for volunteer buttons
         document.querySelectorAll('.volunteer-for-event').forEach(button => {
             button.addEventListener('click', async (e) => {
                 const eventId = e.currentTarget.getAttribute('data-event-id');
                 if (eventId && eventId !== 'unknown') {
                     await volunteerForEvent(eventId);
+                } else {
+                    showToast('error', 'Invalid event');
+                }
+            });
+        });
+        
+        // Add event listeners for leave buttons in available events section
+        document.querySelectorAll('.leave-available-event').forEach(button => {
+            button.addEventListener('click', async (e) => {
+                const eventId = e.currentTarget.getAttribute('data-event-id');
+                const eventName = e.currentTarget.getAttribute('data-event-name');
+                if (eventId && eventId !== 'unknown') {
+                    // Show confirmation dialog before leaving event
+                    if (confirm(`Are you sure you want to leave "${eventName}"? You will no longer be able to register attendees for this event.`)) {
+                        await leaveEvent(eventId);
+                    }
                 } else {
                     showToast('error', 'Invalid event');
                 }
