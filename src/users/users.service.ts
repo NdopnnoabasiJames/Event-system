@@ -106,18 +106,48 @@ export class UsersService {
   }
 
 async addEventParticipation(userId: string, eventId: string): Promise<UserDocument> {
+  console.log(`Adding event ${eventId} to user ${userId} participation`);
+  
   const user = await this.userModel.findById(userId).exec();
   if (!user) {
+    console.error(`User ${userId} not found`);
     throw new NotFoundException('User not found');
   }
 
-  const eventObjectId = new Types.ObjectId(eventId);  // <-- Use Types.ObjectId instead
-  if (!user.eventParticipation.some(e => e.toString() === eventObjectId.toString())) {
-    user.eventParticipation.push(eventObjectId);
-    await user.save();
+  // Initialize eventParticipation if it doesn't exist
+  if (!user.eventParticipation) {
+    console.log(`User ${userId} had no eventParticipation array, creating one`);
+    user.eventParticipation = [];
   }
 
-  return user;
+  console.log(`Before update, user eventParticipation:`, user.eventParticipation.map(e => e.toString()));
+  
+  const eventObjectId = new Types.ObjectId(eventId);
+  console.log(`Converted eventId to ObjectId: ${eventObjectId.toString()}`);
+  
+  const isEventAlreadyAdded = user.eventParticipation.some(e => e.toString() === eventObjectId.toString());
+  console.log(`Is event already in user's participation? ${isEventAlreadyAdded}`);
+  
+  if (!isEventAlreadyAdded) {
+    console.log(`Adding event ${eventId} to user's participation`);
+    user.eventParticipation.push(eventObjectId);
+    
+    try {
+      await user.save();
+      console.log(`Successfully saved user with new event participation`);
+    } catch (error) {
+      console.error(`Error saving user with new event participation:`, error);
+      throw error;
+    }
+  } else {
+    console.log(`Event ${eventId} was already in user's participation`);
+  }
+  
+  // Double-check that the event was actually added
+  const updatedUser = await this.userModel.findById(userId).exec();
+  console.log(`After update, user eventParticipation:`, updatedUser.eventParticipation.map(e => e.toString()));
+  
+  return updatedUser;
 }
 
   async removeEventParticipation(userId: string, eventId: string): Promise<UserDocument> {

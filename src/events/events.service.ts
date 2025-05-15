@@ -64,10 +64,18 @@ export class EventsService {
 }
 
 async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocument> {
+  console.log(`Adding marketer ${marketerId} to event ${eventId}`);
+  
   const [event, marketer] = await Promise.all([
     this.findOne(eventId),
     this.usersService.findById(marketerId),
   ]);
+
+  console.log(`Retrieved event and marketer:`, {
+    eventId: event._id.toString(),
+    marketerId: marketer._id.toString(),
+    marketerRole: marketer.role
+  });
 
   if (marketer.role !== Role.MARKETER) {
     throw new UnauthorizedException('Only marketers can be added to events');
@@ -75,19 +83,40 @@ async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocu
 
   if (!event.marketers) {
     event.marketers = [];
+    console.log('Event had no marketers array, created empty array');
   }
 
   const marketerId_ObjId = new Types.ObjectId(marketerId);
+  console.log(`Converted marketerId to ObjectId: ${marketerId_ObjId.toString()}`);
   
-  if (!event.marketers.some(m => m.toString() === marketerId_ObjId.toString())) {
+  const isMarketerAlreadyAdded = event.marketers.some(m => m.toString() === marketerId_ObjId.toString());
+  console.log(`Is marketer already added to event? ${isMarketerAlreadyAdded}`);
+  
+  if (!isMarketerAlreadyAdded) {
+    console.log('Adding marketer to event...');
     event.marketers.push(marketerId_ObjId);
-    await Promise.all([
-      event.save(),
-      this.usersService.addEventParticipation(marketerId, eventId),
-    ]);
+    
+    try {
+      console.log('Saving event and updating user...');
+      await Promise.all([
+        event.save(),
+        this.usersService.addEventParticipation(marketerId, eventId),
+      ]);
+      console.log('Successfully saved event and updated user');
+    } catch (error) {
+      console.error('Error while saving event or updating user:', error);
+      throw new HttpException(`Failed to add marketer to event: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  } else {
+    console.log('Marketer was already added to this event');
   }
 
-  return this.findOne(eventId);
+  // Double-check that the marketer was actually added
+  const updatedEvent = await this.findOne(eventId);
+  const marketerAdded = updatedEvent.marketers.some(m => m.toString() === marketerId_ObjId.toString());
+  console.log(`Final check - Is marketer in event.marketers? ${marketerAdded}`);
+  
+  return updatedEvent;
 }
 
   async removeMarketerFromEvent(eventId: string, marketerId: string): Promise<EventDocument> {
