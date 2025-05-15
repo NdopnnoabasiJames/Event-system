@@ -34,17 +34,9 @@ export class UsersService {
   }
 }  async findByEmail(email: string): Promise<UserDocument> {
   try {
-    console.log('Searching for user by email:', email);
     const user = await this.userModel.findOne({ email }).exec();
-    console.log('User found:', user ? 'Yes' : 'No');
-    
-    if (!user) {
-      console.log('No user found with email:', email);
-    }
-    
     return user;
   } catch (error) {
-    console.error('Error finding user by email:', error);
     throw new HttpException(`Failed to find user by email: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }
@@ -106,48 +98,25 @@ export class UsersService {
   }
 
 async addEventParticipation(userId: string, eventId: string): Promise<UserDocument> {
-  console.log(`Adding event ${eventId} to user ${userId} participation`);
-  
   const user = await this.userModel.findById(userId).exec();
   if (!user) {
-    console.error(`User ${userId} not found`);
     throw new NotFoundException('User not found');
   }
 
   // Initialize eventParticipation if it doesn't exist
   if (!user.eventParticipation) {
-    console.log(`User ${userId} had no eventParticipation array, creating one`);
     user.eventParticipation = [];
   }
-
-  console.log(`Before update, user eventParticipation:`, user.eventParticipation.map(e => e.toString()));
   
-  const eventObjectId = new Types.ObjectId(eventId);
-  console.log(`Converted eventId to ObjectId: ${eventObjectId.toString()}`);
-  
+  const eventObjectId = new Types.ObjectId(eventId);  
   const isEventAlreadyAdded = user.eventParticipation.some(e => e.toString() === eventObjectId.toString());
-  console.log(`Is event already in user's participation? ${isEventAlreadyAdded}`);
   
   if (!isEventAlreadyAdded) {
-    console.log(`Adding event ${eventId} to user's participation`);
     user.eventParticipation.push(eventObjectId);
-    
-    try {
-      await user.save();
-      console.log(`Successfully saved user with new event participation`);
-    } catch (error) {
-      console.error(`Error saving user with new event participation:`, error);
-      throw error;
-    }
-  } else {
-    console.log(`Event ${eventId} was already in user's participation`);
+    await user.save();
   }
   
-  // Double-check that the event was actually added
-  const updatedUser = await this.userModel.findById(userId).exec();
-  console.log(`After update, user eventParticipation:`, updatedUser.eventParticipation.map(e => e.toString()));
-  
-  return updatedUser;
+  return user;
 }
 
   async removeEventParticipation(userId: string, eventId: string): Promise<UserDocument> {

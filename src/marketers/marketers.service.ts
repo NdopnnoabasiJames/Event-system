@@ -17,18 +17,8 @@ export class MarketersService {
 
   async getAvailableEvents() {
     return this.eventsService.getActiveEvents();
-  }
-  async volunteerForEvent(eventId: string, marketerId: string) {
-    console.log(`Marketer ${marketerId} volunteering for event ${eventId}`);
-    const result = await this.eventsService.addMarketerToEvent(eventId, marketerId);
-    
-    // Verify that the marketer was actually added to the event
-    const updatedEvent = await this.eventsService.findOne(eventId);
-    const marketerId_ObjId = new Types.ObjectId(marketerId);
-    const isMarketedAdded = updatedEvent.marketers.some(m => m.toString() === marketerId_ObjId.toString());
-    console.log(`Was marketer successfully added to event? ${isMarketedAdded}`);
-    
-    return result;
+  }  async volunteerForEvent(eventId: string, marketerId: string) {
+    return this.eventsService.addMarketerToEvent(eventId, marketerId);
   }
 
   async leaveEvent(eventId: string, marketerId: string) {
@@ -50,11 +40,10 @@ export class MarketersService {
     return events.filter(event => eventIds.includes(event._id.toString()));
   }  async registerAttendee(marketerId: string, eventId: string, attendeeData: any) {
     // Verify marketer is assigned to this event
-    console.log(`Checking authorization for marketer ${marketerId} to register attendee for event ${eventId}`);
-    
     const event = await this.eventsService.findOne(eventId);
     const marketerId_ObjId = new Types.ObjectId(marketerId);
-      // Extract just the ID from each marketer object
+    
+    // Extract just the ID from each marketer object
     const marketerIds = event.marketers.map((m: any) => {
       // If m is already an ObjectId, use toString()
       if (m instanceof Types.ObjectId) {
@@ -70,19 +59,10 @@ export class MarketersService {
       return String(m);
     });
     
-    console.log("Extracted marketer IDs from event:", marketerIds);
-    console.log(`Marketer ID (as string) we're checking:`, marketerId);
-    
     // Check if the marketer exists in the event's marketers array
     const isMarketerAuthorized = marketerIds.includes(marketerId);
-    console.log(`Is marketer authorized:`, isMarketerAuthorized);
     
     if (!isMarketerAuthorized) {
-      // Get user's eventParticipation for debugging
-      const user = await this.usersService.findById(marketerId);
-      console.log(`User's eventParticipation:`, user.eventParticipation.map(e => e.toString()));
-      console.log(`Does user's eventParticipation include this event:`, user.eventParticipation.some(e => e.toString() === eventId));
-      
       throw new UnauthorizedException('You are not authorized to register attendees for this event');
     }// If bus pickup is selected, validate the pickup location exists
     if (attendeeData.transportPreference === 'bus' && attendeeData.busPickup) {
