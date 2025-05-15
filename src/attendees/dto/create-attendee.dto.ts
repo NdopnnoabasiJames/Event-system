@@ -17,7 +17,7 @@ class BusPickupDto {
 
   @IsDateString()
   @IsFutureDate()
-  departureTime: Date;
+  departureTime: string; // Changed from Date to string to match schema
 }
 
 export class CreateAttendeeDto {

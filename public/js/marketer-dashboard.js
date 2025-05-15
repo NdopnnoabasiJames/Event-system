@@ -539,9 +539,16 @@ async function registerAttendee() {
                 showToast('error', 'Please select a bus pickup location');
                 return;
             }
-            
-            try {
+              try {
                 const busPickup = JSON.parse(busPickupValue);
+                
+                // Fix ISO 8601 date string format
+                if (busPickup.departureTime) {
+                    // Convert to proper ISO 8601 format with toISOString()
+                    const dateObj = new Date(busPickup.departureTime);
+                    busPickup.departureTime = dateObj.toISOString();
+                }
+                
                 attendeeData.busPickup = busPickup;
             } catch (error) {
                 console.error('Error parsing bus pickup data:', error);
