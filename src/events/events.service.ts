@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Schema as MongooseSchema } from 'mongoose';
+import mongoose, { Model, Schema as MongooseSchema, Types } from 'mongoose';
 import { Event, EventDocument } from '../schemas/event.schema';
 import { CreateEventDto } from './dto/create-event.dto';
 import { Role } from '../common/enums/role.enum';
@@ -63,31 +63,32 @@ export class EventsService {
   }
 }
 
-  async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocument> {
-    const [event, marketer] = await Promise.all([
-      this.findOne(eventId),
-      this.usersService.findById(marketerId),
-    ]);
+async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocument> {
+  const [event, marketer] = await Promise.all([
+    this.findOne(eventId),
+    this.usersService.findById(marketerId),
+  ]);
 
-    if (marketer.role !== Role.MARKETER) {
-      throw new UnauthorizedException('Only marketers can be added to events');
-    }
-
-    if (!event.marketers) {
-      event.marketers = [];
-    }
-
-    const marketerId_ObjId = new MongooseSchema.Types.ObjectId(marketerId);
-    if (!event.marketers.some(m => m.toString() === marketerId_ObjId.toString())) {
-      event.marketers.push(marketerId_ObjId);
-      await Promise.all([
-        event.save(),
-        this.usersService.addEventParticipation(marketerId, eventId),
-      ]);
-    }
-
-    return this.findOne(eventId);
+  if (marketer.role !== Role.MARKETER) {
+    throw new UnauthorizedException('Only marketers can be added to events');
   }
+
+  if (!event.marketers) {
+    event.marketers = [];
+  }
+
+  const marketerId_ObjId = new Types.ObjectId(marketerId);
+  
+  if (!event.marketers.some(m => m.toString() === marketerId_ObjId.toString())) {
+    event.marketers.push(marketerId_ObjId);
+    await Promise.all([
+      event.save(),
+      this.usersService.addEventParticipation(marketerId, eventId),
+    ]);
+  }
+
+  return this.findOne(eventId);
+}
 
   async removeMarketerFromEvent(eventId: string, marketerId: string): Promise<EventDocument> {
   try {
@@ -96,7 +97,7 @@ export class EventsService {
       throw new HttpException('Event not found', HttpStatus.NOT_FOUND);
     }
 
-    const marketerId_ObjId = new MongooseSchema.Types.ObjectId(marketerId);
+    const marketerId_ObjId = new Types.ObjectId(marketerId);
     event.marketers = event.marketers.filter(
       (id) => id.toString() !== marketerId_ObjId.toString()
     );

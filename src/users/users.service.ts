@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Schema as MongooseSchema } from 'mongoose';
+import { Model, Schema as MongooseSchema, Types } from 'mongoose';
 import { User, UserDocument } from '../schemas/user.schema';
 import { Role } from '../common/enums/role.enum';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -105,20 +105,20 @@ export class UsersService {
     }
   }
 
-  async addEventParticipation(userId: string, eventId: string): Promise<UserDocument> {
-    const user = await this.userModel.findById(userId).exec();
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    const eventObjectId = new MongooseSchema.Types.ObjectId(eventId);
-    if (!user.eventParticipation.some(e => e.toString() === eventObjectId.toString())) {
-      user.eventParticipation.push(eventObjectId);
-      await user.save();
-    }
-
-    return user;
+async addEventParticipation(userId: string, eventId: string): Promise<UserDocument> {
+  const user = await this.userModel.findById(userId).exec();
+  if (!user) {
+    throw new NotFoundException('User not found');
   }
+
+  const eventObjectId = new Types.ObjectId(eventId);  // <-- Use Types.ObjectId instead
+  if (!user.eventParticipation.some(e => e.toString() === eventObjectId.toString())) {
+    user.eventParticipation.push(eventObjectId);
+    await user.save();
+  }
+
+  return user;
+}
 
   async removeEventParticipation(userId: string, eventId: string): Promise<UserDocument> {
     const user = await this.userModel.findById(userId).exec();
@@ -126,7 +126,7 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    const eventObjectId = new MongooseSchema.Types.ObjectId(eventId);
+    const eventObjectId = new Types.ObjectId(eventId);
     user.eventParticipation = user.eventParticipation.filter(
       (event) => event.toString() !== eventObjectId.toString()
     );

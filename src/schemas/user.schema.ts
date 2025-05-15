@@ -19,8 +19,8 @@ export class User {
   @Prop({ required: true, enum: Role, default: Role.ATTENDEE, index: true })
   role: Role;
 
-  @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Event' }], index: true })
-  eventParticipation: MongooseSchema.Types.ObjectId[];
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Event' }], default: [] })
+  eventParticipation: Types.ObjectId[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

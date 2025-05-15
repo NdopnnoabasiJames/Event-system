@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Schema as MongooseSchema } from 'mongoose';
+import { Document, Schema as MongooseSchema, Types } from 'mongoose';
 
 export type EventDocument = Event & Document;
 
@@ -25,8 +25,8 @@ export class Event {
   @Prop({ type: [{ type: Object }] })
   busPickups: BusPickup[];
 
-  @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'User' }] })
-  marketers: MongooseSchema.Types.ObjectId[];
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }] })
+  marketers: Types.ObjectId[];
 
   @Prop({ default: false })
   isActive: boolean;
