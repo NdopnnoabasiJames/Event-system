@@ -217,10 +217,8 @@ const marketersApi = {
 
     async leaveEvent(eventId) {
         return await apiCall(`/marketers/events/${eventId}/leave`, 'DELETE', null, auth.getToken());
-    },
-
-    async registerAttendee(eventId, attendeeData) {
-        return await apiCall(`/marketers/attendees/${eventId}`, 'POST', attendeeData, auth.getToken());
+    },    async registerAttendee(eventId, attendeeData) {
+        return await apiCall(`/marketers/events/${eventId}/attendees`, 'POST', attendeeData, auth.getToken());
     },
 
     async getMyAttendees(eventId = null) {

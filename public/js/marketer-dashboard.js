@@ -522,13 +522,13 @@ async function registerAttendee() {
         const email = document.getElementById('attendeeEmail').value;
         const phone = document.getElementById('attendeePhone').value;
         const transportPreference = document.querySelector('input[name="transportPreference"]:checked').value;
-        
-        // Prepare attendee data
+          // Prepare attendee data
         const attendeeData = {
             name,
             email,
             phone,
-            transportPreference
+            transportPreference,
+            event: eventId // Add event ID to the attendee data
         };
         
         // Handle bus pickup if selected
