@@ -131,8 +131,37 @@ async function loadEventsData() {
             return;
         }
         
+        // Get all attendees to calculate counts
+        const attendeesResponse = await apiCall('/attendees', 'GET', null, auth.getToken());
+        const allAttendees = Array.isArray(attendeesResponse) ? 
+                            attendeesResponse : 
+                            (attendeesResponse.data || []);
+        
+        console.log('All attendees for count calculation:', allAttendees);
+        
+        // Create a map to count attendees per event
+        const attendeesCountMap = {};
+        allAttendees.forEach(attendee => {
+            const eventId = attendee.event?._id || (typeof attendee.event === 'string' ? attendee.event : null);
+            if (eventId) {
+                if (!attendeesCountMap[eventId]) {
+                    attendeesCountMap[eventId] = 0;
+                }
+                attendeesCountMap[eventId]++;
+            }
+        });
+        
+        console.log('Attendees count map:', attendeesCountMap);
+        
         for (const event of events) {
             const row = document.createElement('tr');
+            const eventId = event._id || event.id;
+            
+            // Calculate actual attendee count
+            const attendeeCount = attendeesCountMap[eventId] || 0;
+            
+            // Get accurate marketers count
+            const marketersCount = Array.isArray(event.marketers) ? event.marketers.length : 0;
             
             // Format date
             const eventDate = new Date(event.date);
@@ -156,10 +185,10 @@ async function loadEventsData() {
                 <td>${event.name}</td>
                 <td>${formattedDate}</td>
                 <td>${statusBadge}</td>
-                <td>${event.attendeeCount || 0}</td>
-                <td>${event.marketers?.length || 0}</td>
+                <td>${attendeeCount}</td>
+                <td>${marketersCount}</td>
                 <td>
-                    <a href="event-details.html?id=${event._id}" class="btn btn-sm btn-primary">
+                    <a href="event-details.html?id=${eventId}" class="btn btn-sm btn-primary">
                         <i class="bi bi-eye"></i> View
                     </a>
                 </td>
