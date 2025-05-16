@@ -257,12 +257,18 @@ async function loadEventAttendeeCount(eventId) {
 
 async function loadMarketerAttendees() {
     try {
-        const responseData = await apiCall('/marketers/attendees', 'GET', null, auth.getToken());
+        // Use the marketersApi.getMyAttendees method to ensure we're using the correct endpoint
+        const responseData = await marketersApi.getMyAttendees();
         console.log('Attendees response:', responseData);
         
         // Extract attendees array handling different response formats
         // First check if response is an array directly
         let attendeesArray = Array.isArray(responseData) ? responseData : null;
+        
+        // Check for the nested data.data structure we're now seeing
+        if (!attendeesArray && responseData && responseData.data && responseData.data.data) {
+            attendeesArray = Array.isArray(responseData.data.data) ? responseData.data.data : null;
+        }
         
         // If not an array directly, check for data property that might be an array
         if (!attendeesArray && responseData && responseData.data) {
