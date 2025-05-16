@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (eventId) {
         await loadEventDetails(eventId);
-        setupRegistrationForm(eventId);
     } else {
         showToast('error', 'Event not found');
         setTimeout(() => {
@@ -193,8 +192,7 @@ function updateEventUI(event) {
         `;
     } else {
         console.error('Could not find badges container element');
-    }// Update description - if no description is available, provide a generic one
-    document.querySelector('.card-text').textContent = event.description || 'No description available for this event.';    // FIXED: Update stats with more reliable values and error handling
+    }    // Card text element was removed with the About section// FIXED: Update stats with more reliable values and error handling
     const stats = document.querySelectorAll('.col h5');
     if (stats && stats.length >= 3) {
         // Attendee count
@@ -251,33 +249,5 @@ function updateEventUI(event) {
         stats[2].textContent = daysRemaining > 0 ? daysRemaining : 'Past event';
 }
 
-function setupRegistrationForm(eventId) {
-    const registrationForm = document.querySelector('form');
-    const transportSelect = document.querySelector('select[name="transport"]');
-
-    if (transportSelect) {
-        transportSelect.addEventListener('change', (e) => {
-            const pickupLocationSelect = document.querySelector('select[name="pickupLocation"]');
-            if (pickupLocationSelect) {
-                pickupLocationSelect.disabled = e.target.value !== 'bus';
-            }
-        });
-    }
-
-    if (registrationForm) {
-        registrationForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            try {
-                const formData = getFormData(registrationForm);
-                await attendeesApi.createAttendee(eventId, formData);
-                showToast('success', 'Registration successful!');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            } catch (error) {
-                showToast('error', error.message || 'Registration failed');
-            }
-        });
-    }
-}
+// Function removed as registration form has been removed
 }
