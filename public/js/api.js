@@ -50,11 +50,18 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
             showToast('error', 'You are offline. Please check your internet connection.');
             throw error;
         }
-        
-        if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+          if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
             showToast('error', 'Unable to connect to the server. Please check if the server is running at ' + API_BASE_URL);
         } else if (error.response?.status === 500) {
-            showToast('error', 'Internal server error. Please try again later.');
+            // Special handling for "No attendees found" error - it should be treated as an empty result, not an error
+            const errorMessage = error.response?.data?.message || error.message || '';
+            if (errorMessage.includes('No attendees found for this event')) {
+                console.log('Handling "No attendees found" gracefully');
+                // Don't show a toast for this specific error
+                error.message = 'No attendees found for this event';
+            } else {
+                showToast('error', 'Internal server error. Please try again later.');
+            }
         } else {
             const errorMessage = error.response?.data?.message || error.message || 'An error occurred';
             showToast('error', errorMessage);
@@ -176,8 +183,18 @@ const eventsApi = {
 // Attendees API functions
 const attendeesApi = {
     async getAllAttendees(eventId) {
-        const endpoint = eventId ? `/attendees?eventId=${eventId}` : '/attendees';
-        return await apiCall(endpoint, 'GET', null, auth.getToken());
+        try {
+            const endpoint = eventId ? `/attendees?eventId=${eventId}` : '/attendees';
+            return await apiCall(endpoint, 'GET', null, auth.getToken());
+        } catch (error) {
+            // Handle "No attendees found" as a valid case that should return an empty array
+            if (error.message && error.message.includes('No attendees found for this event')) {
+                console.log('No attendees found for this event, returning empty array');
+                return [];
+            }
+            // Re-throw other errors
+            throw error;
+        }
     },
 
     async getAttendee(id) {

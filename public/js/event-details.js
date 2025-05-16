@@ -80,30 +80,35 @@ async function loadEventDetails(eventId) {
 }
 
 async function updateEventUI(event) {
-    console.log('Updating UI with event data:', event); // Log event data for debugging
+    console.log('Updating UI with event data:', event); // Log event data for debugging    // Force an initial value for attendeeCount to ensure UI calculation works
+    event.attendeeCount = 0;
     
     // Get the attendee count for this event BEFORE we calculate statistics
     try {
-        // If attendeeCount is not already set, fetch it from the API
-        if (typeof event.attendeeCount !== 'number' || isNaN(event.attendeeCount)) {
-            console.log('Fetching attendee count from API for event:', event._id || event.id);
-            const eventId = event._id || event.id;
+        console.log('Fetching attendee count from API for event:', event._id || event.id);
+        const eventId = event._id || event.id;
+        
+        if (eventId) {
+            try {
+                // Use the getAllAttendees method which now handles the "No attendees" error
+                const attendees = await attendeesApi.getAllAttendees(eventId);
+                
+                // Simple array length count
+                event.attendeeCount = Array.isArray(attendees) ? attendees.length : 0;
+                console.log('Successfully fetched attendee count:', event.attendeeCount);
+            } catch (fetchError) {
+                // Set to 0 for any error
+                console.warn('Error fetching attendees, using 0:', fetchError.message);
+                event.attendeeCount = 0;
+            }
             
-            if (eventId) {
-                const attendeesResponse = await apiCall(`/attendees?eventId=${eventId}`, 'GET', null, auth.getToken());
-                // Handle different response formats
-                if (Array.isArray(attendeesResponse)) {
-                    event.attendeeCount = attendeesResponse.length;
-                } else if (attendeesResponse && typeof attendeesResponse === 'object' && Array.isArray(attendeesResponse.data)) {
-                    event.attendeeCount = attendeesResponse.data.length;
-                } else {
-                    event.attendeeCount = 0;
-                }
-                console.log('Fetched attendee count:', event.attendeeCount);
+            // Ensure it's a number
+            if (typeof event.attendeeCount !== 'number' || isNaN(event.attendeeCount)) {
+                event.attendeeCount = 0;
             }
         }
     } catch (error) {
-        console.error('Error fetching attendee count:', error);
+        console.error('Error in attendee count processing:', error);
         event.attendeeCount = 0;
     }
     
