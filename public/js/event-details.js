@@ -82,20 +82,33 @@ async function loadEventDetails(eventId) {
 async function updateEventUI(event) {
     console.log('Updating UI with event data:', event); // Log event data for debugging    // Force an initial value for attendeeCount to ensure UI calculation works
     event.attendeeCount = 0;
-    
-    // Get the attendee count for this event BEFORE we calculate statistics
+      // Get the attendee count for this event BEFORE we calculate statistics
     try {
         console.log('Fetching attendee count from API for event:', event._id || event.id);
         const eventId = event._id || event.id;
         
         if (eventId) {
             try {
-                // Use the getAllAttendees method which now handles the "No attendees" error
+                // Enhanced debugging
+                console.group('Attendee Count Debugging');
+                console.log('Event ID used for attendee lookup:', eventId);
+                
+                // Use the improved getAllAttendees method which handles response formats
                 const attendees = await attendeesApi.getAllAttendees(eventId);
+                
+                // Log attendees data for debugging
+                console.log('Attendees data received:', attendees);
+                console.log('Attendees data type:', typeof attendees);
+                console.log('Is array?:', Array.isArray(attendees));
+                
+                if (Array.isArray(attendees)) {
+                    console.log('Attendee records:', attendees.map(a => a._id || a.id || 'unknown'));
+                }
                 
                 // Simple array length count
                 event.attendeeCount = Array.isArray(attendees) ? attendees.length : 0;
-                console.log('Successfully fetched attendee count:', event.attendeeCount);
+                console.log('Attendee count calculated:', event.attendeeCount);
+                console.groupEnd();
             } catch (fetchError) {
                 // Set to 0 for any error
                 console.warn('Error fetching attendees, using 0:', fetchError.message);
@@ -105,7 +118,10 @@ async function updateEventUI(event) {
             // Ensure it's a number
             if (typeof event.attendeeCount !== 'number' || isNaN(event.attendeeCount)) {
                 event.attendeeCount = 0;
+                console.warn('Attendee count was not a valid number, setting to 0');
             }
+            
+            console.log('FINAL ATTENDEE COUNT:', event.attendeeCount);
         }
     } catch (error) {
         console.error('Error in attendee count processing:', error);
@@ -237,26 +253,31 @@ async function updateEventUI(event) {
     } else {
         console.error('Could not find badges container element');
     }
-    
-    // Update stats with more reliable values and error handling
+      // Update stats with more reliable values and error handling
     const stats = document.querySelectorAll('.col h5');
+    console.log('Found ' + (stats?.length || 0) + ' stat elements:', stats);
+    
     if (stats && stats.length >= 3) {
-        // Attendee count
-        if (typeof attendeeCount === 'number' && !isNaN(attendeeCount)) {
-            stats[0].textContent = attendeeCount;
-        } else {
-            stats[0].textContent = '0';
-        }
+        console.log('Updating stats display with:', { attendeeCount, availableSeats });
+        
+        // Attendee count - FIXED to ensure it displays properly
+        // Force convert to number to ensure it displays correctly
+        const displayAttendeeCount = parseInt(event.attendeeCount || 0, 10);
+        stats[0].textContent = isNaN(displayAttendeeCount) ? '0' : String(displayAttendeeCount);
+        console.log('Set registered stat to:', stats[0].textContent);
         
         // Available seats
         if (typeof availableSeats === 'number' && !isNaN(availableSeats)) {
-            stats[1].textContent = availableSeats;
+            stats[1].textContent = String(availableSeats);
+            console.log('Set remaining stat to:', stats[1].textContent);
         } else {
             // If we have maxAttendees but no availability calculation, just show maxAttendees
             if (typeof maxAttendees === 'number' && !isNaN(maxAttendees)) {
-                stats[1].textContent = maxAttendees;
+                stats[1].textContent = String(maxAttendees);
+                console.log('Set remaining stat to maxAttendees:', stats[1].textContent);
             } else {
                 stats[1].textContent = '0';
+                console.log('Set remaining stat to 0');
             }
         }
         

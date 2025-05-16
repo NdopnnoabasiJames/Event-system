@@ -185,7 +185,33 @@ const attendeesApi = {
     async getAllAttendees(eventId) {
         try {
             const endpoint = eventId ? `/attendees?eventId=${eventId}` : '/attendees';
-            return await apiCall(endpoint, 'GET', null, auth.getToken());
+            const response = await apiCall(endpoint, 'GET', null, auth.getToken());
+            
+            // Log the response structure for debugging
+            console.log('Attendees API response:', response);
+            
+            // Handle different response formats
+            if (response && typeof response === 'object') {
+                // CRITICAL FIX: Handle nested response structure for attendees
+                if (response.data && Array.isArray(response.data)) {
+                    console.log('Extracting attendees from response.data wrapper', response.data.length);
+                    return response.data;
+                } else if (Array.isArray(response)) {
+                    console.log('Using attendees directly from response array', response.length);
+                    return response;
+                } else if (response.attendees && Array.isArray(response.attendees)) {
+                    console.log('Extracting from response.attendees property', response.attendees.length);
+                    return response.attendees;
+                }
+                
+                // If we can't determine the structure but it's an object, return as array with one item
+                if (!Array.isArray(response)) {
+                    console.warn('Unexpected attendees response format, trying to adapt:', response);
+                    return [response];
+                }
+            }
+            
+            return response || [];
         } catch (error) {
             // Handle "No attendees found" as a valid case that should return an empty array
             if (error.message && error.message.includes('No attendees found for this event')) {
