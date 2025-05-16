@@ -237,10 +237,9 @@ async function loadAttendeesData() {
             
             // Get marketer name
             const marketerName = attendee.registeredBy?.name || 'System';
-            
-            row.innerHTML = `
+              row.innerHTML = `
                 <td>${attendee.name}</td>
-                <td>${attendee.email}</td>
+                <td>${attendee.phone || 'Not provided'}</td>
                 <td>${attendee.event.name}</td>
                 <td>${marketerName}</td>
                 <td>${attendee.transportPreference === 'bus' ? 

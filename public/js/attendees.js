@@ -91,12 +91,11 @@ function displayAttendees(attendees) {
         
         // Handle status (which might not exist in marketer API)
         const status = attendee.status || 'Registered';
-        
-        return `
+          return `
         <tr>
             <td>${name}</td>
             <td>${eventName}</td>
-            <td>${attendee.email}</td>
+            <td>${attendee.phone || 'Not provided'}</td>
             <td>${transport}</td>
             <td>${pickupLocation}</td>
             <td><span class="badge bg-${getStatusBadgeColor(status)}">${status}</span></td>
@@ -130,11 +129,10 @@ function setupEventListeners() {
                     const lastName = (attendee.lastName || '').toLowerCase();
                     nameStr = `${firstName} ${lastName}`.trim();
                 }
+                  const phoneStr = (attendee.phone || '').toLowerCase();
                 
-                const emailStr = (attendee.email || '').toLowerCase();
-                
-                // Return true if either name or email contains the search term
-                return nameStr.includes(searchTerm) || emailStr.includes(searchTerm);
+                // Return true if either name or phone contains the search term
+                return nameStr.includes(searchTerm) || phoneStr.includes(searchTerm);
             });
             displayAttendees(filteredAttendees);
         });

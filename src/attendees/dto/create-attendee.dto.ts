@@ -20,16 +20,15 @@ class BusPickupDto {
   departureTime: string; // Changed from Date to string to match schema
 }
 
-export class CreateAttendeeDto {
-  @IsString()
+export class CreateAttendeeDto {  @IsString()
   name: string;
 
   @IsEmail()
-  email: string;
+  @IsOptional()
+  email?: string;
 
   @IsPhoneNumber()
-  @IsOptional()
-  phone?: string;
+  phone: string;
 
   @IsEnum(['bus', 'private'], { message: 'Transport preference must be either bus or private' })
   transportPreference: string;

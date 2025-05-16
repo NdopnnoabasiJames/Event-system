@@ -337,10 +337,9 @@ async function loadMarketerAttendees() {
                     
                     // Access event name safely
                     const eventName = attendee.event?.name || 'Unknown event';
-                    
-                    row.innerHTML = `
+                      row.innerHTML = `
                         <td>${attendee.name || 'No name'}</td>
-                        <td>${attendee.email || 'No email'}</td>
+                        <td>${attendee.phone || 'No phone'}</td>
                         <td>${eventName}</td>
                         <td>${attendee.transportPreference === 'bus' ? 
                             `<span class="badge bg-success">Bus (${attendee.busPickup?.location || 'N/A'})</span>` : 
@@ -361,10 +360,9 @@ async function loadMarketerAttendees() {
             const displayAttendees = attendeesArray.slice(0, 10);
             for (const attendee of displayAttendees) {
                 try {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
+                    const row = document.createElement('tr');                    row.innerHTML = `
                         <td>${attendee.name || 'No name'}</td>
-                        <td>${attendee.email || 'No email'}</td>
+                        <td>${attendee.phone || 'No phone'}</td>
                         <td>${attendee.event?.name || 'Unknown event'}</td>
                         <td>${attendee.transportPreference === 'bus' ? 'Bus' : 'Private'}</td>
                         <td>${attendee.createdAt || 'Date not available'}</td>
@@ -412,10 +410,9 @@ async function showEventPerformance(eventId) {
             attendeesTable.appendChild(row);
         } else {
             performanceData.attendees.forEach(attendee => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
+                const row = document.createElement('tr');                row.innerHTML = `
                     <td>${attendee.name}</td>
-                    <td>${attendee.email}</td>
+                    <td>${attendee.phone || 'Not provided'}</td>
                     <td>${attendee.transportPreference === 'bus' ? 'Bus' : 'Private'}</td>
                 `;
                 attendeesTable.appendChild(row);
@@ -521,8 +518,7 @@ async function registerAttendee() {
             form.reportValidity();
             return;
         }
-        
-        // Get form data
+          // Get form data
         const eventId = document.getElementById('registerEventId').value;
         const name = document.getElementById('attendeeName').value;
         const email = document.getElementById('attendeeEmail').value;
@@ -531,11 +527,15 @@ async function registerAttendee() {
           // Prepare attendee data
         const attendeeData = {
             name,
-            email,
-            phone,
+            phone, // Phone is now required
             transportPreference,
             event: eventId // Add event ID to the attendee data
         };
+        
+        // Add email only if provided
+        if (email && email.trim()) {
+            attendeeData.email = email;
+        }
         
         // Handle bus pickup if selected
         if (transportPreference === 'bus') {
@@ -591,10 +591,9 @@ async function registerAttendee() {
     } catch (error) {
         console.error('Error registering attendee:', error);
         let errorMessage = 'Failed to register attendee';
-        
-        // Check for specific error types
+          // Check for specific error types
         if (error.response?.status === 409) {
-            errorMessage = 'This email is already registered for this event';
+            errorMessage = 'This phone number is already registered for this event';
         } else if (error.response?.status === 400) {
             errorMessage = 'Invalid attendee data. Please check all fields and try again.';
         }

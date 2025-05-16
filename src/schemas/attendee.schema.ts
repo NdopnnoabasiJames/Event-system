@@ -4,14 +4,13 @@ import { Document, Schema as MongooseSchema } from 'mongoose';
 export type AttendeeDocument = Attendee & Document;
 
 @Schema({ timestamps: true })
-export class Attendee {
-  @Prop({ required: true, index: 'text' })
+export class Attendee {  @Prop({ required: true, index: 'text' })
   name: string;
 
-  @Prop({ required: true, index: true })
-  email: string;
+  @Prop({ index: true })
+  email?: string;
 
-  @Prop()
+  @Prop({ required: true, index: true })
   phone: string;
 
   @Prop({ required: true, enum: ['bus', 'private'], default: 'private', index: true })
@@ -45,5 +44,5 @@ AttendeeSchema.index({ event: 1, transportPreference: 1 });
 AttendeeSchema.index({ registeredBy: 1, event: 1 });
 AttendeeSchema.index({ 'busPickup.location': 1, event: 1 });
 
-// Add unique constraint for one registration per email per event
-AttendeeSchema.index({ email: 1, event: 1 }, { unique: true });
+// Add unique constraint for one registration per phone number per event
+AttendeeSchema.index({ phone: 1, event: 1 }, { unique: true });
