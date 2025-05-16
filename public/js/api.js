@@ -50,18 +50,11 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
             showToast('error', 'You are offline. Please check your internet connection.');
             throw error;
         }
-          if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        
+        if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
             showToast('error', 'Unable to connect to the server. Please check if the server is running at ' + API_BASE_URL);
         } else if (error.response?.status === 500) {
-            // Special handling for "No attendees found" error - it should be treated as an empty result, not an error
-            const errorMessage = error.response?.data?.message || error.message || '';
-            if (errorMessage.includes('No attendees found for this event')) {
-                console.log('Handling "No attendees found" gracefully');
-                // Don't show a toast for this specific error
-                error.message = 'No attendees found for this event';
-            } else {
-                showToast('error', 'Internal server error. Please try again later.');
-            }
+            showToast('error', 'Internal server error. Please try again later.');
         } else {
             const errorMessage = error.response?.data?.message || error.message || 'An error occurred';
             showToast('error', errorMessage);
@@ -183,44 +176,8 @@ const eventsApi = {
 // Attendees API functions
 const attendeesApi = {
     async getAllAttendees(eventId) {
-        try {
-            const endpoint = eventId ? `/attendees?eventId=${eventId}` : '/attendees';
-            const response = await apiCall(endpoint, 'GET', null, auth.getToken());
-            
-            // Log the response structure for debugging
-            console.log('Attendees API response:', response);
-            
-            // Handle different response formats
-            if (response && typeof response === 'object') {
-                // CRITICAL FIX: Handle nested response structure for attendees
-                if (response.data && Array.isArray(response.data)) {
-                    console.log('Extracting attendees from response.data wrapper', response.data.length);
-                    return response.data;
-                } else if (Array.isArray(response)) {
-                    console.log('Using attendees directly from response array', response.length);
-                    return response;
-                } else if (response.attendees && Array.isArray(response.attendees)) {
-                    console.log('Extracting from response.attendees property', response.attendees.length);
-                    return response.attendees;
-                }
-                
-                // If we can't determine the structure but it's an object, return as array with one item
-                if (!Array.isArray(response)) {
-                    console.warn('Unexpected attendees response format, trying to adapt:', response);
-                    return [response];
-                }
-            }
-            
-            return response || [];
-        } catch (error) {
-            // Handle "No attendees found" as a valid case that should return an empty array
-            if (error.message && error.message.includes('No attendees found for this event')) {
-                console.log('No attendees found for this event, returning empty array');
-                return [];
-            }
-            // Re-throw other errors
-            throw error;
-        }
+        const endpoint = eventId ? `/attendees?eventId=${eventId}` : '/attendees';
+        return await apiCall(endpoint, 'GET', null, auth.getToken());
     },
 
     async getAttendee(id) {
@@ -340,11 +297,14 @@ function updateAuthState() {
                 <span class="navbar-text me-3">Welcome, ${user.name || 'User'}</span>
                 ${dashboardLink}
                 <button onclick="auth.logout()" class="btn btn-outline-light">Logout</button>
-            `;
-        } else {
+            `;        } else {
+            // Check if we're in the root directory or pages directory
+            const isInPages = window.location.pathname.includes('/pages/');
+            const pathPrefix = isInPages ? '' : 'pages/';
+            
             authButtons.innerHTML = `
-                <a href="pages/login.html" class="btn btn-outline-light me-2">Login</a>
-                <a href="pages/register.html" class="btn btn-light">Register</a>
+                <a href="${pathPrefix}login.html" class="btn btn-outline-light me-2">Login</a>
+                <a href="${pathPrefix}register.html" class="btn btn-light">Register</a>
             `;
         }
     }
