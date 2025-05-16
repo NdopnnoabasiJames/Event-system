@@ -45,7 +45,14 @@ async function loadEventDetails(eventId) {
         // Handle different response formats
         let event;
         if (response && typeof response === 'object') {
-            event = response;
+            // CRITICAL FIX: Extract the event data from the nested response structure
+            if (response.data && typeof response.data === 'object') {
+                event = response.data;
+                console.log('FIXED: Using event data from response.data wrapper', event);
+            } else {
+                event = response;
+                console.log('Using event data directly from response', event);
+            }
             
             // Check if the event has all required fields
             if (!event.name) {
@@ -72,16 +79,47 @@ async function loadEventDetails(eventId) {
     }
 }
 
-function updateEventUI(event) {
+async function updateEventUI(event) {
     console.log('Updating UI with event data:', event); // Log event data for debugging
     
+    // Get the attendee count for this event BEFORE we calculate statistics
+    try {
+        // If attendeeCount is not already set, fetch it from the API
+        if (typeof event.attendeeCount !== 'number' || isNaN(event.attendeeCount)) {
+            console.log('Fetching attendee count from API for event:', event._id || event.id);
+            const eventId = event._id || event.id;
+            
+            if (eventId) {
+                const attendeesResponse = await apiCall(`/attendees?eventId=${eventId}`, 'GET', null, auth.getToken());
+                // Handle different response formats
+                if (Array.isArray(attendeesResponse)) {
+                    event.attendeeCount = attendeesResponse.length;
+                } else if (attendeesResponse && typeof attendeesResponse === 'object' && Array.isArray(attendeesResponse.data)) {
+                    event.attendeeCount = attendeesResponse.data.length;
+                } else {
+                    event.attendeeCount = 0;
+                }
+                console.log('Fetched attendee count:', event.attendeeCount);
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching attendee count:', error);
+        event.attendeeCount = 0;
+    }
+    
     // Update event image
-    document.querySelector('.img-fluid').src = event.imageUrl || 'https://placehold.co/800x400';
+    const eventImage = document.querySelector('.img-fluid');
+    if (eventImage) {
+        eventImage.src = event.imageUrl || 'https://placehold.co/800x400';
+    }
 
     // Update event title and basic info
-    document.querySelector('h1').textContent = event.name || 'Event Details';
+    const eventTitle = document.querySelector('h1');
+    if (eventTitle) {
+        eventTitle.textContent = event.name || 'Event Details';
+    }
     
-    // FIXED: Format date more reliably
+    // Format date more reliably
     let eventDate = 'Date not available';
     if (event.date) {
         try {
@@ -126,7 +164,7 @@ function updateEventUI(event) {
         }
     }
     
-    // FIXED: Get location more reliably
+    // Get location more reliably
     let location = 'Location not specified';
     if (event.state && typeof event.state === 'string' && event.state.trim() !== '') {
         console.log('Using event.state for location:', event.state);
@@ -147,7 +185,7 @@ function updateEventUI(event) {
         }
     }
     
-    // FIXED: Calculate available seats more reliably 
+    // Calculate available seats more reliably 
     console.log('maxAttendees raw value:', event.maxAttendees, 'type:', typeof event.maxAttendees);
     console.log('attendeeCount raw value:', event.attendeeCount, 'type:', typeof event.attendeeCount);
     
@@ -173,7 +211,8 @@ function updateEventUI(event) {
     
     console.log('Parsed maxAttendees:', maxAttendees, 'attendeeCount:', attendeeCount);
     const availableSeats = Math.max(0, maxAttendees - (isNaN(attendeeCount) ? 0 : attendeeCount));
-    // FIXED: Update event badges with more reliable values
+    
+    // Update event badges with correct labels
     const badges = document.querySelector('.d-flex.flex-wrap.gap-3');
     if (badges) {
         badges.innerHTML = `
@@ -187,12 +226,14 @@ function updateEventUI(event) {
                 <i class="fas fa-map-marker-alt me-2"></i>${location}
             </span>
             <span class="badge bg-warning fs-6">
-                <i class="fas fa-users me-2"></i>${isNaN(availableSeats) ? maxAttendees : availableSeats} Seats Available
+                <i class="fas fa-users me-2"></i>${isNaN(availableSeats) ? maxAttendees : availableSeats} Seats Remaining
             </span>
         `;
     } else {
         console.error('Could not find badges container element');
-    }    // Card text element was removed with the About section// FIXED: Update stats with more reliable values and error handling
+    }
+    
+    // Update stats with more reliable values and error handling
     const stats = document.querySelectorAll('.col h5');
     if (stats && stats.length >= 3) {
         // Attendee count
@@ -218,28 +259,48 @@ function updateEventUI(event) {
         let daysRemaining = 0;
         if (event.date) {
             try {
-                // Use various approaches to parse the date
+                console.log('Calculating days remaining for date:', event.date);
+                
+                // Create a robust date parser
                 let parsedDate = null;
                 const dateStr = String(event.date).trim();
                 
-                // First try direct Date constructor
-                parsedDate = new Date(dateStr);
-                
-                // Second try with manual parsing
-                if (isNaN(parsedDate.getTime()) && dateStr.match(/\d{4}[-/]\d{1,2}[-/]\d{1,2}/)) {
-                    const matches = dateStr.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
-                    if (matches) {
-                        const [, year, month, day] = matches;
-                        parsedDate = new Date(year, parseInt(month) - 1, day); // Month is 0-indexed
-                    }
+                // Try the most reliable parsing approach first
+                if (dateStr.includes('T')) {
+                    // ISO format with time
+                    parsedDate = new Date(dateStr);
+                    console.log('Parsed ISO format date with time:', parsedDate);
+                } 
+                else if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    // YYYY-MM-DD format
+                    const [year, month, day] = dateStr.split('-').map(Number);
+                    parsedDate = new Date(year, month - 1, day);
+                    console.log('Parsed YYYY-MM-DD format:', parsedDate);
+                }
+                else if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                    // MM/DD/YYYY format
+                    const [month, day, year] = dateStr.split('/').map(Number);
+                    parsedDate = new Date(year, month - 1, day);
+                    console.log('Parsed MM/DD/YYYY format:', parsedDate);
+                }
+                else {
+                    // Try generic Date parsing as fallback
+                    parsedDate = new Date(dateStr);
+                    console.log('Used generic date parsing:', parsedDate);
                 }
                 
-                // If we have a valid date now, calculate days remaining
+                // Validate the parsed date
                 if (parsedDate && !isNaN(parsedDate.getTime())) {
+                    // Reset time components for more accurate day calculation
                     const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    parsedDate.setHours(0, 0, 0, 0);
+                    
                     const diffTime = parsedDate - today;
                     daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    console.log('Days remaining calculation:', { parsedDate, today, diffTime, daysRemaining });
+                    console.log('Days remaining calculation:', { parsedDate: parsedDate.toISOString(), today: today.toISOString(), diffTime, daysRemaining });
+                } else {
+                    console.warn('Failed to parse event date:', dateStr);
                 }
             } catch (e) {
                 console.error('Error calculating days remaining:', e);
@@ -247,7 +308,7 @@ function updateEventUI(event) {
         }
         
         stats[2].textContent = daysRemaining > 0 ? daysRemaining : 'Past event';
-}
-
-// Function removed as registration form has been removed
-}
+    } else {
+        console.error('Could not find all stat elements');
+    }
+  }
