@@ -82,7 +82,6 @@ export class AttendeesService {
       throw new NotFoundException('Attendee not found');
     }
   }
-
   async getEventAttendees(eventId: string): Promise<AttendeeDocument[]> {
   try {
     const attendees = await this.attendeeModel
@@ -90,11 +89,8 @@ export class AttendeesService {
       .populate('registeredBy', '-password')
       .exec();
 
-    if (!attendees || attendees.length === 0) {
-      throw new HttpException('No attendees found for this event', HttpStatus.NOT_FOUND);
-    }
-
-    return attendees;
+    // Return empty array instead of throwing an error if no attendees found
+    return attendees || [];
   } catch (error) {
     throw new HttpException(`Failed to fetch event attendees: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }

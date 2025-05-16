@@ -92,27 +92,47 @@ async function updateEventUI(event) {
                 // Enhanced debugging
                 console.group('Attendee Count Debugging');
                 console.log('Event ID used for attendee lookup:', eventId);
-                
-                // Use the improved getAllAttendees method which handles response formats
-                const attendees = await attendeesApi.getAllAttendees(eventId);
-                
-                // Log attendees data for debugging
-                console.log('Attendees data received:', attendees);
-                console.log('Attendees data type:', typeof attendees);
-                console.log('Is array?:', Array.isArray(attendees));
-                
-                if (Array.isArray(attendees)) {
-                    console.log('Attendee records:', attendees.map(a => a._id || a.id || 'unknown'));
-                }
-                
-                // Simple array length count
-                event.attendeeCount = Array.isArray(attendees) ? attendees.length : 0;
-                console.log('Attendee count calculated:', event.attendeeCount);
-                console.groupEnd();
+                  // Use the improved getAllAttendees method which handles response formats
+                try {
+                    const attendees = await attendeesApi.getAllAttendees(eventId);
+                    
+                    // Log attendees data for debugging
+                    console.log('Attendees data received:', attendees);
+                    console.log('Attendees data type:', typeof attendees);
+                    console.log('Is array?:', Array.isArray(attendees));
+                    
+                    if (Array.isArray(attendees)) {
+                        console.log('Attendee records:', attendees.map(a => a._id || a.id || 'unknown'));
+                        // Simple array length count
+                        event.attendeeCount = attendees.length;
+                    } else if (attendees && attendees.data && Array.isArray(attendees.data)) {
+                        // Handle case where API returns { data: [...] }
+                        event.attendeeCount = attendees.data.length;
+                    } else {
+                        event.attendeeCount = 0;
+                    }
+                    console.log('Attendee count calculated:', event.attendeeCount);
+                } catch (fetchError) {
+                    // Special handling for "No attendees found" error (HTTP 404)
+                    if (fetchError.response && fetchError.response.status === 404) {
+                        console.log('No attendees found for this event - this is normal for new events');
+                        event.attendeeCount = 0;
+                    } else {
+                        // Set to 0 for other errors
+                        console.warn('Error fetching attendees, using 0:', fetchError.message);
+                        event.attendeeCount = 0;
+                    }
+                }                console.groupEnd();
             } catch (fetchError) {
-                // Set to 0 for any error
-                console.warn('Error fetching attendees, using 0:', fetchError.message);
-                event.attendeeCount = 0;
+                // Special handling for "No attendees found" error (HTTP 404)
+                if (fetchError.response && fetchError.response.status === 404) {
+                    console.log('No attendees found for this event - this is normal for new events');
+                    event.attendeeCount = 0;
+                } else {
+                    // Set to 0 for other errors
+                    console.warn('Error fetching attendees, using 0:', fetchError.message);
+                    event.attendeeCount = 0;
+                }
             }
             
             // Ensure it's a number
