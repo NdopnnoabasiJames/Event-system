@@ -30,9 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadAvailableEvents();
         
         // Load registered attendees
-        await loadMarketerAttendees();
-    } catch (error) {
-        console.error('Error loading marketer dashboard:', error);
+        await loadMarketerAttendees();    } catch (error) {
         showToast('error', 'Failed to load dashboard data');
     }
 });
@@ -62,10 +60,8 @@ function setupTabs() {
     }
 }
 
-async function loadMarketerPerformance() {
-    try {
+async function loadMarketerPerformance() {    try {
         const responseData = await apiCall('/marketers/analytics/performance', 'GET', null, auth.getToken());
-        console.log('Performance data response:', responseData);
         
         // Handle different response formats
         const response = responseData.data || responseData;
@@ -83,9 +79,7 @@ async function loadMarketerPerformance() {
             avgAttendees = (response.totalAttendeesRegistered / response.eventsParticipated).toFixed(1);
         }
         
-        document.getElementById('avg-attendees').textContent = avgAttendees;
-    } catch (error) {
-        console.error('Error loading performance data:', error);
+        document.getElementById('avg-attendees').textContent = avgAttendees;    } catch (error) {
         showToast('error', 'Failed to load performance data');
         
         // Set default values in case of error
@@ -95,10 +89,8 @@ async function loadMarketerPerformance() {
     }
 }
 
-async function loadMarketerEvents() {
-    try {
+async function loadMarketerEvents() {    try {
         const responseData = await apiCall('/marketers/events/my', 'GET', null, auth.getToken());
-        console.log('Events response:', responseData);
         
         // Extract events array handling different response formats
         // First check if response is an array directly
@@ -113,17 +105,10 @@ async function loadMarketerEvents() {
         if (!eventsArray && responseData && responseData.events) {
             eventsArray = Array.isArray(responseData.events) ? responseData.events : null;
         }
-        
-        // Final fallback - if we still don't have an array, create an empty one
+          // Final fallback - if we still don't have an array, create an empty one
         if (!eventsArray) {
-            console.warn('Could not extract events array from response, using empty array');
             eventsArray = [];
-            
-            // Log the actual response for debugging
-            console.error('Unexpected response format from /marketers/events/my:', responseData);
         }
-        
-        console.log('Processed events array:', eventsArray);
         
         const tableBody = document.getElementById('events-table-body');
         const noEventsMessage = document.getElementById('no-events');
@@ -154,11 +139,10 @@ async function loadMarketerEvents() {
                             year: 'numeric', 
                             month: 'short', 
                             day: 'numeric' 
-                        });
-                    }
+                        });                    }
                 } catch (dateError) {
-                    console.error('Error formatting date:', dateError);
-                }                row.innerHTML = `
+                    // Silently handle date formatting errors
+                }row.innerHTML = `
                     <td>${eventName}</td>
                     <td>${formattedDate}</td>
                     <td id="attendee-count-${eventId}">Loading...</td>
@@ -182,9 +166,8 @@ async function loadMarketerEvents() {
                 // Load attendee count for this event if we have a valid ID
                 if (eventId !== 'unknown') {
                     loadEventAttendeeCount(eventId);
-                }
-            } catch (eventError) {
-                console.error('Error processing event:', event, eventError);
+                }            } catch (eventError) {
+                // Silently handle event processing errors
             }
         }
           // Add event listeners for performance buttons
@@ -225,9 +208,7 @@ async function loadMarketerEvents() {
                     showToast('error', 'Cannot leave this event');
                 }
             });
-        });
-    } catch (error) {
-        console.error('Error loading marketer events:', error);
+        });    } catch (error) {
         showToast('error', 'Failed to load events');
         
         // Show no events message in case of error
@@ -245,9 +226,7 @@ async function loadEventAttendeeCount(eventId) {
         
         if (countElement) {
             countElement.textContent = response.attendeesCount;
-        }
-    } catch (error) {
-        console.error(`Error loading attendee count for event ${eventId}:`, error);
+        }    } catch (error) {
         const countElement = document.getElementById(`attendee-count-${eventId}`);
         if (countElement) {
             countElement.textContent = 'Error';
@@ -259,7 +238,6 @@ async function loadMarketerAttendees() {
     try {
         // Use the marketersApi.getMyAttendees method to ensure we're using the correct endpoint
         const responseData = await marketersApi.getMyAttendees();
-        console.log('Attendees response:', responseData);
         
         // Extract attendees array handling different response formats
         // First check if response is an array directly
@@ -279,14 +257,10 @@ async function loadMarketerAttendees() {
         if (!attendeesArray && responseData && responseData.attendees) {
             attendeesArray = Array.isArray(responseData.attendees) ? responseData.attendees : null;
         }
-        
-        // Final fallback - if we still don't have an array, create an empty one
+          // Final fallback - if we still don't have an array, create an empty one
         if (!attendeesArray) {
-            console.warn('Could not extract attendees array from response, using empty array');
             attendeesArray = [];
         }
-        
-        console.log('Processed attendees array:', attendeesArray);
         
         const tableBody = document.getElementById('attendees-table-body');
         const noAttendeesMessage = document.getElementById('no-attendees');
@@ -330,9 +304,8 @@ async function loadMarketerAttendees() {
                                 month: 'short', 
                                 day: 'numeric' 
                             });
-                        }
-                    } catch (dateError) {
-                        console.error('Error formatting date:', dateError);
+                        }                    } catch (dateError) {
+                        // Silently handle date formatting errors
                     }
                     
                     // Access event name safely
@@ -348,13 +321,12 @@ async function loadMarketerAttendees() {
                         <td>${formattedDate}</td>
                     `;
                     
-                    tableBody.appendChild(row);
-                } catch (attendeeError) {
-                    console.error('Error processing attendee:', attendee, attendeeError);
+                    tableBody.appendChild(row);                } catch (attendeeError) {
+                    // Silently handle attendee processing errors
                 }
             }
         } catch (sortError) {
-            console.error('Error sorting or processing attendees:', sortError);
+            // Fallback if sorting fails
             
             // Fallback - just show first 10 without sorting
             const displayAttendees = attendeesArray.slice(0, 10);
@@ -367,14 +339,12 @@ async function loadMarketerAttendees() {
                         <td>${attendee.transportPreference === 'bus' ? 'Bus' : 'Private'}</td>
                         <td>${attendee.createdAt || 'Date not available'}</td>
                     `;
-                    tableBody.appendChild(row);
-                } catch (e) {
-                    console.error('Error displaying attendee:', e);
+                    tableBody.appendChild(row);                } catch (e) {
+                    // Silently handle display errors
                 }
             }
         }
     } catch (error) {
-        console.error('Error loading marketer attendees:', error);
         showToast('error', 'Failed to load attendees');
         
         // Show no attendees message in case of error
@@ -421,9 +391,7 @@ async function showEventPerformance(eventId) {
         
         // Show modal
         const modal = new bootstrap.Modal(document.getElementById('eventPerformanceModal'));
-        modal.show();
-    } catch (error) {
-        console.error(`Error loading event performance for event ${eventId}:`, error);
+        modal.show();    } catch (error) {
         showToast('error', 'Failed to load event performance data');
     }
 }
@@ -431,18 +399,14 @@ async function showEventPerformance(eventId) {
 // Function to open the register attendee modal
 async function openRegisterAttendeeModal(eventId, eventName) {
     try {
-        console.log('Opening register attendee modal for event:', eventId, eventName);
-        
         // Set the event ID in the hidden field
         document.getElementById('registerEventId').value = eventId;
         
         // Update the modal title to include the event name
         const modalTitle = document.querySelector('#registerAttendeeModal .modal-title');
         modalTitle.textContent = `Register Attendee for ${eventName}`;
-        
-        // Get event details to populate bus pickup locations
+          // Get event details to populate bus pickup locations
         const event = await apiCall(`/events/${eventId}`, 'GET', null, auth.getToken());
-        console.log('Event details:', event);
         
         // Extract the event data
         const eventData = event.data || event;
@@ -464,9 +428,8 @@ async function openRegisterAttendeeModal(eventId, eventName) {
                             hour: '2-digit', 
                             minute: '2-digit' 
                         });
-                    }
-                } catch (error) {
-                    console.error('Error formatting pickup time:', error);
+                    }                } catch (error) {
+                    // Silently handle pickup time formatting errors
                 }
                 
                 const option = document.createElement('option');
@@ -501,9 +464,7 @@ async function openRegisterAttendeeModal(eventId, eventName) {
         // Show the modal
         const modal = new bootstrap.Modal(document.getElementById('registerAttendeeModal'));
         modal.show();
-        
-    } catch (error) {
-        console.error('Error opening register attendee modal:', error);
+          } catch (error) {
         showToast('error', 'Failed to prepare registration form. Please try again.');
     }
 }
@@ -544,8 +505,7 @@ async function registerAttendee() {
             if (!busPickupValue) {
                 showToast('error', 'Please select a bus pickup location');
                 return;
-            }
-              try {
+            }            try {
                 const busPickup = JSON.parse(busPickupValue);
                 
                 // Fix ISO 8601 date string format
@@ -557,17 +517,12 @@ async function registerAttendee() {
                 
                 attendeeData.busPickup = busPickup;
             } catch (error) {
-                console.error('Error parsing bus pickup data:', error);
                 showToast('error', 'Invalid bus pickup data');
                 return;
             }
         }
-        
-        console.log('Registering attendee with data:', attendeeData);
-        
-        // Send request to register attendee
+          // Send request to register attendee
         const response = await marketersApi.registerAttendee(eventId, attendeeData);
-        console.log('Registration response:', response);
         
         // Show success message
         showToast('success', 'Attendee registered successfully');
@@ -587,9 +542,7 @@ async function registerAttendee() {
         
         // Update attendee count for this event
         loadEventAttendeeCount(eventId);
-        
-    } catch (error) {
-        console.error('Error registering attendee:', error);
+          } catch (error) {
         let errorMessage = 'Failed to register attendee';
           // Check for specific error types
         if (error.response?.status === 409) {
@@ -632,15 +585,12 @@ document.addEventListener('DOMContentLoaded', () => {
 /**
  * Loads available events that the marketer can volunteer for
  */
-async function loadAvailableEvents() {
-    try {
-        // Get both available events and events the marketer has already volunteered for
+async function loadAvailableEvents() {    try {
+        // Get both available events and events the marketer has already volunteered for        
         const [availableEventsResponse, myEventsResponse] = await Promise.all([
             marketersApi.getAvailableEvents(),
             marketersApi.getMyEvents()
         ]);
-        
-        console.log('Available events response:', availableEventsResponse);
         
         // Extract events array handling different response formats
         let eventsArray = Array.isArray(availableEventsResponse) ? availableEventsResponse : null;
@@ -648,9 +598,7 @@ async function loadAvailableEvents() {
         if (!eventsArray && availableEventsResponse && availableEventsResponse.data) {
             eventsArray = Array.isArray(availableEventsResponse.data) ? availableEventsResponse.data : null;
         }
-        
-        if (!eventsArray) {
-            console.warn('Could not extract available events array from response, using empty array');
+          if (!eventsArray) {
             eventsArray = [];
         }
         
@@ -695,10 +643,9 @@ async function loadAvailableEvents() {
                             year: 'numeric', 
                             month: 'short', 
                             day: 'numeric' 
-                        });
-                    }
+                        });                    }
                 } catch (dateError) {
-                    console.error('Error formatting date:', dateError);
+                    // Silently handle date formatting errors
                 }
                   // Check if the marketer has already volunteered for this event
                 const hasVolunteered = myEventIds.has(eventId);
@@ -715,10 +662,9 @@ async function loadAvailableEvents() {
                         </button>
                     </td>
                 `;
-                
-                tableBody.appendChild(row);
+                  tableBody.appendChild(row);
             } catch (eventError) {
-                console.error('Error processing available event:', event, eventError);
+                // Silently handle event processing errors
             }
         }
           // Add event listeners for volunteer buttons
@@ -746,10 +692,8 @@ async function loadAvailableEvents() {
                 } else {
                     showToast('error', 'Invalid event');
                 }
-            });
-        });
+            });        });
     } catch (error) {
-        console.error('Error loading available events:', error);
         showToast('error', 'Failed to load available events');
         
         // Show no events message in case of error
@@ -763,10 +707,8 @@ async function loadAvailableEvents() {
 /**
  * Leave an event as a marketer
  */
-async function leaveEvent(eventId) {
-    try {
+async function leaveEvent(eventId) {    try {
         const response = await marketersApi.leaveEvent(eventId);
-        console.log('Leave event response:', response);
         
         showToast('success', 'Successfully left the event');
         
@@ -775,9 +717,7 @@ async function leaveEvent(eventId) {
         await loadMarketerEvents();
         
         // Refresh performance data
-        await loadMarketerPerformance();
-    } catch (error) {
-        console.error('Error leaving event:', error);
+        await loadMarketerPerformance();    } catch (error) {
         let errorMessage = 'Failed to leave event';
         
         if (error.response?.status === 400) {
@@ -791,10 +731,8 @@ async function leaveEvent(eventId) {
 /**
  * Volunteer for an event
  */
-async function volunteerForEvent(eventId) {
-    try {
+async function volunteerForEvent(eventId) {    try {
         const response = await marketersApi.volunteerForEvent(eventId);
-        console.log('Volunteer response:', response);
         
         showToast('success', 'Successfully volunteered for the event');
         
@@ -803,9 +741,7 @@ async function volunteerForEvent(eventId) {
         await loadMarketerEvents();
         
         // Refresh performance data
-        await loadMarketerPerformance();
-    } catch (error) {
-        console.error('Error volunteering for event:', error);
+        await loadMarketerPerformance();    } catch (error) {
         let errorMessage = 'Failed to volunteer for event';
         
         if (error.response?.status === 400) {
