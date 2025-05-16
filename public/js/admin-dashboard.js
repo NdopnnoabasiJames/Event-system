@@ -1,10 +1,7 @@
 // Admin Dashboard JavaScript
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('Admin dashboard loading...');
-    
     // Check if user is authenticated
     if (!auth.isAuthenticated()) {
-        console.log('User not authenticated, redirecting to login');
         showToast('error', 'Please login to access the admin dashboard');
         window.location.href = 'login.html';
         return;
@@ -12,10 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Check if user is an admin
     const user = auth.getUser();
-    console.log('User role:', user.role);
-    
-    if (user.role !== 'admin') {
-        console.log('User is not an admin, redirecting to home page');
+      if (user.role !== 'admin') {
         showToast('error', 'Only administrators can access this page');
         
         // Redirect to appropriate dashboard based on role
@@ -26,8 +20,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         return;
     }
-    
-    console.log('Admin authentication confirmed, loading dashboard');
 
     try {
         // Update auth state
@@ -49,24 +41,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (eventFilter) {
             eventFilter.addEventListener('change', loadAttendeesData);
         }
-        
-        // Setup event creation handlers with better error handling
+          // Setup event creation handlers with better error handling
         try {
             await setupEventCreationHandlers();
         } catch (error) {
-            console.error('Error setting up event creation handlers:', error);
             // We don't need to show another toast here since setupEventCreationHandlers already does
         }
     } catch (error) {
-        console.error('Error loading admin dashboard:', error);
         showToast('error', 'Failed to load dashboard data');
     }
 });
 
 async function loadTopMarketers() {
     try {
-        const response = await marketersApi.getTopMarketers();
-        const marketers = Array.isArray(response) ? response : (response.data || []);
+        const response = await marketersApi.getTopMarketers();        const marketers = Array.isArray(response) ? response : (response.data || []);
         
         const tableBody = document.getElementById('marketers-table-body');
         const noMarketersMessage = document.getElementById('no-marketers');
@@ -100,19 +88,14 @@ async function loadTopMarketers() {
             
             tableBody.appendChild(row);
         });
-        
-        console.log('Adding event listeners to marketer detail buttons');
-        
-        // Add event listeners for marketer detail buttons
+          // Add event listeners for marketer detail buttons
         document.querySelectorAll('.view-marketer').forEach(button => {
             button.addEventListener('click', (e) => {
                 const marketerId = e.currentTarget.getAttribute('data-marketer-id');
-                console.log('Marketer details button clicked for ID:', marketerId);
                 showMarketerDetails(marketerId);
             });
         });
     } catch (error) {
-        console.error('Error loading top marketers:', error);
         showToast('error', 'Failed to load marketers data');
     }
 }
@@ -130,14 +113,11 @@ async function loadEventsData() {
             tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No events found</td></tr>';
             return;
         }
-        
-        // Get all attendees to calculate counts
+          // Get all attendees to calculate counts
         const attendeesResponse = await apiCall('/attendees', 'GET', null, auth.getToken());
         const allAttendees = Array.isArray(attendeesResponse) ? 
                             attendeesResponse : 
                             (attendeesResponse.data || []);
-        
-        console.log('All attendees for count calculation:', allAttendees);
         
         // Create a map to count attendees per event
         const attendeesCountMap = {};
@@ -150,8 +130,6 @@ async function loadEventsData() {
                 attendeesCountMap[eventId]++;
             }
         });
-        
-        console.log('Attendees count map:', attendeesCountMap);
         
         for (const event of events) {
             const row = document.createElement('tr');
@@ -195,9 +173,7 @@ async function loadEventsData() {
             `;
             
             tableBody.appendChild(row);
-        }
-    } catch (error) {
-        console.error('Error loading events:', error);
+        }    } catch (error) {
         showToast('error', 'Failed to load events data');
     }
 }
@@ -227,9 +203,8 @@ async function setupEventFilter() {
             option.value = event._id;
             option.textContent = event.name;
             selectElement.appendChild(option);
-        });
-    } catch (error) {
-        console.error('Error setting up event filter:', error);
+        });    } catch (error) {
+        // Silently handle event filter setup errors
     }
 }
 
@@ -279,46 +254,35 @@ async function loadAttendeesData() {
             `;
             
             tableBody.appendChild(row);
-        }
-    } catch (error) {
-        console.error('Error loading attendees:', error);
+        }    } catch (error) {
         showToast('error', 'Failed to load attendees data');
     }
 }
 
 async function showMarketerDetails(marketerId) {
     try {
-        console.log('Showing marketer details for ID:', marketerId);
-        
         // Get marketer user info
         const marketerResponse = await apiCall(`/users/${marketerId}`, 'GET', null, auth.getToken());
-        console.log('Marketer API response:', marketerResponse);
         
         // Handle different response formats
         const marketer = marketerResponse.data || marketerResponse;
-        console.log('Processed marketer data:', marketer);
         
         if (!marketer) {
             throw new Error('Could not retrieve marketer information');
         }
-        
-        // Get marketer performance stats
+          // Get marketer performance stats
         const statsResponse = await apiCall(`/marketers/analytics/performance?marketerId=${marketerId}`, 'GET', null, auth.getToken());
-        console.log('Stats API response:', statsResponse);
         
         // Handle different response formats
         const stats = statsResponse.data || statsResponse;
-        console.log('Processed stats data:', stats);
         
         // Update modal content with marketer info and stats
         document.getElementById('marketer-name').textContent = marketer.name || 'No name available';
         document.getElementById('marketer-email').textContent = marketer.email || 'No email available';
         document.getElementById('marketer-total-attendees').textContent = stats?.totalAttendeesRegistered || 0;
         document.getElementById('marketer-events').textContent = stats?.eventsParticipated || 0;
-        
-        // Get marketer events
+          // Get marketer events
         const eventsResponse = await apiCall(`/marketers/events/my?marketerId=${marketerId}`, 'GET', null, auth.getToken());
-        console.log('Events API response:', eventsResponse);
         
         // Extract events data handling different response formats
         // First check if response is an array directly
@@ -336,11 +300,8 @@ async function showMarketerDetails(marketerId) {
         
         // Final fallback - if we still don't have an array, create an empty one
         if (!eventsArray) {
-            console.warn('Could not extract events array from response, using empty array');
             eventsArray = [];
         }
-        
-        console.log('Processed events array:', eventsArray);
         
         // Populate events table
         const eventsTable = document.getElementById('marketer-events-table');
@@ -352,12 +313,10 @@ async function showMarketerDetails(marketerId) {
             eventsTable.appendChild(row);
         } else {
             for (const event of eventsArray) {
-                try {
-                    // Make sure event has an _id property
+                try {                    // Make sure event has an _id property
                     const eventId = event._id || event.id;
                     
                     if (!eventId) {
-                        console.error('Event missing ID:', event);
                         continue;
                     }
                     
@@ -383,9 +342,8 @@ async function showMarketerDetails(marketerId) {
                                 month: 'short', 
                                 day: 'numeric' 
                             });
-                        }
-                    } catch (dateError) {
-                        console.error('Error formatting date:', dateError);
+                        }                    } catch (dateError) {
+                        // Silently handle date formatting errors
                     }
                     
                     row.innerHTML = `
@@ -394,10 +352,7 @@ async function showMarketerDetails(marketerId) {
                         <td>${eventStats?.attendeesCount || 0}</td>
                     `;
                     
-                    eventsTable.appendChild(row);
-                } catch (eventError) {
-                    console.error(`Error loading stats for event:`, event, eventError);
-                    
+                    eventsTable.appendChild(row);                } catch (eventError) {
                     // Still create a row with available information
                     const row = document.createElement('tr');
                     let eventName = 'Unknown event';
@@ -412,9 +367,8 @@ async function showMarketerDetails(marketerId) {
                                 month: 'short', 
                                 day: 'numeric' 
                             });
-                        }
-                    } catch (formatError) {
-                        console.error('Error formatting event data:', formatError);
+                        }                    } catch (formatError) {
+                        // Silently handle formatting errors
                     }
                     
                     row.innerHTML = `
@@ -433,12 +387,10 @@ async function showMarketerDetails(marketerId) {
         if (!modalElement) {
             throw new Error('Modal element not found');
         }
-        
-        try {
+          try {
             const modal = new bootstrap.Modal(modalElement);
             modal.show();
         } catch (modalError) {
-            console.error('Error showing modal:', modalError);
             // Fallback method if the bootstrap.Modal constructor fails
             // This uses jQuery if available, otherwise falls back to setting display styles
             if (window.$) {
@@ -457,30 +409,23 @@ async function showMarketerDetails(marketerId) {
                 }
             }
         }
-        
-    } catch (error) {
-        console.error(`Error loading marketer details for ${marketerId}:`, error);
+          } catch (error) {
         showToast('error', 'Failed to load marketer details: ' + (error.message || 'Unknown error'));
     }
 }
 
 async function setupEventCreationHandlers() {
     try {
-        console.log('Setting up event creation handlers');
-        
         // Add Branch button handler
         const addBranchBtn = document.getElementById('addBranchBtn');
         if (!addBranchBtn) {
-            console.error('Cannot find addBranchBtn element');
             return;
         }
         
         let branchCount = 1;
-        
-        addBranchBtn.addEventListener('click', () => {
+          addBranchBtn.addEventListener('click', () => {
             const branchesContainer = document.getElementById('branchesContainer');
             if (!branchesContainer) {
-                console.error('Cannot find branchesContainer element');
                 return;
             }
             
@@ -522,20 +467,16 @@ async function setupEventCreationHandlers() {
                 });
             }
         });
-        
-        // Add Bus Pickup button handler
+          // Add Bus Pickup button handler
         const addBusPickupBtn = document.getElementById('addBusPickupBtn');
         if (!addBusPickupBtn) {
-            console.error('Cannot find addBusPickupBtn element');
             return;
         }
         
         let pickupCount = 1;
-        
-        addBusPickupBtn.addEventListener('click', () => {
+          addBusPickupBtn.addEventListener('click', () => {
             const busPickupsContainer = document.getElementById('busPickupsContainer');
             if (!busPickupsContainer) {
-                console.error('Cannot find busPickupsContainer element');
                 return;
             }
             
@@ -573,18 +514,14 @@ async function setupEventCreationHandlers() {
                 });
             }
         });
-        
-        // Form submission handler
+          // Form submission handler
         const saveEventBtn = document.getElementById('saveEventBtn');
         if (!saveEventBtn) {
-            console.error('Cannot find saveEventBtn element');
             return;
-        }
-          saveEventBtn.addEventListener('click', async () => {
+        }        saveEventBtn.addEventListener('click', async () => {
             try {
                 const form = document.getElementById('createEventForm');
                 if (!form) {
-                    console.error('Cannot find createEventForm element');
                     return;
                 }
                 
@@ -593,35 +530,23 @@ async function setupEventCreationHandlers() {
                     form.reportValidity();
                     return;
                 }
-                
-                // Get form data and convert to appropriate format
+                  // Get form data and convert to appropriate format
                 const formData = getFormDataAsObject(form);
-                // Log raw formData for debugging
-                console.log('Raw formData:', formData);
-                // Log raw and ISO-formatted date values for debugging
-                console.log('Raw event date:', formData.date);
                 const isoEventDate = toFullISOString(formData.date);
-                console.log('ISO event date:', isoEventDate);
                 let hasInvalidDate = false;
                 if (!isoEventDate) {
                     showToast('error', 'Event date is missing or invalid. Please select a valid date and time.');
                     hasInvalidDate = true;
-                }
-                if (formData.busPickups && Array.isArray(formData.busPickups)) {
+                }                if (formData.busPickups && Array.isArray(formData.busPickups)) {
                     formData.busPickups.forEach((pickup, idx) => {
-                        console.log(`Raw busPickups[${idx}].departureTime:`, pickup.departureTime);
                         const isoPickup = toFullISOString(pickup.departureTime);
-                        console.log(`ISO busPickups[${idx}].departureTime:`, isoPickup);
                         if (!isoPickup) {
                             showToast('error', `Bus pickup ${idx + 1} departure time is missing or invalid. Please select a valid date and time.`);
                             hasInvalidDate = true;
                         }
                     });
-                }
-                if (hasInvalidDate) return;
+                }                if (hasInvalidDate) return;
                 const eventData = formatEventData(formData);
-                // Log formatted eventData for debugging
-                console.log('Formatted eventData:', eventData);
 
                 // Defensive validation for ISO 8601 strings
                 if (!eventData.date || isNaN(Date.parse(eventData.date))) {
@@ -634,11 +559,8 @@ async function setupEventCreationHandlers() {
                         if (!pickup.departureTime || isNaN(Date.parse(pickup.departureTime))) {
                             showToast('error', `Bus pickup ${i + 1} departure time is missing or invalid. Please select a valid date and time.`);
                             return;
-                        }
-                    }
+                        }                    }
                 }
-                // Log the final payload being sent
-                console.log('Final eventData payload to API:', eventData);
                 // Create the event
                 await eventsApi.createEvent(eventData);
                 
@@ -648,11 +570,8 @@ async function setupEventCreationHandlers() {
                 // Close the modal and reload events data
                 const modalElement = document.getElementById('createEventModal');
                 if (modalElement) {
-                    const modal = bootstrap.Modal.getInstance(modalElement);
-                    if (modal) {
+                    const modal = bootstrap.Modal.getInstance(modalElement);                    if (modal) {
                         modal.hide();
-                    } else {
-                        console.warn('Could not find Bootstrap modal instance');
                     }
                 }
                 
@@ -661,16 +580,10 @@ async function setupEventCreationHandlers() {
                 
                 // Reload events data
                 await loadEventsData();
-                await setupEventFilter();
-            } catch (error) {
+                await setupEventFilter();            } catch (error) {
                 showToast('error', 'Failed to create event: ' + (error.message || 'Unknown error'));
-                console.error('Error creating event:', error);
             }
-        });
-        
-        console.log('Event creation handlers set up successfully');
-    } catch (error) {
-        console.error('Error in setupEventCreationHandlers:', error);
+        });    } catch (error) {
         showToast('error', 'Failed to set up event creation functionality');
     }
 }
@@ -725,8 +638,6 @@ function toFullISOString(val) {
     }
     // If format is yyyy-mm-ddTHH:MM (from datetime-local), treat as local and convert to ISO
     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(val)) {
-        // Chrome/Edge: new Date('2025-05-12T10:00') is local time
-        // Safari: new Date('2025-05-12T10:00') is UTC
         // To ensure local time, split and use Date parts
         const [datePart, timePart] = val.split('T');
         const [year, month, day] = datePart.split('-');
