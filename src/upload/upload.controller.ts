@@ -67,8 +67,7 @@ export class UploadController {
     description: 'Invalid file format or size',
   })
   @UseInterceptors(
-    FileInterceptor('image', {
-      storage: diskStorage({
+    FileInterceptor('image', {      storage: diskStorage({
         destination: './public/Images/events',
         filename: (req, file, cb) => {
           // Generate a unique name with the original extension

@@ -586,11 +586,11 @@ async function setupEventCreationHandlers() {
                         return;
                     }
                 }
-                
-                // Get form data and convert to appropriate format
+                  // Get form data and convert to appropriate format
                 const formData = getFormDataAsObject(form);
                 if (bannerImageName) {
                     formData.bannerImage = bannerImageName;
+                    console.log('Banner image added to form data:', bannerImageName);
                 }
                 
                 const isoEventDate = toFullISOString(formData.date);
@@ -742,7 +742,8 @@ function formatEventData(formData) {
         maxAttendees: formData.maxAttendees ? parseInt(formData.maxAttendees) : undefined,
         isActive: formData.isActive === 'true',
         branches: formData.branches || [],
-        busPickups: []
+        busPickups: [],
+        bannerImage: formData.bannerImage || null // Include the banner image
     };
 
     if (formData.busPickups && Array.isArray(formData.busPickups)) {

@@ -92,8 +92,7 @@ function displayEvents(events) {
     // Display the events from the database
     eventsContainer.innerHTML = events.map(event => `
         <div class="col-md-6 col-lg-4">
-            <div class="card h-100">
-                <img src="${event.imageUrl || 'https://placehold.co/400x200'}" class="card-img-top" alt="${event.name}">
+            <div class="card h-100">                <img src="${getEventBannerUrl(event.bannerImage)}" class="card-img-top" alt="${event.name}">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <h5 class="card-title mb-0">${event.name}</h5>

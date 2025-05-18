@@ -25,6 +25,27 @@ body {
     transform: translateY(-5px);
 }
 
+/* Event Cards */
+.card-img-top {
+    height: 200px;
+    object-fit: cover;
+    object-position: center;
+}
+
+/* Event Details Page */
+.event-banner-container {
+    max-height: 400px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+}
+
+.event-banner-container img {
+    width: 100%;
+    object-fit: cover;
+}
+
 /* Navbar */
 .navbar {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
