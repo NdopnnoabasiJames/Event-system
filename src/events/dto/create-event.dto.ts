@@ -160,7 +160,6 @@ export class CreateEventDto {
   @ValidateNested({ each: true })
   @Type(() => BusPickupDto)
   busPickups?: BusPickup[];
-
   @ApiPropertyOptional({
     example: true,
     description: 'Whether the event is currently active and accepting registrations'
@@ -168,4 +167,12 @@ export class CreateEventDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+  
+  @ApiPropertyOptional({
+    example: 'event-banner.jpg',
+    description: 'The filename of the event banner image'
+  })
+  @IsOptional()
+  @IsString()
+  bannerImage?: string;
 }

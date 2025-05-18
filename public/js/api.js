@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'http://localhost:3031';
+const API_BASE_URL = 'http://localhost:3031/api';
 
 // Utility function to handle API calls
 async function apiCall(endpoint, method = 'GET', data = null, token = null) {
@@ -14,7 +14,10 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
     
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
-    }    try {const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    }    try {
+        // Ensure we don't have double slashes in the URL
+        const adjustedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        const response = await fetch(`${API_BASE_URL}${adjustedEndpoint}`, {
             method,
             headers,
             body: data ? JSON.stringify(data) : null,

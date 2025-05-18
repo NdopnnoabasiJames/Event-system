@@ -90,12 +90,10 @@ async function updateEventUI(event) {
             }
         }    } catch (error) {
         event.attendeeCount = 0;
-    }
-    
-    // Update event image
+    }    // Update event image
     const eventImage = document.querySelector('.img-fluid');
     if (eventImage) {
-        eventImage.src = event.imageUrl || 'https://placehold.co/800x400';
+        eventImage.src = getEventBannerUrl(event.bannerImage);
     }
 
     // Update event title and basic info

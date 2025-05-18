@@ -7,6 +7,8 @@ import { UsersModule } from './users/users.module';
 import { EventsModule } from './events/events.module';
 import { MarketersModule } from './marketers/marketers.module';
 import { AttendeesModule } from './attendees/attendees.module';
+import { UploadModule } from './upload/upload.module';
+import { TestModule } from './test/test.module';
 // import { NotificationsModule } from './notifications/notifications.module';
 import { SeedModule } from './seed/seed.module';
 import { databaseConfig, jwtConfig, emailConfig } from './config/configuration';
@@ -48,14 +50,15 @@ import { CommonModule } from './common/common.module';
 
       }),
       inject: [ConfigService],
-    }),
-    CommonModule,
+    }),    CommonModule,
     AuthModule,
-    UsersModule,    EventsModule,
-    MarketersModule,
+    UsersModule,    
+    EventsModule,    MarketersModule,
     AttendeesModule,
     // NotificationsModule,
     SeedModule,
+    UploadModule,
+    TestModule,
   ],
   providers: [
     {
