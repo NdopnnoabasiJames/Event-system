@@ -237,7 +237,6 @@ export class EventsController {
   joinEvent(@Param('id') id: string, @Request() req) {
     return this.eventsService.addMarketerToEvent(id, req.user.userId);
   }
-
   @Delete(':id/leave')
   @Roles(Role.MARKETER)
   @ApiOperation({ summary: 'Leave an event as a marketer' })
@@ -263,5 +262,23 @@ export class EventsController {
   })
   leaveEvent(@Param('id') id: string, @Request() req) {
     return this.eventsService.removeMarketerFromEvent(id, req.user.userId);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Delete an event (Admin only)' })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the event to delete',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Event successfully deleted',
+  })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Forbidden' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Event not found' })
+  remove(@Param('id') id: string) {
+    return this.eventsService.remove(id);
   }
 }

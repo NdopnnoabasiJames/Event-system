@@ -158,22 +158,45 @@ async function loadEventsData() {
             } else {
                 statusBadge = '<span class="badge bg-success">Active</span>';
             }
-            
-            row.innerHTML = `
+              row.innerHTML = `
                 <td>${event.name}</td>
                 <td>${formattedDate}</td>
                 <td>${statusBadge}</td>
                 <td>${attendeeCount}</td>
                 <td>${marketersCount}</td>
                 <td>
-                    <a href="event-details.html?id=${eventId}" class="btn btn-sm btn-primary">
-                        <i class="bi bi-eye"></i> View
-                    </a>
+                    <div class="btn-group">
+                        <a href="event-details.html?id=${eventId}" class="btn btn-sm btn-primary">
+                            <i class="bi bi-eye"></i> View
+                        </a>
+                        <button class="btn btn-sm btn-danger delete-event" data-event-id="${eventId}" data-event-name="${event.name}">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </div>
                 </td>
             `;
-            
-            tableBody.appendChild(row);
-        }    } catch (error) {
+              tableBody.appendChild(row);
+        }
+        
+        // Add event listeners for delete buttons
+        document.querySelectorAll('.delete-event').forEach(button => {
+            button.addEventListener('click', async (event) => {
+                const eventId = event.currentTarget.getAttribute('data-event-id');
+                const eventName = event.currentTarget.getAttribute('data-event-name');
+                
+                if (confirm(`Are you sure you want to delete the event "${eventName}"? This action cannot be undone.`)) {
+                    try {
+                        await eventsApi.deleteEvent(eventId);
+                        showToast('success', `Event "${eventName}" deleted successfully`);
+                        // Reload the events data
+                        await loadEventsData();
+                    } catch (error) {
+                        showToast('error', `Failed to delete event: ${error.message}`);
+                    }
+                }
+            });
+        });
+    } catch (error) {
         showToast('error', 'Failed to load events data');
     }
 }

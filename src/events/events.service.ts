@@ -136,7 +136,6 @@ async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocu
     throw new HttpException(`Failed to get events by state: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }
-
   async getActiveEvents(): Promise<EventDocument[]> {
   try {
     const events = await this.eventModel
@@ -153,4 +152,16 @@ async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocu
     throw new HttpException(`Failed to retrieve active events: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }
+
+  async remove(id: string): Promise<{ message: string }> {
+    try {
+      const event = await this.findOne(id);
+      await this.eventModel.findByIdAndDelete(id);
+      return { message: 'Event deleted successfully' };
+    } catch (error) {
+      throw new HttpException(`Failed to delete event: ${error.message}`, 
+        error instanceof NotFoundException ? HttpStatus.NOT_FOUND : HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
 }
