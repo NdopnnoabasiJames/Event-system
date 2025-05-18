@@ -1,6 +1,6 @@
 export enum Role {
   ADMIN = 'admin',
   MARKETER = 'marketer',
-  USER = 'user',
+  CONCIERGE = 'concierge', // was 'user', now 'event concierge'
   ATTENDEE = 'attendee'
 }

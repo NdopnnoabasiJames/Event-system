@@ -59,7 +59,7 @@ export class CreateUserDto {
 
   @ApiPropertyOptional({
     enum: Role,
-    example: Role.USER,
+    example: Role.CONCIERGE,
     description: 'The role of the user. Can be USER, MARKETER, or ADMIN'
   })
   @IsEnum(Role)

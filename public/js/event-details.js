@@ -262,3 +262,68 @@ async function updateEventUI(event) {
           stats[2].textContent = daysRemaining > 0 ? daysRemaining : 'Past event';
     }
 }
+
+// Add event listener for check-in button
+const checkInBtn = document.getElementById('checkInAttendeesBtn');
+if (checkInBtn) {
+    checkInBtn.addEventListener('click', async () => {
+        await openCheckInModal();
+    });
+}
+
+async function openCheckInModal() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const eventId = urlParams.get('id');
+    if (!eventId) return;
+    const modal = new bootstrap.Modal(document.getElementById('checkInModal'));
+    const tableBody = document.getElementById('checkInAttendeesTableBody');
+    const searchInput = document.getElementById('attendeeSearchInput');
+    tableBody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+    let attendees = [];
+    try {
+        const res = await attendeesApi.getAllAttendees(eventId);
+        attendees = Array.isArray(res) ? res : (res.data || []);
+    } catch {
+        attendees = [];
+    }
+    // Add a checkedIn property if not present
+    attendees.forEach(a => { if (typeof a.checkedIn === 'undefined') a.checkedIn = false; });
+    // Render function
+    function renderTable(filter = '') {
+        const filtered = attendees.filter(a => a.phone && a.phone.toLowerCase().includes(filter.toLowerCase()));
+        tableBody.innerHTML = filtered.length ? filtered.map(a => `
+            <tr>
+                <td>${a.name || ''}</td>
+                <td>${a.phone || ''}</td>
+                <td>${a.marketerName || ''}</td>
+                <td>${a.transport || ''}</td>
+                <td>
+                    <button class="btn btn-sm btn-${a.checkedIn ? 'secondary' : 'success'}" ${a.checkedIn ? 'disabled' : ''} data-phone="${a.phone}">
+                        ${a.checkedIn ? 'Checked In' : 'Check In'}
+                    </button>
+                </td>
+            </tr>
+        `).join('') : '<tr><td colspan="5">No attendees found.</td></tr>';
+    }
+    renderTable();
+    // Search
+    searchInput.value = '';
+    searchInput.oninput = e => renderTable(e.target.value);
+    // Check-in handler
+    tableBody.onclick = async e => {
+        const btn = e.target.closest('button[data-phone]');
+        if (!btn) return;
+        const phone = btn.getAttribute('data-phone');
+        const attendee = attendees.find(a => a.phone === phone);
+        if (!attendee || attendee.checkedIn) return;
+        // Mark as checked in (simulate API call)
+        try {
+            await attendeesApi.checkInAttendee(eventId, phone); // You need to implement this API
+            attendee.checkedIn = true;
+            renderTable(searchInput.value);
+        } catch {
+            showToast('error', 'Failed to check in attendee');
+        }
+    };
+    modal.show();
+}

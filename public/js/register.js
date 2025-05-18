@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     name: `${formData.firstName} ${formData.lastName}`,
                     email: formData.email,
                     password: formData.password,
-                    role: 'marketer' // Always register as marketer
+                    role: formData.role // Use selected role from dropdown
                 };
                 
                 // Submit registration
