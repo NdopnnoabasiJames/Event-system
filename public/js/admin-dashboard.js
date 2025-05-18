@@ -530,14 +530,75 @@ async function setupEventCreationHandlers() {
                     form.reportValidity();
                     return;
                 }
-                  // Get form data and convert to appropriate format
+                
+                // Handle banner image upload
+                const bannerInput = document.getElementById('eventBanner');
+                let bannerImageName = '';
+                
+                if (bannerInput && bannerInput.files && bannerInput.files.length > 0) {
+                    const bannerFile = bannerInput.files[0];
+                    
+                    // Validate file size (max 2MB)
+                    if (bannerFile.size > 2 * 1024 * 1024) {
+                        showToast('error', 'Banner image size should not exceed 2MB');
+                        return;
+                    }
+                    
+                    // Validate file type
+                    if (!['image/jpeg', 'image/png', 'image/jpg', 'image/gif'].includes(bannerFile.type)) {
+                        showToast('error', 'Please select a valid image file (JPG, PNG, or GIF)');
+                        return;
+                    }
+                      // Upload the banner image
+                    try {
+                        const uploadFormData = new FormData();
+                        uploadFormData.append('image', bannerFile);                        // Don't set Content-Type header for FormData uploads
+                        const token = auth.getToken();
+                        
+                        // Use the apiCall utility for consistency, but we need direct fetch for FormData
+                        const uploadUrl = `${API_BASE_URL}/upload/event-banner`;
+                        console.log('Uploading to:', uploadUrl);
+                        
+                        // Log FormData contents (for debugging)
+                        console.log('FormData has image:', uploadFormData.has('image'));
+                        
+                        const response = await fetch(uploadUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: uploadFormData,
+                            // Include credentials for cross-origin requests
+                            credentials: 'include'
+                        });
+                          if (!response.ok) {
+                            const errorText = await response.text();
+                            console.error('Upload error response:', response.status, errorText);
+                            throw new Error(`Failed to upload banner image: ${response.status} ${response.statusText}`);
+                        }
+                        
+                        const result = await response.json();
+                        console.log('Upload success response:', result);
+                        bannerImageName = result.filename;
+                    } catch (uploadError) {
+                        console.error('Upload error:', uploadError);
+                        showToast('error', 'Failed to upload banner image: ' + (uploadError.message || 'Unknown error'));
+                        return;
+                    }
+                }
+                
+                // Get form data and convert to appropriate format
                 const formData = getFormDataAsObject(form);
+                if (bannerImageName) {
+                    formData.bannerImage = bannerImageName;
+                }
+                
                 const isoEventDate = toFullISOString(formData.date);
                 let hasInvalidDate = false;
                 if (!isoEventDate) {
                     showToast('error', 'Event date is missing or invalid. Please select a valid date and time.');
                     hasInvalidDate = true;
-                }                if (formData.busPickups && Array.isArray(formData.busPickups)) {
+                }if (formData.busPickups && Array.isArray(formData.busPickups)) {
                     formData.busPickups.forEach((pickup, idx) => {
                         const isoPickup = toFullISOString(pickup.departureTime);
                         if (!isoPickup) {

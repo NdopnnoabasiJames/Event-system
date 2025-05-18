@@ -212,10 +212,14 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="createEventForm">
-                        <div class="mb-3">
+                    <form id="createEventForm">                        <div class="mb-3">
                             <label for="eventName" class="form-label">Event Name*</label>
                             <input type="text" class="form-control" id="eventName" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="eventBanner" class="form-label">Event Banner Image</label>
+                            <input type="file" class="form-control" id="eventBanner" name="bannerImage" accept="image/*">
+                            <div class="form-text">Recommended size: 1200 x 600 pixels</div>
                         </div>
                         <div class="mb-3">
                             <label for="eventDate" class="form-label">Event Date*</label>

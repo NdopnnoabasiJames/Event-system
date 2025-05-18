@@ -30,6 +30,9 @@ export class Event {
 
   @Prop({ default: false })
   isActive: boolean;
+  
+  @Prop()
+  bannerImage: string;
 }
 
 export const EventSchema = SchemaFactory.createForClass(Event);
