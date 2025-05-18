@@ -438,7 +438,47 @@ async function showMarketerDetails(marketerId) {
 }
 
 async function setupEventCreationHandlers() {
-    try {
+    try {        // Setup banner image preview functionality
+        const eventBanner = document.getElementById('eventBanner');
+        const bannerPreviewContainer = document.getElementById('bannerPreviewContainer');
+        const bannerPreview = document.getElementById('bannerPreview');
+        const removeBannerBtn = document.getElementById('removeBannerBtn');
+        
+        if (eventBanner && bannerPreviewContainer && bannerPreview && removeBannerBtn) {
+            // Show preview when file is selected
+            eventBanner.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const file = this.files[0];
+                    
+                    // Validate file size and type
+                    if (file.size > 2 * 1024 * 1024) {
+                        showToast('error', 'Image size should not exceed 2MB');
+                        eventBanner.value = '';
+                        return;
+                    }
+                    
+                    if (!['image/jpeg', 'image/png', 'image/jpg', 'image/gif'].includes(file.type)) {
+                        showToast('error', 'Please select a valid image file (JPG, PNG, or GIF)');
+                        eventBanner.value = '';
+                        return;
+                    }
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        bannerPreview.src = e.target.result;
+                        bannerPreviewContainer.classList.remove('d-none');
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            // Remove preview when button is clicked
+            removeBannerBtn.addEventListener('click', function() {
+                eventBanner.value = '';
+                bannerPreviewContainer.classList.add('d-none');
+            });
+        }
+
         // Add Branch button handler
         const addBranchBtn = document.getElementById('addBranchBtn');
         if (!addBranchBtn) {

@@ -8,7 +8,7 @@
  */
 function getEventBannerUrl(bannerImage) {
   if (!bannerImage) {
-    return 'https://placehold.co/800x400?text=No+Banner+Available';
+    return 'https://placehold.co/800x400?text=Event+Banner';
   }
   return `/Images/events/${bannerImage}`;
 }

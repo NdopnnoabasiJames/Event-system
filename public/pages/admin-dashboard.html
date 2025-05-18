@@ -215,11 +215,14 @@
                     <form id="createEventForm">                        <div class="mb-3">
                             <label for="eventName" class="form-label">Event Name*</label>
                             <input type="text" class="form-control" id="eventName" name="name" required>
-                        </div>
-                        <div class="mb-3">
+                        </div>                        <div class="mb-3">
                             <label for="eventBanner" class="form-label">Event Banner Image</label>
                             <input type="file" class="form-control" id="eventBanner" name="bannerImage" accept="image/*">
                             <div class="form-text">Recommended size: 1200 x 600 pixels</div>
+                            <div id="bannerPreviewContainer" class="mt-2 d-none">
+                                <img id="bannerPreview" src="#" alt="Banner Preview" class="img-fluid rounded mb-2" style="max-height: 200px;">
+                                <button type="button" class="btn btn-sm btn-outline-danger" id="removeBannerBtn">Remove Image</button>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label for="eventDate" class="form-label">Event Date*</label>
