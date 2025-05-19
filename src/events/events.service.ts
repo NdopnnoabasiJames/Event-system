@@ -199,16 +199,19 @@ async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocu
     }
   }
 
-  // Get all events where the current user is an approved concierge
-  async getConciergeAssignments(userId: string): Promise<EventDocument[]> {
-    return this.eventModel.find({
-      'conciergeRequests': {
-        $elemMatch: {
-          user: new Types.ObjectId(userId),
-          status: 'Approved',
-        },
-      },
-    }).exec();
+  // Get all events where the current user has ANY concierge request (pending, approved, rejected)
+  async getConciergeAssignments(userId: string): Promise<any[]> {
+    const events = await this.eventModel.find({
+      'conciergeRequests.user': new Types.ObjectId(userId)
+    }).lean();
+    // Attach the user's request status to each event
+    return events.map(event => {
+      const myRequest = (event.conciergeRequests || []).find(r => r.user.toString() === userId);
+      return {
+        ...event,
+        myConciergeStatus: myRequest ? myRequest.status : undefined
+      };
+    });
   }
 
   // ADMIN: Get all pending concierge requests for all events

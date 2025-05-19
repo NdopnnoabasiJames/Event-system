@@ -54,7 +54,12 @@ async function loadUpcomingEvents() {
             // Check if the concierge has already requested for this event
             let hasRequested = false;
             if (event.conciergeRequests && Array.isArray(event.conciergeRequests)) {
-                hasRequested = event.conciergeRequests.some(r => r.user === auth.getUser()._id && r.status === 'Pending');
+                const myId = auth.getUser()._id;
+                hasRequested = event.conciergeRequests.some(r => {
+                    // r.user could be an object or string
+                    const requestUserId = typeof r.user === 'object' && r.user !== null ? r.user._id || r.user.toString() : r.user;
+                    return requestUserId === myId && r.status === 'Pending';
+                });
             }
             row.innerHTML = `
                 <td>${eventName}</td>
@@ -151,25 +156,27 @@ async function loadMyAssignments() {
             return;
         }
         for (const assignment of assignments) {
-            const row = document.createElement('tr');
-            const event = assignment.event || {};
-            const eventId = event._id || event.id || 'unknown';
-            const eventName = event.name || 'Unnamed event';
+            const eventId = assignment._id || assignment.id || 'unknown';
+            const eventName = assignment.name || 'Unnamed event';
             let formattedDate = 'Date not available';
             try {
-                if (event.date) {
-                    const eventDate = new Date(event.date);
+                if (assignment.date) {
+                    const eventDate = new Date(assignment.date);
                     formattedDate = eventDate.toLocaleDateString('en-US', {
                         year: 'numeric', month: 'short', day: 'numeric'
                     });
                 }
             } catch {}
-            const status = assignment.status || 'Pending';
+            const status = assignment.myConciergeStatus || 'Pending';
+            const checkInBtn = status === 'Approved'
+                ? `<button class="btn btn-sm btn-success check-in-btn" data-event-id="${eventId}">Check-In</button>`
+                : '-';
+            const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${eventName}</td>
                 <td>${formattedDate}</td>
                 <td><span class="badge ${status === 'Approved' ? 'bg-success' : status === 'Rejected' ? 'bg-danger' : 'bg-warning text-dark'}">${status}</span></td>
-                <td>${status === 'Approved' ? `<button class="btn btn-sm btn-success check-in-btn" data-event-id="${eventId}">Check-In</button>` : '-'}</td>
+                <td>${checkInBtn}</td>
             `;
             tableBody.appendChild(row);
         }
