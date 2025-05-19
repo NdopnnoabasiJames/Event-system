@@ -348,4 +348,15 @@ export class EventsController {
   async getAllApprovedConcierges() {
     return this.eventsService.getAllApprovedConcierges();
   }
+
+  // Concierge cancels their own pending request for an event
+  @Delete(':eventId/concierge-requests')
+  @Roles(Role.CONCIERGE)
+  @ApiOperation({ summary: 'Cancel your pending concierge request for an event' })
+  @ApiParam({ name: 'eventId', description: 'Event ID' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Request cancelled' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'No pending request found' })
+  async cancelConciergeRequest(@Param('eventId') eventId: string, @Request() req) {
+    return this.eventsService.cancelConciergeRequest(eventId, req.user.userId);
+  }
 }

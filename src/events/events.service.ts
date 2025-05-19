@@ -275,4 +275,15 @@ async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocu
     }
     return approved;
   }
+
+  // Concierge cancels their own pending request for an event
+  async cancelConciergeRequest(eventId: string, userId: string): Promise<{ message: string }> {
+    const event = await this.findOne(eventId);
+    if (!event) throw new NotFoundException('Event not found');
+    const reqIndex = event.conciergeRequests.findIndex(r => r.user.toString() === userId && r.status === 'Pending');
+    if (reqIndex === -1) throw new NotFoundException('No pending request found');
+    event.conciergeRequests.splice(reqIndex, 1);
+    await event.save();
+    return { message: 'Request cancelled' };
+  }
 }

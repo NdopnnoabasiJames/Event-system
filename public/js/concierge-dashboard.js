@@ -129,9 +129,15 @@ async function requestConciergeAssignment(eventId) {
     }
 }
 
-// Add a stub for cancelConciergeRequest (backend endpoint to be implemented)
+// Cancel a pending concierge request for the current user/event
 async function cancelConciergeRequest(eventId) {
-    showToast('info', 'Cancel request feature coming soon.');
+    try {
+        await apiCall(`/events/${eventId}/concierge-requests`, 'DELETE', null, auth.getToken());
+        showToast('success', 'Request cancelled');
+        await loadMyAssignments();
+    } catch (error) {
+        showToast('error', 'Failed to cancel request');
+    }
 }
 
 async function loadMyAssignments() {
