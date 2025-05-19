@@ -761,10 +761,41 @@ async function reviewConciergeRequest(btn, approve) {
     }
 }
 
-// Tab event to load concierge requests
+// New function to load approved concierges
+async function loadApprovedConcierges() {
+    try {
+        const response = await apiCall('/events/concierge-requests/approved', 'GET', null, auth.getToken());
+        const approved = Array.isArray(response) ? response : (response.data || []);
+        const tableBody = document.getElementById('approved-concierges-table-body');
+        tableBody.innerHTML = '';
+        if (!approved.length) {
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No approved concierges.</td></tr>';
+            return;
+        }
+        for (const item of approved) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${item.eventName}</td>
+                <td>${new Date(item.eventDate).toLocaleDateString()}</td>
+                <td>${item.user?.name || 'N/A'}</td>
+                <td>${item.user?.email || 'N/A'}</td>
+                <td>${item.user?.phone || 'N/A'}</td>
+                <td>${item.reviewedAt ? new Date(item.reviewedAt).toLocaleString() : ''}</td>
+            `;
+            tableBody.appendChild(row);
+        }
+    } catch (error) {
+        showToast('error', 'Failed to load approved concierges');
+    }
+}
+
+// Load both pending and approved when tab is shown
 const conciergeTab = document.getElementById('concierge-requests-tab');
 if (conciergeTab) {
-    conciergeTab.addEventListener('shown.bs.tab', loadConciergeRequests);
+    conciergeTab.addEventListener('shown.bs.tab', () => {
+        loadConciergeRequests();
+        loadApprovedConcierges();
+    });
 }
 
 // Helper function to validate dates

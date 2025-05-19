@@ -340,4 +340,12 @@ export class EventsController {
   ) {
     return this.eventsService.reviewConciergeRequest(eventId, requestId, approve, req.user.userId);
   }
+
+  @Get('concierge-requests/approved')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Get all approved concierge assignments (admin only)' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'List of approved concierge assignments' })
+  async getAllApprovedConcierges() {
+    return this.eventsService.getAllApprovedConcierges();
+  }
 }

@@ -248,8 +248,31 @@ async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocu
   if (req.status !== 'Pending') throw new HttpException('Request already reviewed', HttpStatus.BAD_REQUEST);
   req.status = approve ? 'Approved' : 'Rejected';
   req.reviewedAt = new Date();
-  req.reviewedBy = new Types.ObjectId(adminId);
+  // Remove reviewedBy logic
   await event.save();
   return { message: `Request ${approve ? 'approved' : 'rejected'}` };
 }
+
+  // ADMIN: Get all approved concierge assignments for all events
+  async getAllApprovedConcierges(): Promise<any[]> {
+    const events = await this.eventModel.find({ 'conciergeRequests.status': 'Approved' })
+      .populate('conciergeRequests.user', 'name email phone')
+      .exec();
+    const approved = [];
+    for (const event of events) {
+      for (const req of event.conciergeRequests) {
+        if (req.status === 'Approved') {
+          approved.push({
+            eventId: event._id,
+            eventName: event.name,
+            eventDate: event.date,
+            user: req.user,
+            reviewedAt: req.reviewedAt,
+            // Remove reviewedByName
+          });
+        }
+      }
+    }
+    return approved;
+  }
 }
