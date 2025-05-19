@@ -53,10 +53,14 @@
                             Attendees
                         </button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="concierge-requests-tab" data-bs-toggle="tab" data-bs-target="#concierge-requests" type="button">
+                            Concierge Requests
+                        </button>
+                    </li>
                 </ul>
             </div>
         </div>
-        
         <div class="tab-content" id="adminTabsContent">
             <!-- Marketers Tab -->
             <div class="tab-pane fade show active" id="marketers" role="tabpanel">
@@ -141,6 +145,33 @@
                                     </tr>
                                 </thead>
                                 <tbody id="attendees-table-body">
+                                    <!-- Will be filled by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Concierge Requests Tab -->
+            <div class="tab-pane fade" id="concierge-requests" role="tabpanel">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h2 class="card-title">Pending Concierge Requests</h2>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Event</th>
+                                        <th>Date</th>
+                                        <th>Concierge</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th>Requested At</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="concierge-requests-table-body">
                                     <!-- Will be filled by JavaScript -->
                                 </tbody>
                             </table>

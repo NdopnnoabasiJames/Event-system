@@ -712,6 +712,61 @@ async function setupEventCreationHandlers() {
     }
 }
 
+async function loadConciergeRequests() {
+    try {
+        const response = await apiCall('/events/concierge-requests/pending', 'GET', null, auth.getToken());
+        const requests = Array.isArray(response) ? response : (response.data || []);
+        const tableBody = document.getElementById('concierge-requests-table-body');
+        tableBody.innerHTML = '';
+        if (!requests.length) {
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No pending requests.</td></tr>';
+            return;
+        }
+        for (const req of requests) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${req.eventName}</td>
+                <td>${new Date(req.eventDate).toLocaleDateString()}</td>
+                <td>${req.user?.name || 'N/A'}</td>
+                <td>${req.user?.email || 'N/A'}</td>
+                <td>${req.user?.phone || 'N/A'}</td>
+                <td>${new Date(req.requestedAt).toLocaleString()}</td>
+                <td>
+                    <button class="btn btn-success btn-sm approve-concierge" data-event-id="${req.eventId}" data-request-id="${req.requestId}">Approve</button>
+                    <button class="btn btn-danger btn-sm reject-concierge" data-event-id="${req.eventId}" data-request-id="${req.requestId}">Reject</button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        }
+        document.querySelectorAll('.approve-concierge').forEach(btn => {
+            btn.addEventListener('click', () => reviewConciergeRequest(btn, true));
+        });
+        document.querySelectorAll('.reject-concierge').forEach(btn => {
+            btn.addEventListener('click', () => reviewConciergeRequest(btn, false));
+        });
+    } catch (error) {
+        showToast('error', 'Failed to load concierge requests');
+    }
+}
+
+async function reviewConciergeRequest(btn, approve) {
+    const eventId = btn.getAttribute('data-event-id');
+    const requestId = btn.getAttribute('data-request-id');
+    try {
+        await apiCall(`/events/${eventId}/concierge-requests/${requestId}/review`, 'POST', { approve }, auth.getToken());
+        showToast('success', `Request ${approve ? 'approved' : 'rejected'}`);
+        await loadConciergeRequests();
+    } catch (error) {
+        showToast('error', 'Failed to review request');
+    }
+}
+
+// Tab event to load concierge requests
+const conciergeTab = document.getElementById('concierge-requests-tab');
+if (conciergeTab) {
+    conciergeTab.addEventListener('shown.bs.tab', loadConciergeRequests);
+}
+
 // Helper function to validate dates
 function isValidDate(dateString) {
     if (!dateString) return false;
