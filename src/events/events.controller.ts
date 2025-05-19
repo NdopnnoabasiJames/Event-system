@@ -124,6 +124,19 @@ export class EventsController {
     return this.eventsService.getActiveEvents();
   }
 
+  @Get('upcoming')
+  @ApiOperation({ summary: 'Get all upcoming events (future-dated, active)' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'List of upcoming events',
+    type: [CreateEventDto],
+  })
+  async getUpcomingEvents() {
+    // Upcoming = isActive and date >= today
+    const today = new Date();
+    return this.eventsService.findUpcoming(today);
+  }
+
   @Get('state/:state')
   @ApiOperation({ summary: 'Get events by state' })
   @ApiParam({
@@ -280,5 +293,51 @@ export class EventsController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Event not found' })
   remove(@Param('id') id: string) {
     return this.eventsService.remove(id);
+  }
+
+  @Post(':eventId/concierge-requests')
+  @Roles(Role.CONCIERGE)
+  @ApiOperation({ summary: 'Request to be assigned as concierge for an event' })
+  @ApiParam({
+    name: 'eventId',
+    description: 'The ID of the event to request concierge assignment for',
+    example: '645f3c7e8d6e5a7b1c9d2e3f',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Request submitted for admin approval',
+  })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Forbidden - Concierge access required',
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Event not found' })
+  async requestConcierge(@Param('eventId') eventId: string, @Request() req) {
+    return this.eventsService.requestConcierge(eventId, req.user.userId);
+  }
+
+  @Get('concierge-requests/pending')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Get all pending concierge requests (admin only)' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'List of pending concierge requests' })
+  async getAllPendingConciergeRequests() {
+    return this.eventsService.getAllPendingConciergeRequests();
+  }
+
+  @Post(':eventId/concierge-requests/:requestId/review')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Approve or reject a concierge request (admin only)' })
+  @ApiParam({ name: 'eventId', description: 'Event ID' })
+  @ApiParam({ name: 'requestId', description: 'Concierge request ID' })
+  @ApiBody({ schema: { properties: { approve: { type: 'boolean' } } } })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Request reviewed' })
+  async reviewConciergeRequest(
+    @Param('eventId') eventId: string,
+    @Param('requestId') requestId: string,
+    @Body('approve') approve: boolean,
+    @Request() req
+  ) {
+    return this.eventsService.reviewConciergeRequest(eventId, requestId, approve, req.user.userId);
   }
 }

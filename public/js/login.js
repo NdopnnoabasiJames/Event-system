@@ -73,6 +73,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 } else if (user.role === 'marketer') {
                                     console.log('Redirecting to marketer dashboard');
                                     window.location.href = '../pages/marketer-dashboard.html';
+                                } else if (user.role === 'concierge') {
+                                    console.log('Redirecting to concierge dashboard');
+                                    window.location.href = '../pages/concierge-dashboard.html';
                                 } else {
                                     console.log('Redirecting to events page');
                                     window.location.href = '../pages/events.html';

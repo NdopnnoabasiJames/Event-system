@@ -17,6 +17,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { CommonModule } from './common/common.module';
+import { ConciergesModule } from './concierges/concierges.module';
 
 @Module({
   imports: [ 
@@ -59,6 +60,7 @@ import { CommonModule } from './common/common.module';
     SeedModule,
     UploadModule,
     TestModule,
+    ConciergesModule,
   ],
   providers: [
     {

@@ -1,10 +1,11 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import mongoose, { Model, Schema as MongooseSchema, Types } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Event, EventDocument } from '../schemas/event.schema';
 import { CreateEventDto } from './dto/create-event.dto';
 import { Role } from '../common/enums/role.enum';
 import { UsersService } from '../users/users.service';
+import { User } from '../schemas/user.schema';
 
 @Injectable()
 export class EventsService {
@@ -164,4 +165,91 @@ async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocu
       );
     }
   }
+
+  async requestConcierge(eventId: string, userId: string): Promise<{ message: string }> {
+    const event = await this.findOne(eventId);
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+    // Prevent duplicate requests
+    if (event.conciergeRequests && event.conciergeRequests.some(r => r.user.toString() === userId && r.status === 'Pending')) {
+      throw new HttpException('You have already requested to be concierge for this event', HttpStatus.BAD_REQUEST);
+    }
+    // Add request (include all required fields for schema)
+    event.conciergeRequests = event.conciergeRequests || [];
+    event.conciergeRequests.push({
+      user: new Types.ObjectId(userId),
+      status: 'Pending',
+      requestedAt: new Date(),
+      reviewedAt: undefined,
+      reviewedBy: undefined,
+    });
+    await event.save();
+    return { message: 'Request submitted for admin approval' };
+  }
+
+  async findUpcoming(fromDate: Date): Promise<EventDocument[]> {
+    try {
+      return await this.eventModel.find({
+        isActive: true,
+        date: { $gte: fromDate.toISOString() },
+      }).exec();
+    } catch (error) {
+      throw new HttpException(`Failed to retrieve upcoming events: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  // Get all events where the current user is an approved concierge
+  async getConciergeAssignments(userId: string): Promise<EventDocument[]> {
+    return this.eventModel.find({
+      'conciergeRequests': {
+        $elemMatch: {
+          user: new Types.ObjectId(userId),
+          status: 'Approved',
+        },
+      },
+    }).exec();
+  }
+
+  // ADMIN: Get all pending concierge requests for all events
+  async getAllPendingConciergeRequests(): Promise<any[]> {
+    // Return a flat list of requests with event and user info for admin UI
+    const events = await this.eventModel.find({ 'conciergeRequests.status': 'Pending' })
+      .populate('conciergeRequests.user', 'name email phone')
+      .exec();
+    const requests = [];
+    for (const event of events) {
+      for (const req of event.conciergeRequests) {
+        if (req.status === 'Pending') {
+          requests.push({
+            eventId: event._id,
+            eventName: event.name,
+            eventDate: event.date,
+            requestId: req._id,
+            user: req.user,
+            requestedAt: req.requestedAt,
+            status: req.status,
+          });
+        }
+      }
+    }
+    return requests;
+  }
+
+  // ADMIN: Approve or reject a concierge request
+ async reviewConciergeRequest(eventId: string, requestId: string, approve: boolean, adminId: string): Promise<{ message: string }> {
+  const event = await this.findOne(eventId);
+  if (!event) throw new NotFoundException('Event not found');
+  
+  // Use find() instead of id()
+  const req = event.conciergeRequests.find(r => r._id.toString() === requestId);
+  if (!req) throw new NotFoundException('Concierge request not found');
+  
+  if (req.status !== 'Pending') throw new HttpException('Request already reviewed', HttpStatus.BAD_REQUEST);
+  req.status = approve ? 'Approved' : 'Rejected';
+  req.reviewedAt = new Date();
+  req.reviewedBy = new Types.ObjectId(adminId);
+  await event.save();
+  return { message: `Request ${approve ? 'approved' : 'rejected'}` };
+}
 }

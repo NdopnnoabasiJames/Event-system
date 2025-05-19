@@ -33,7 +33,30 @@ export class Event {
   
   @Prop()
   bannerImage: string;
+
+  @Prop({
+    type: [
+      {
+        _id: { type: MongooseSchema.Types.ObjectId, auto: true },
+        user: { type: Types.ObjectId, ref: 'User', required: true },
+        status: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
+        requestedAt: { type: Date, default: Date.now },
+        reviewedAt: { type: Date },
+        reviewedBy: { type: Types.ObjectId, ref: 'User' },
+      },
+    ],
+    default: [],
+  })
+  conciergeRequests: {
+    _id?: MongooseSchema.Types.ObjectId;
+    user: Types.ObjectId,
+    status: string,
+    requestedAt: Date,
+    reviewedAt?: Date,
+    reviewedBy?: Types.ObjectId,
+  }[];  // <-- Changed from tuple syntax to array syntax
 }
+
 
 export const EventSchema = SchemaFactory.createForClass(Event);
 

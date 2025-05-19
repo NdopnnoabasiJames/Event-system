@@ -21,10 +21,10 @@ export class RegisterDto {
 
   @ApiProperty({ 
     enum: Role, 
-    example: Role.USER,
-    description: 'The role of the user',
+    example: Role.CONCIERGE,
+    description: 'The role of the CONCIERGE',
     required: false,
-    default: Role.USER
+    default: Role.CONCIERGE
   })
   @IsEnum(Role)
   @IsOptional()
