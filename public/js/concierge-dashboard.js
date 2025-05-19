@@ -30,15 +30,46 @@ function setupLogout() {
 
 async function loadUpcomingEvents() {
     try {
+        // First, get the concierge's assignments to identify events that are already assigned
+        const assignmentsResponse = await apiCall('/concierges/assignments', 'GET', null, auth.getToken());
+        const myAssignments = assignmentsResponse.data || assignmentsResponse;
+        
+        // Create a set of event IDs that this concierge is already assigned to
+        const assignedEventIds = new Set();
+        if (Array.isArray(myAssignments)) {
+            myAssignments.forEach(assignment => {
+                const eventId = assignment._id || assignment.id;
+                if (eventId) assignedEventIds.add(eventId);
+            });
+        }
+        
         const response = await apiCall('/events/upcoming', 'GET', null, auth.getToken());
         const events = response.data || response;
         const tableBody = document.getElementById('upcoming-events-table-body');
         tableBody.innerHTML = '';
-        if (!Array.isArray(events) || events.length === 0) {
+        
+        // Filter out events where the concierge has already requested or is assigned
+        const myId = auth.getUser()._id;
+        const filteredEvents = events.filter(event => {
+            const eventId = event._id || event.id;
+            
+            // Skip if already assigned to this event
+            if (assignedEventIds.has(eventId)) return false;
+            
+            // Check for any pending requests
+            if (!event.conciergeRequests || !Array.isArray(event.conciergeRequests)) return true;
+            
+            // If the current user has any request for this event, exclude it
+            return !event.conciergeRequests.some(r => {
+                const requestUserId = typeof r.user === 'object' && r.user !== null ? r.user._id || r.user.toString() : r.user;
+                return requestUserId === myId;
+            });
+        });
+        if (!Array.isArray(filteredEvents) || filteredEvents.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="4" class="text-center">No upcoming events.</td></tr>';
             return;
         }
-        for (const event of events) {
+        for (const event of filteredEvents) {
             const row = document.createElement('tr');
             const eventId = event._id || event.id || 'unknown';
             const eventName = event.name || 'Unnamed event';
@@ -51,76 +82,93 @@ async function loadUpcomingEvents() {
                     });
                 }
             } catch {}
-            // Check if the concierge has already requested for this event
-            let hasRequested = false;
-            if (event.conciergeRequests && Array.isArray(event.conciergeRequests)) {
-                const myId = auth.getUser()._id;
-                hasRequested = event.conciergeRequests.some(r => {
-                    // r.user could be an object or string
-                    const requestUserId = typeof r.user === 'object' && r.user !== null ? r.user._id || r.user.toString() : r.user;
-                    return requestUserId === myId && r.status === 'Pending';
-                });
-            }
+            // No need to check hasRequested, since filteredEvents already excludes requested events
             row.innerHTML = `
                 <td>${eventName}</td>
                 <td>${formattedDate}</td>
                 <td>${event.state || 'Location not available'}</td>
                 <td>
-                    <button class="btn btn-sm ${hasRequested ? 'btn-danger cancel-concierge-request-btn' : 'btn-primary request-concierge-btn'}" 
+                    <button class="btn btn-sm btn-primary request-concierge-btn" 
                         data-event-id="${eventId}" data-event-name="${eventName}">
-                        ${hasRequested ? 'Cancel Request' : 'Request Assignment'}
+                        Request Assignment
                     </button>
                 </td>
             `;
             tableBody.appendChild(row);
         }
-        // Refactored: handle button state instantly on click
-        tableBody.querySelectorAll('.request-concierge-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const button = e.currentTarget;
-                const eventId = button.getAttribute('data-event-id');
-                button.disabled = true;
-                const originalText = button.textContent;
-                try {
-                    await requestConciergeAssignment(eventId);
-                    // Instantly update button to Cancel Request
-                    button.classList.remove('btn-primary', 'request-concierge-btn');
-                    button.classList.add('btn-danger', 'cancel-concierge-request-btn');
-                    button.textContent = 'Cancel Request';
-                    button.disabled = false;
-                    // Remove old event listener and add cancel
-                    const newBtn = button;
-                    newBtn.replaceWith(newBtn.cloneNode(true));
-                    const cancelBtn = tableBody.querySelector(`[data-event-id="${eventId}"]`);
-                    cancelBtn.addEventListener('click', async (e) => {
-                        const btn = e.currentTarget;
-                        btn.disabled = true;
-                        await cancelConciergeRequest(eventId);
-                        // Instantly update button to Request Assignment
-                        btn.classList.remove('btn-danger', 'cancel-concierge-request-btn');
-                        btn.classList.add('btn-primary', 'request-concierge-btn');
-                        btn.textContent = 'Request Assignment';
-                        btn.disabled = false;
-                        btn.replaceWith(btn.cloneNode(true));
-                        const reqBtn = tableBody.querySelector(`[data-event-id="${eventId}"]`);
-                        reqBtn.addEventListener('click', async (e) => {
-                            const btn2 = e.currentTarget;
-                            btn2.disabled = true;
-                            await requestConciergeAssignment(eventId);
-                            btn2.classList.remove('btn-primary', 'request-concierge-btn');
-                            btn2.classList.add('btn-danger', 'cancel-concierge-request-btn');
-                            btn2.textContent = 'Cancel Request';
-                            btn2.disabled = false;
-                        });
-                    });
-                } catch (error) {
-                    button.textContent = originalText;
-                    button.disabled = false;
-                }
-            });
-        });
+        
+        // Add event listeners to all request buttons
+        attachRequestButtonListeners();
     } catch (error) {
         showToast('error', 'Failed to load upcoming events');
+    }
+}
+
+function attachRequestButtonListeners() {
+    // Attach listeners to all request buttons
+    document.querySelectorAll('.request-concierge-btn').forEach(btn => {
+        btn.addEventListener('click', handleRequestButtonClick);
+    });
+    
+    // Attach listeners to all cancel buttons (if any exist)
+    document.querySelectorAll('.cancel-concierge-request-btn').forEach(btn => {
+        btn.addEventListener('click', handleCancelButtonClick);
+    });
+}
+
+async function handleRequestButtonClick(e) {
+    const button = e.currentTarget;
+    const eventId = button.getAttribute('data-event-id');
+    
+    // Disable button during API call
+    button.disabled = true;
+    button.textContent = 'Processing...';
+    
+    try {
+        await requestConciergeAssignment(eventId);
+        
+        // Update button to Cancel Request
+        button.classList.remove('btn-primary', 'request-concierge-btn');
+        button.classList.add('btn-danger', 'cancel-concierge-request-btn');
+        button.textContent = 'Cancel Request';
+        
+        // Remove old listener and add new cancel listener
+        button.removeEventListener('click', handleRequestButtonClick);
+        button.addEventListener('click', handleCancelButtonClick);
+    } catch (error) {
+        // Reset button on error
+        button.classList.add('btn-primary', 'request-concierge-btn');
+        button.textContent = 'Request Assignment';
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function handleCancelButtonClick(e) {
+    const button = e.currentTarget;
+    const eventId = button.getAttribute('data-event-id');
+    
+    // Disable button during API call
+    button.disabled = true;
+    button.textContent = 'Processing...';
+    
+    try {
+        await cancelConciergeRequest(eventId);
+        
+        // Update button back to Request Assignment
+        button.classList.remove('btn-danger', 'cancel-concierge-request-btn');
+        button.classList.add('btn-primary', 'request-concierge-btn');
+        button.textContent = 'Request Assignment';
+        
+        // Remove old listener and add new request listener
+        button.removeEventListener('click', handleCancelButtonClick);
+        button.addEventListener('click', handleRequestButtonClick);
+    } catch (error) {
+        // Reset button on error
+        button.classList.add('btn-danger', 'cancel-concierge-request-btn');
+        button.textContent = 'Cancel Request';
+    } finally {
+        button.disabled = false;
     }
 }
 
@@ -129,19 +177,26 @@ async function requestConciergeAssignment(eventId) {
         await apiCall(`/events/${eventId}/concierge-requests`, 'POST', {}, auth.getToken());
         showToast('success', 'Request sent to admin for approval');
         await loadMyAssignments();
+        // After a successful request, refresh the upcoming events list
+        // This will ensure events with pending requests are no longer shown
+        await loadUpcomingEvents();
     } catch (error) {
         showToast('error', 'Failed to send request');
+        throw error; // Rethrow to handle in the calling function
     }
 }
 
-// Cancel a pending concierge request for the current user/event
 async function cancelConciergeRequest(eventId) {
     try {
         await apiCall(`/events/${eventId}/concierge-requests`, 'DELETE', null, auth.getToken());
         showToast('success', 'Request cancelled');
         await loadMyAssignments();
+        // After a successful cancellation, refresh the upcoming events list
+        // This ensures consistency between the two tables
+        await loadUpcomingEvents();
     } catch (error) {
         showToast('error', 'Failed to cancel request');
+        throw error; // Rethrow to handle in the calling function
     }
 }
 
