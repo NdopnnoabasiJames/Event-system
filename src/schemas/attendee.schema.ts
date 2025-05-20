@@ -18,9 +18,18 @@ export class Attendee {  @Prop({ required: true, index: 'text' })
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Event', required: true, index: true })
   event: MongooseSchema.Types.ObjectId;
-
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true, index: true })
   registeredBy: MongooseSchema.Types.ObjectId;
+
+  @Prop({ default: false })
+  checkedIn: boolean;
+
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: false })
+  checkedInBy: MongooseSchema.Types.ObjectId;
+
+  @Prop({ type: Date, required: false })
+  checkedInTime: Date;
+  
   @Prop({ 
     type: {
       location: { type: String, required: true },

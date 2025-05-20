@@ -355,8 +355,23 @@ export class EventsController {
   @ApiOperation({ summary: 'Cancel your pending concierge request for an event' })
   @ApiParam({ name: 'eventId', description: 'Event ID' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Request cancelled' })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'No pending request found' })
-  async cancelConciergeRequest(@Param('eventId') eventId: string, @Request() req) {
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'No pending request found' })  async cancelConciergeRequest(@Param('eventId') eventId: string, @Request() req) {
     return this.eventsService.cancelConciergeRequest(eventId, req.user.userId);
+  }
+
+  @Post(':eventId/check-in')
+  @Roles(Role.CONCIERGE)
+  @ApiOperation({ summary: 'Check in an attendee to an event' })
+  @ApiParam({ name: 'eventId', description: 'Event ID' })
+  @ApiBody({ schema: { properties: { phone: { type: 'string' } } } })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Attendee checked in successfully' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Attendee not found' })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Attendee already checked in' })
+  async checkInAttendee(
+    @Param('eventId') eventId: string, 
+    @Body('phone') phone: string,
+    @Request() req
+  ) {
+    return this.eventsService.checkInAttendee(eventId, phone, req.user.userId);
   }
 }

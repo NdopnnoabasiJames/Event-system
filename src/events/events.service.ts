@@ -6,12 +6,14 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { Role } from '../common/enums/role.enum';
 import { UsersService } from '../users/users.service';
 import { User } from '../schemas/user.schema';
+import { AttendeesService } from '../attendees/attendees.service';
 
 @Injectable()
 export class EventsService {
   constructor(
     @InjectModel(Event.name) private eventModel: Model<EventDocument>,
     private usersService: UsersService,
+    private attendeesService: AttendeesService,
   ) {}
 
   async create(createEventDto: CreateEventDto): Promise<EventDocument> {
@@ -278,7 +280,6 @@ async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocu
     }
     return approved;
   }
-
   // Concierge cancels their own pending request for an event
   async cancelConciergeRequest(eventId: string, userId: string): Promise<{ message: string }> {
     const event = await this.findOne(eventId);
@@ -288,5 +289,58 @@ async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocu
     event.conciergeRequests.splice(reqIndex, 1);
     await event.save();
     return { message: 'Request cancelled' };
+  }
+
+  // Check in an attendee to an event
+  async checkInAttendee(eventId: string, phone: string, conciergeId: string): Promise<{ message: string }> {
+    try {
+      // Find the event
+      const event = await this.findOne(eventId);
+      if (!event) {
+        throw new NotFoundException('Event not found');
+      }
+
+      // Verify concierge is approved for this event
+      const conciergeApproved = event.conciergeRequests?.some(
+        req => req.user.toString() === conciergeId && req.status === 'Approved'
+      );
+      
+      if (!conciergeApproved) {
+        throw new UnauthorizedException('You are not an approved concierge for this event');
+      }
+
+      // Find the attendee by phone and event
+      const attendees = await this.attendeesService.findByQuery({ 
+        phone: phone,
+        event: new Types.ObjectId(eventId)
+      });
+      
+      if (!attendees || attendees.length === 0) {
+        throw new NotFoundException('Attendee not found for this event');
+      }
+      
+      const attendee = attendees[0];
+      
+      // Check if already checked in
+      if (attendee.checkedIn) {
+        throw new HttpException('Attendee already checked in', HttpStatus.BAD_REQUEST);
+      }
+      
+      // Update the attendee record with check-in information
+      await this.attendeesService.update(attendee._id.toString(), {
+        checkedIn: true,
+        checkedInBy: conciergeId,
+        checkedInTime: new Date()
+      });
+      
+      return { message: 'Attendee checked in successfully' };
+    } catch (error) {
+      if (error instanceof NotFoundException || 
+          error instanceof UnauthorizedException ||
+          error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(`Failed to check in attendee: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 }

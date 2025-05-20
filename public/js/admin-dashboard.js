@@ -263,8 +263,7 @@ async function loadAttendeesData() {
             });
             
             // Get marketer name
-            const marketerName = attendee.registeredBy?.name || 'System';
-              row.innerHTML = `
+            const marketerName = attendee.registeredBy?.name || 'System';              row.innerHTML = `
                 <td>${attendee.name}</td>
                 <td>${attendee.phone || 'Not provided'}</td>
                 <td>${attendee.event.name}</td>
@@ -274,6 +273,10 @@ async function loadAttendeesData() {
                     '<span class="badge bg-secondary">Private</span>'}
                 </td>
                 <td>${formattedDate}</td>
+                <td>${attendee.checkedIn ? 
+                    '<span class="badge bg-success">Checked In</span>' : 
+                    '<span class="badge bg-warning text-dark">Not Checked In</span>'}
+                </td>
             `;
             
             tableBody.appendChild(row);
@@ -773,13 +776,11 @@ async function loadApprovedConcierges() {
             return;
         }
         for (const item of approved) {
-            const row = document.createElement('tr');
-            row.innerHTML = `
+            const row = document.createElement('tr');            row.innerHTML = `
                 <td>${item.eventName}</td>
                 <td>${new Date(item.eventDate).toLocaleDateString()}</td>
                 <td>${item.user?.name || 'N/A'}</td>
                 <td>${item.user?.email || 'N/A'}</td>
-                <td>${item.user?.phone || 'N/A'}</td>
                 <td>${item.reviewedAt ? new Date(item.reviewedAt).toLocaleString() : ''}</td>
             `;
             tableBody.appendChild(row);

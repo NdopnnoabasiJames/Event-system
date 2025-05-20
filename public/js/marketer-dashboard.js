@@ -319,6 +319,10 @@ async function loadMarketerAttendees() {
                             '<span class="badge bg-secondary">Private</span>'}
                         </td>
                         <td>${formattedDate}</td>
+                        <td>${attendee.checkedIn ? 
+                            `<span class="badge bg-success">Checked In</span>` : 
+                            '<span class="badge bg-warning text-dark">Not Checked In</span>'}
+                        </td>
                     `;
                     
                     tableBody.appendChild(row);                } catch (attendeeError) {
@@ -338,6 +342,10 @@ async function loadMarketerAttendees() {
                         <td>${attendee.event?.name || 'Unknown event'}</td>
                         <td>${attendee.transportPreference === 'bus' ? 'Bus' : 'Private'}</td>
                         <td>${attendee.createdAt || 'Date not available'}</td>
+                        <td>${attendee.checkedIn ? 
+                            `<span class="badge bg-success">Checked In</span>` : 
+                            '<span class="badge bg-warning text-dark">Not Checked In</span>'}
+                        </td>
                     `;
                     tableBody.appendChild(row);                } catch (e) {
                     // Silently handle display errors
@@ -373,10 +381,9 @@ async function showEventPerformance(eventId) {
         // Populate attendees table
         const attendeesTable = document.getElementById('event-attendees-table');
         attendeesTable.innerHTML = '';
-        
-        if (performanceData.attendees.length === 0) {
+          if (performanceData.attendees.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="3" class="text-center">No attendees registered yet</td>';
+            row.innerHTML = '<td colspan="4" class="text-center">No attendees registered yet</td>';
             attendeesTable.appendChild(row);
         } else {
             performanceData.attendees.forEach(attendee => {
@@ -384,6 +391,10 @@ async function showEventPerformance(eventId) {
                     <td>${attendee.name}</td>
                     <td>${attendee.phone || 'Not provided'}</td>
                     <td>${attendee.transportPreference === 'bus' ? 'Bus' : 'Private'}</td>
+                    <td>${attendee.checkedIn ? 
+                        `<span class="badge bg-success">Checked In</span>` : 
+                        '<span class="badge bg-warning text-dark">Not Checked In</span>'}
+                    </td>
                 `;
                 attendeesTable.appendChild(row);
             });
