@@ -24,21 +24,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         showToast('error', 'Missing event or concierge information');
         window.location.href = 'admin-dashboard.html';
         return;
-    }
-
-    try {
+    }    try {
         // Load event and concierge details
         const eventDetails = await getEventDetails(eventId);
         const conciergeDetails = await getConciergeDetails(conciergeId);
         
         // Load checked-in attendees for this concierge and event
-        const checkedInAttendees = await getCheckedInAttendees(eventId, conciergeId);
+        let checkedInAttendees = [];
+        try {
+            checkedInAttendees = await getCheckedInAttendees(eventId, conciergeId);
+        } catch (error) {
+            console.log('No checked-in attendees found or endpoint error:', error);
+            // Continue with empty attendees list instead of failing the whole page
+        }
         
         // Update page with fetched data
         updatePageInfo(eventDetails, conciergeDetails, checkedInAttendees);
+        
+        // Display a more specific message about check-ins
+        if (!checkedInAttendees || checkedInAttendees.length === 0) {
+            showToast('info', 'No attendees have been checked in by this concierge yet.');
+        }
     } catch (error) {
         console.error('Error loading page data:', error);
-        showToast('error', 'Failed to load check-in data');
+        
+        // Try to be more specific about which part failed
+        if (error.message.includes('event')) {
+            showToast('error', 'Failed to load event information. Please try again later.');
+        } else if (error.message.includes('concierge')) {
+            showToast('error', 'Failed to load concierge information. Please try again later.');
+        } else {
+            showToast('error', 'Failed to load check-in data. Please try again later.');
+        }
+        
+        // Still try to update the page with whatever data we have
+        updatePageInfo({name: 'Unknown Event'}, {name: 'Unknown Concierge'}, []);
     }
     
     // Set up event listener for back button to ensure it goes to the concierges tab
@@ -83,11 +103,60 @@ async function getConciergeDetails(userId) {
  */
 async function getCheckedInAttendees(eventId, conciergeId) {
     try {
-        const response = await apiCall(`/attendees/checked-in?eventId=${eventId}&conciergeId=${conciergeId}`, 'GET', null, auth.getToken());
-        return response.data || response;
+        // Try to fetch from server
+        try {
+            const response = await apiCall(`/attendees/checked-in?eventId=${eventId}&conciergeId=${conciergeId}`, 'GET', null, auth.getToken());
+            return response.data || response || [];
+        } catch (error) {
+            console.warn('Server endpoint error:', error);
+              // Try fallback to regular attendees endpoint with filtering
+            try {
+                const allAttendeesResponse = await apiCall('/attendees', 'GET', null, auth.getToken());
+                console.log('All attendees response:', allAttendeesResponse);
+                
+                // Handle nested data structure (response.data.data or response.data)
+                let attendeesList = [];
+                if (allAttendeesResponse.data && Array.isArray(allAttendeesResponse.data.data)) {
+                    attendeesList = allAttendeesResponse.data.data;
+                } else if (allAttendeesResponse.data && Array.isArray(allAttendeesResponse.data)) {
+                    attendeesList = allAttendeesResponse.data;
+                } else if (Array.isArray(allAttendeesResponse)) {
+                    attendeesList = allAttendeesResponse;
+                }
+                
+                console.log('Processing attendees list:', attendeesList);
+                
+                // Filter attendees that were checked in by this concierge for this event
+                const filteredAttendees = attendeesList.filter(attendee => {
+                    // Check if the attendee is checked in
+                    const isCheckedIn = attendee.checkedIn === true;
+                    
+                    // Check if the event matches
+                    const eventMatches = 
+                        (attendee.event && attendee.event._id === eventId) ||
+                        (attendee.event && attendee.event.toString() === eventId) ||
+                        (typeof attendee.event === 'string' && attendee.event === eventId);
+                    
+                    // Check if checked in by the right concierge
+                    const conciergeMatches = 
+                        (attendee.checkedInBy && attendee.checkedInBy._id === conciergeId) ||
+                        (attendee.checkedInBy && attendee.checkedInBy.toString() === conciergeId) ||
+                        (typeof attendee.checkedInBy === 'string' && attendee.checkedInBy === conciergeId);
+                    
+                    return isCheckedIn && eventMatches && conciergeMatches;
+                });
+                
+                console.log('Filtered attendees:', filteredAttendees);
+                return filteredAttendees;
+            } catch (secondError) {
+                console.warn('Fallback endpoint error:', secondError);
+                return [];
+            }
+        }
     } catch (error) {
-        console.error('Failed to fetch checked-in attendees:', error);
-        throw new Error('Failed to fetch checked-in attendees');
+        console.warn('Failed to fetch checked-in attendees:', error);
+        // Return empty array instead of throwing an error
+        return [];
     }
 }
 
@@ -95,24 +164,36 @@ async function getCheckedInAttendees(eventId, conciergeId) {
  * Update page with fetched data
  */
 function updatePageInfo(event, concierge, attendees) {
-    // Update page title and subtitle
-    document.getElementById('page-title').textContent = `Concierge Check-ins: ${event.name || 'Unknown Event'}`;
-    document.getElementById('page-subtitle').textContent = `Attendees checked-in by ${concierge.name || 'Unknown Concierge'}`;
-    
-    // Update event information
-    document.getElementById('event-name').textContent = event.name || 'N/A';
-    document.getElementById('event-date').textContent = formatDate(event.date);
-    document.getElementById('event-location').textContent = event.state || 'N/A';
-    document.getElementById('total-attendees').textContent = event.attendeesCount || attendees.length || 'N/A';
-    
-    // Update concierge information
-    document.getElementById('concierge-name').textContent = concierge.name || 'N/A';
-    document.getElementById('concierge-email').textContent = concierge.email || 'N/A';
-    document.getElementById('concierge-phone').textContent = concierge.phone || 'N/A';
-    document.getElementById('total-checkins').textContent = attendees.length || 0;
-    
-    // Update attendees table
-    updateAttendeesTable(attendees);
+    try {
+        // Ensure attendees is always an array
+        const safeAttendees = Array.isArray(attendees) ? attendees : [];
+        
+        // Update page title and subtitle
+        document.getElementById('page-title').textContent = `Concierge Check-ins: ${event?.name || 'Unknown Event'}`;
+        document.getElementById('page-subtitle').textContent = `Attendees checked-in by ${concierge?.name || 'Unknown Concierge'}`;
+        
+        // Update event information
+        document.getElementById('event-name').textContent = event?.name || 'N/A';
+        document.getElementById('event-date').textContent = event?.date ? formatDate(event.date) : 'N/A';
+        document.getElementById('event-location').textContent = event?.state || 'N/A';
+        document.getElementById('total-attendees').textContent = event?.attendeesCount || safeAttendees.length || 'N/A';
+        
+        // Update concierge information
+        document.getElementById('concierge-name').textContent = concierge?.name || 'N/A';
+        document.getElementById('concierge-email').textContent = concierge?.email || 'N/A';
+        document.getElementById('concierge-phone').textContent = concierge?.phone || 'N/A';
+        document.getElementById('total-checkins').textContent = safeAttendees.length || 0;
+        
+        // Update attendees table
+        updateAttendeesTable(safeAttendees);
+    } catch (error) {
+        console.error('Error updating page info:', error);
+        // Show an error message in the table
+        const tableBody = document.getElementById('attendees-table-body');
+        if (tableBody) {
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger"><i class="bi bi-exclamation-triangle"></i> Error loading attendee data. Please try again later.</td></tr>';
+        }
+    }
 }
 
 /**
@@ -125,8 +206,11 @@ function updateAttendeesTable(attendees) {
     tableBody.innerHTML = '';
     
     if (!attendees || attendees.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No attendees checked in.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted"><i class="bi bi-people"></i> No attendees have been checked in by this concierge yet.</td></tr>';
         noCheckinsMessage.classList.remove('d-none');
+        
+        // Update the total check-ins count to 0
+        document.getElementById('total-checkins').textContent = '0';
         return;
     }
     
@@ -159,14 +243,19 @@ function updateAttendeesTable(attendees) {
         
         tableBody.appendChild(row);
     });
-    
-    // Add event listeners to view attendee details
+      // Add event listeners to view attendee details
     document.querySelectorAll('.view-attendee-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const attendeeId = btn.getAttribute('data-attendee-id');
-            const attendee = attendees.find(a => (a._id || a.id) === attendeeId);
+            const attendee = attendees.find(a => {
+                const aId = a._id || a.id;
+                return aId === attendeeId;
+            });
+            
             if (attendee) {
                 showAttendeeDetails(attendee);
+            } else {
+                showToast('error', 'Could not find attendee details');
             }
         });
     });
@@ -176,37 +265,53 @@ function updateAttendeesTable(attendees) {
  * Show attendee details in modal
  */
 function showAttendeeDetails(attendee) {
-    // Populate modal with attendee details
-    document.getElementById('modal-attendee-name').textContent = attendee.name || 'N/A';
-    document.getElementById('modal-attendee-phone').textContent = `Phone: ${attendee.phone || 'N/A'}`;
-    document.getElementById('modal-attendee-email').textContent = `Email: ${attendee.email || 'N/A'}`;
-    
-    // Format dates
-    const registrationDate = attendee.registrationDate ? formatDate(attendee.registrationDate) : 'N/A';
-    const checkinTime = attendee.checkInTime ? formatDate(attendee.checkInTime, true) : 'N/A';
-    
-    document.getElementById('modal-registration-date').textContent = registrationDate;
-    document.getElementById('modal-checkin-time').textContent = checkinTime;
-    
-    // Other details
-    document.getElementById('modal-marketer').textContent = attendee.marketer?.name || 'N/A';
-    document.getElementById('modal-transport').textContent = attendee.transportOption || 'N/A';
-    
-    // Notes section (if any)
-    const notesSection = document.getElementById('modal-notes-section');
-    const notesContent = document.getElementById('modal-notes');
-    
-    if (attendee.checkInNotes) {
-        notesSection.classList.remove('d-none');
-        notesContent.textContent = attendee.checkInNotes;
-    } else {
-        notesSection.classList.add('d-none');
-        notesContent.textContent = 'No notes available';
+    try {
+        if (!attendee) {
+            throw new Error('Attendee data is missing');
+        }
+        
+        // Populate modal with attendee details
+        document.getElementById('modal-attendee-name').textContent = attendee.name || 'N/A';
+        document.getElementById('modal-attendee-phone').textContent = `Phone: ${attendee.phone || 'N/A'}`;
+        document.getElementById('modal-attendee-email').textContent = `Email: ${attendee.email || 'N/A'}`;
+        
+        // Format dates
+        const registrationDate = attendee.registrationDate ? formatDate(attendee.registrationDate) : 'N/A';
+        const checkinTime = attendee.checkInTime ? formatDate(attendee.checkInTime, true) : 'N/A';
+        
+        document.getElementById('modal-registration-date').textContent = registrationDate;
+        document.getElementById('modal-checkin-time').textContent = checkinTime;
+        
+        // Other details - Use optional chaining to safely access nested properties
+        let marketerName = 'N/A';
+        if (typeof attendee.marketer === 'object' && attendee.marketer) {
+            marketerName = attendee.marketer.name || 'Unknown Marketer';
+        } else if (typeof attendee.marketer === 'string') {
+            marketerName = 'ID: ' + attendee.marketer;
+        }
+        
+        document.getElementById('modal-marketer').textContent = marketerName;
+        document.getElementById('modal-transport').textContent = attendee.transportOption || 'N/A';
+        
+        // Notes section (if any)
+        const notesSection = document.getElementById('modal-notes-section');
+        const notesContent = document.getElementById('modal-notes');
+        
+        if (attendee.checkInNotes) {
+            notesSection.classList.remove('d-none');
+            notesContent.textContent = attendee.checkInNotes;
+        } else {
+            notesSection.classList.add('d-none');
+            notesContent.textContent = 'No notes available';
+        }
+        
+        // Show the modal
+        const modal = new bootstrap.Modal(document.getElementById('attendeeDetailsModal'));
+        modal.show();
+    } catch (error) {
+        console.error('Error showing attendee details:', error);
+        showToast('error', 'Failed to display attendee details');
     }
-    
-    // Show the modal
-    const modal = new bootstrap.Modal(document.getElementById('attendeeDetailsModal'));
-    modal.show();
 }
 
 /**
