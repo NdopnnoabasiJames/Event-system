@@ -775,8 +775,17 @@ async function loadApprovedConcierges() {
             tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No approved concierges.</td></tr>';
             return;
         }
+        // Deduplicate by eventId + userId (concierge)
+        const deduped = new Set();
         for (const item of approved) {
-            const row = document.createElement('tr');            row.innerHTML = `
+            // Use eventId and userId as the unique key
+            const eventId = item.eventId?.toString() || '';
+            const userId = item.user?._id?.toString() || item.user?.id?.toString() || '';
+            const key = eventId + '|' + userId;
+            if (deduped.has(key)) continue;
+            deduped.add(key);
+            const row = document.createElement('tr');
+            row.innerHTML = `
                 <td>${item.eventName}</td>
                 <td>${new Date(item.eventDate).toLocaleDateString()}</td>
                 <td>${item.user?.name || 'N/A'}</td>
