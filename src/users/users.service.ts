@@ -20,7 +20,7 @@ export class UsersService {
 
     const user = new this.userModel({
       ...createUserDto,
-      role: createUserDto.role || Role.CONCIERGE
+      role: createUserDto.role
     });
 
     return await user.save();

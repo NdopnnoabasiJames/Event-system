@@ -234,11 +234,10 @@ async function loadMyAssignments() {
                 <td>${checkInBtn}</td>
             `;
             tableBody.appendChild(row);
-        }
-        document.querySelectorAll('.check-in-btn').forEach(btn => {
+        }        document.querySelectorAll('.check-in-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const eventId = e.currentTarget.getAttribute('data-event-id');
-                openCheckInModal(eventId);
+                redirectToCheckInDashboard(eventId);
             });
         });
     } catch (error) {
@@ -246,26 +245,6 @@ async function loadMyAssignments() {
     }
 }
 
-function openCheckInModal(eventId) {
-    document.getElementById('checkInEventId').value = eventId;
-    document.getElementById('attendeePhone').value = '';
-    document.getElementById('checkInResult').innerHTML = '';
-    const modal = new bootstrap.Modal(document.getElementById('checkInModal'));
-    modal.show();
+function redirectToCheckInDashboard(eventId) {
+    window.location.href = `event-check-in.html?eventId=${eventId}`;
 }
-
-document.getElementById('checkInForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const eventId = document.getElementById('checkInEventId').value;
-    const phone = document.getElementById('attendeePhone').value.trim();
-    if (!phone) {
-        document.getElementById('checkInResult').innerHTML = '<div class="alert alert-danger">Please enter a phone number.</div>';
-        return;
-    }
-    try {
-        await apiCall(`/events/${eventId}/check-in`, 'POST', { phone }, auth.getToken());
-        document.getElementById('checkInResult').innerHTML = '<div class="alert alert-success">Attendee checked in successfully!</div>';
-    } catch (error) {
-        document.getElementById('checkInResult').innerHTML = '<div class="alert alert-danger">Check-in failed. Please verify the phone number and try again.</div>';
-    }
-});

@@ -297,7 +297,7 @@ function updateAuthState() {
             }
             
             authButtons.innerHTML = `
-                <span class="navbar-text me-3">Welcome, ${user.name || 'User'}</span>
+                <span class="navbar-text me-3">Welcome, ${user.name}</span>
                 ${dashboardLink}
                 <button onclick="auth.logout()" class="btn btn-outline-light">Logout</button>
             `;        } else {

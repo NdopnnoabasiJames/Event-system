@@ -39,7 +39,8 @@ export class AuthService {
       const payload = { 
         email: user.email, 
         sub: user._id ? user._id.toString() : user.id,
-        role: user.role 
+        role: user.role,
+        name: user.name,
       };
       console.log('JWT Payload:', payload);
       
@@ -52,7 +53,8 @@ export class AuthService {
         user: {
           id: payload.sub,
           email: payload.email,
-          role: payload.role
+          role: payload.role,
+          name: payload.name,
         }
       };
     } catch (error) {

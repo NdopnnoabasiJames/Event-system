@@ -37,7 +37,7 @@ export class AttendeesController {
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.MARKETER)
+  @Roles(Role.ADMIN, Role.MARKETER, Role.CONCIERGE)
   findAll(@Query('eventId') eventId?: string, @Query('transport') transport?: 'bus' | 'private') {
     if (eventId && transport) {
       return this.attendeesService.getAttendeesByTransport(eventId, transport);
