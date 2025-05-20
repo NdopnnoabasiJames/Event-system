@@ -225,8 +225,13 @@ async function loadMyAssignments() {
             const status = assignment.myConciergeStatus || 'Pending';
             const checkInBtn = status === 'Approved'
                 ? `<button class="btn btn-sm btn-success check-in-btn" data-event-id="${eventId}">Check-In</button>`
-                : '-';
-            const row = document.createElement('tr');
+                : '-';            const row = document.createElement('tr');
+            // Add clickable-row class for browsers that don't support :has selector
+            if (status === 'Approved') {
+                row.classList.add('clickable-row');
+                // Add data attribute to store event ID
+                row.setAttribute('data-event-id', eventId);
+            }
             row.innerHTML = `
                 <td>${eventName}</td>
                 <td>${formattedDate}</td>
@@ -238,6 +243,16 @@ async function loadMyAssignments() {
             btn.addEventListener('click', (e) => {
                 const eventId = e.currentTarget.getAttribute('data-event-id');
                 redirectToCheckInDashboard(eventId);
+                // Prevent the row click event from also triggering
+                e.stopPropagation();
+            });
+        });
+        
+        // Add click event to the entire row for approved concierges
+        document.querySelectorAll('#my-assignments-table-body tr.clickable-row').forEach(row => {
+            row.addEventListener('click', function() {
+                const eventId = this.getAttribute('data-event-id');
+                showAttendeeCheckinHistory(eventId);
             });
         });
     } catch (error) {
@@ -247,4 +262,15 @@ async function loadMyAssignments() {
 
 function redirectToCheckInDashboard(eventId) {
     window.location.href = `event-check-in.html?eventId=${eventId}`;
+}
+
+function showAttendeeCheckinHistory(eventId) {
+    // This is a placeholder for the future functionality
+    // When the attendees check-in history page is implemented, 
+    // this will redirect to that page
+    
+    alert(`This feature is coming soon! You will be able to see all attendees checked in by you for event ID: ${eventId}`);
+    
+    // When the page is implemented, uncomment this line:
+    // window.location.href = `attendee-history.html?eventId=${eventId}`;
 }

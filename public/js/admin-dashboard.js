@@ -19,9 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.location.href = '../index.html';
         }
         return;
-    }
-
-    try {
+    }    try {
         // Update auth state
         updateAuthState();
         
@@ -36,7 +34,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Load initial attendees data
         await loadAttendeesData();
-          // Add event listener for event filter
+
+        // Load concierge data
+        await loadConciergeRequests();
+        await loadApprovedConcierges();
+          
+        // Add event listener for event filter
         const eventFilter = document.getElementById('event-filter');
         if (eventFilter) {
             eventFilter.addEventListener('change', loadAttendeesData);
@@ -785,6 +788,7 @@ async function loadApprovedConcierges() {
             if (deduped.has(key)) continue;
             deduped.add(key);
             const row = document.createElement('tr');
+            const link = `concierge-checkins.html?eventId=${encodeURIComponent(eventId)}&conciergeId=${encodeURIComponent(userId)}`;
             row.innerHTML = `
                 <td>${item.eventName}</td>
                 <td>${new Date(item.eventDate).toLocaleDateString()}</td>
@@ -792,6 +796,12 @@ async function loadApprovedConcierges() {
                 <td>${item.user?.email || 'N/A'}</td>
                 <td>${item.reviewedAt ? new Date(item.reviewedAt).toLocaleString() : ''}</td>
             `;
+            row.classList.add('table-row-link');
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', () => {
+                window.location.href = link;
+            });            // Add row styling to indicate it's clickable
+            row.classList.add('approved-concierge-row');
             tableBody.appendChild(row);
         }
     } catch (error) {
@@ -807,6 +817,19 @@ if (conciergeTab) {
         loadApprovedConcierges();
     });
 }
+
+// Check if we need to activate the concierge tab on load (coming back from concierge-checkins.html)
+document.addEventListener('DOMContentLoaded', () => {
+    const activeTab = sessionStorage.getItem('activeAdminTab');
+    if (activeTab === 'concierge-requests') {
+        const conciergeTab = document.getElementById('concierge-requests-tab');
+        if (conciergeTab) {
+            const tabTrigger = new bootstrap.Tab(conciergeTab);
+            tabTrigger.show();
+            sessionStorage.removeItem('activeAdminTab'); // Clear after use
+        }
+    }
+});
 
 // Helper function to validate dates
 function isValidDate(dateString) {

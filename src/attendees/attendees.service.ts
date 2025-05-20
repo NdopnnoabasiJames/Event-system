@@ -48,6 +48,37 @@ export class AttendeesService {
     return attendee;
   }
 
+  async getCheckinsByConciege(eventId: string, conciergeId: string, search?: string): Promise<AttendeeDocument[]> {
+    try {      const query: any = { 
+        event: eventId, 
+        checkedInBy: conciergeId,
+        checkedInTime: { $exists: true }
+      };
+
+      // Add search functionality
+      if (search) {
+        const searchRegex = new RegExp(search, 'i');
+        query.$or = [
+          { name: searchRegex },
+          { email: searchRegex },
+          { phone: searchRegex }
+        ];
+      }
+
+      const attendees = await this.attendeeModel
+        .find(query)
+        .populate('event')
+        .populate('registeredBy', '-password')
+        .populate('checkedInBy', '-password')
+        .sort({ checkedInAt: -1 }) // Most recent check-ins first
+        .exec();
+      
+      return attendees;
+    } catch (error) {
+      throw new HttpException(`Failed to retrieve check-ins: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   async findByQuery(query: any): Promise<AttendeeDocument[]> {
   try {
     const attendees = await this.attendeeModel

@@ -1,0 +1,281 @@
+// Concierge Check-ins JavaScript file
+document.addEventListener('DOMContentLoaded', async () => {
+    // Check if user is authenticated
+    if (!auth.isAuthenticated()) {
+        showToast('error', 'Please login to access this page');
+        window.location.href = 'login.html';
+        return;
+    }
+
+    // Check if user is an admin
+    const user = auth.getUser();
+    if (user.role !== 'admin') {
+        showToast('error', 'Only administrators can access this page');
+        window.location.href = '../index.html';
+        return;
+    }
+
+    // Get eventId and conciergeId from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const eventId = urlParams.get('eventId');
+    const conciergeId = urlParams.get('conciergeId');
+
+    if (!eventId || !conciergeId) {
+        showToast('error', 'Missing event or concierge information');
+        window.location.href = 'admin-dashboard.html';
+        return;
+    }
+
+    try {
+        // Load event and concierge details
+        const eventDetails = await getEventDetails(eventId);
+        const conciergeDetails = await getConciergeDetails(conciergeId);
+        
+        // Load checked-in attendees for this concierge and event
+        const checkedInAttendees = await getCheckedInAttendees(eventId, conciergeId);
+        
+        // Update page with fetched data
+        updatePageInfo(eventDetails, conciergeDetails, checkedInAttendees);
+    } catch (error) {
+        console.error('Error loading page data:', error);
+        showToast('error', 'Failed to load check-in data');
+    }
+    
+    // Set up event listener for back button to ensure it goes to the concierges tab
+    const backButton = document.querySelector('a[href="admin-dashboard.html#concierge-requests"]');
+    if (backButton) {
+        backButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            sessionStorage.setItem('activeAdminTab', 'concierge-requests');
+            window.location.href = 'admin-dashboard.html';
+        });
+    }
+});
+
+/**
+ * Fetch event details
+ */
+async function getEventDetails(eventId) {
+    try {
+        const response = await apiCall(`/events/${eventId}`, 'GET', null, auth.getToken());
+        return response.data || response;
+    } catch (error) {
+        console.error('Failed to fetch event details:', error);
+        throw new Error('Failed to fetch event details');
+    }
+}
+
+/**
+ * Fetch concierge (user) details
+ */
+async function getConciergeDetails(userId) {
+    try {
+        const response = await apiCall(`/users/${userId}`, 'GET', null, auth.getToken());
+        return response.data || response;
+    } catch (error) {
+        console.error('Failed to fetch concierge details:', error);
+        throw new Error('Failed to fetch concierge details');
+    }
+}
+
+/**
+ * Fetch attendees checked in by this concierge for this event
+ */
+async function getCheckedInAttendees(eventId, conciergeId) {
+    try {
+        const response = await apiCall(`/attendees/checked-in?eventId=${eventId}&conciergeId=${conciergeId}`, 'GET', null, auth.getToken());
+        return response.data || response;
+    } catch (error) {
+        console.error('Failed to fetch checked-in attendees:', error);
+        throw new Error('Failed to fetch checked-in attendees');
+    }
+}
+
+/**
+ * Update page with fetched data
+ */
+function updatePageInfo(event, concierge, attendees) {
+    // Update page title and subtitle
+    document.getElementById('page-title').textContent = `Concierge Check-ins: ${event.name || 'Unknown Event'}`;
+    document.getElementById('page-subtitle').textContent = `Attendees checked-in by ${concierge.name || 'Unknown Concierge'}`;
+    
+    // Update event information
+    document.getElementById('event-name').textContent = event.name || 'N/A';
+    document.getElementById('event-date').textContent = formatDate(event.date);
+    document.getElementById('event-location').textContent = event.state || 'N/A';
+    document.getElementById('total-attendees').textContent = event.attendeesCount || attendees.length || 'N/A';
+    
+    // Update concierge information
+    document.getElementById('concierge-name').textContent = concierge.name || 'N/A';
+    document.getElementById('concierge-email').textContent = concierge.email || 'N/A';
+    document.getElementById('concierge-phone').textContent = concierge.phone || 'N/A';
+    document.getElementById('total-checkins').textContent = attendees.length || 0;
+    
+    // Update attendees table
+    updateAttendeesTable(attendees);
+}
+
+/**
+ * Update the attendees table with checked-in attendees
+ */
+function updateAttendeesTable(attendees) {
+    const tableBody = document.getElementById('attendees-table-body');
+    const noCheckinsMessage = document.getElementById('no-checkins');
+    
+    tableBody.innerHTML = '';
+    
+    if (!attendees || attendees.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No attendees checked in.</td></tr>';
+        noCheckinsMessage.classList.remove('d-none');
+        return;
+    }
+    
+    // Hide the "no attendees" message
+    noCheckinsMessage.classList.add('d-none');
+    
+    // Populate the table
+    attendees.forEach((attendee, index) => {
+        const row = document.createElement('tr');
+        
+        // Format the check-in time
+        const checkInTime = attendee.checkInTime ? formatDate(attendee.checkInTime, true) : 'N/A';
+        
+        // Get marketer name
+        const marketerName = attendee.marketer?.name || 'N/A';
+        
+        row.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${attendee.name || 'N/A'}</td>
+            <td>${attendee.phone || 'N/A'}</td>
+            <td>${marketerName}</td>
+            <td>${attendee.transportOption || 'N/A'}</td>
+            <td>${checkInTime}</td>
+            <td>
+                <button class="btn btn-sm btn-info view-attendee-btn" data-attendee-id="${attendee._id || attendee.id}">
+                    <i class="bi bi-info-circle"></i> Details
+                </button>
+            </td>
+        `;
+        
+        tableBody.appendChild(row);
+    });
+    
+    // Add event listeners to view attendee details
+    document.querySelectorAll('.view-attendee-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const attendeeId = btn.getAttribute('data-attendee-id');
+            const attendee = attendees.find(a => (a._id || a.id) === attendeeId);
+            if (attendee) {
+                showAttendeeDetails(attendee);
+            }
+        });
+    });
+}
+
+/**
+ * Show attendee details in modal
+ */
+function showAttendeeDetails(attendee) {
+    // Populate modal with attendee details
+    document.getElementById('modal-attendee-name').textContent = attendee.name || 'N/A';
+    document.getElementById('modal-attendee-phone').textContent = `Phone: ${attendee.phone || 'N/A'}`;
+    document.getElementById('modal-attendee-email').textContent = `Email: ${attendee.email || 'N/A'}`;
+    
+    // Format dates
+    const registrationDate = attendee.registrationDate ? formatDate(attendee.registrationDate) : 'N/A';
+    const checkinTime = attendee.checkInTime ? formatDate(attendee.checkInTime, true) : 'N/A';
+    
+    document.getElementById('modal-registration-date').textContent = registrationDate;
+    document.getElementById('modal-checkin-time').textContent = checkinTime;
+    
+    // Other details
+    document.getElementById('modal-marketer').textContent = attendee.marketer?.name || 'N/A';
+    document.getElementById('modal-transport').textContent = attendee.transportOption || 'N/A';
+    
+    // Notes section (if any)
+    const notesSection = document.getElementById('modal-notes-section');
+    const notesContent = document.getElementById('modal-notes');
+    
+    if (attendee.checkInNotes) {
+        notesSection.classList.remove('d-none');
+        notesContent.textContent = attendee.checkInNotes;
+    } else {
+        notesSection.classList.add('d-none');
+        notesContent.textContent = 'No notes available';
+    }
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('attendeeDetailsModal'));
+    modal.show();
+}
+
+/**
+ * Format date for display
+ */
+function formatDate(dateString, includeTime = false) {
+    try {
+        if (!dateString) return 'N/A';
+        
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'Invalid Date';
+        
+        const options = {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            ...(includeTime && { hour: '2-digit', minute: '2-digit' })
+        };
+        
+        return date.toLocaleString('en-US', options);
+    } catch (error) {
+        console.error('Error formatting date:', error);
+        return 'Error';
+    }
+}
+
+/**
+ * Show toast message
+ */
+function showToast(type, message) {
+    // Check if a toast container exists
+    let toastContainer = document.querySelector('.toast-container');
+    
+    if (!toastContainer) {
+        // Create a toast container if it doesn't exist
+        toastContainer = document.createElement('div');
+        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Create a new toast
+    const toastId = 'toast-' + Math.random().toString(36).substr(2, 9);
+    const toast = document.createElement('div');
+    toast.className = `toast ${type === 'error' ? 'bg-danger' : 'bg-success'} text-white`;
+    toast.id = toastId;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+    
+    // Add toast content
+    toast.innerHTML = `
+        <div class="toast-header ${type === 'error' ? 'bg-danger' : 'bg-success'} text-white">
+            <strong class="me-auto">${type === 'error' ? 'Error' : 'Success'}</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            ${message}
+        </div>
+    `;
+    
+    // Add the toast to the container
+    toastContainer.appendChild(toast);
+    
+    // Initialize and show the toast
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    // Remove the toast after it's hidden
+    toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+    });
+}
