@@ -112,11 +112,11 @@ export class AttendeesService {
     if (!attendee) {
       throw new NotFoundException('Attendee not found');
     }
-  }
-  async getEventAttendees(eventId: string): Promise<AttendeeDocument[]> {
+  }  async getEventAttendees(eventId: string): Promise<AttendeeDocument[]> {
   try {
     const attendees = await this.attendeeModel
       .find({ event: eventId })
+      .populate('event')
       .populate('registeredBy', '-password')
       .exec();
 
@@ -143,11 +143,11 @@ export class AttendeesService {
     throw new HttpException(`Failed to retrieve attendees: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }
-
   async getAttendeesByTransport(eventId: string, transportType: 'bus' | 'private'): Promise<AttendeeDocument[]> {
   try {
     const attendees = await this.attendeeModel
       .find({ event: eventId, transportPreference: transportType })
+      .populate('event')
       .populate('registeredBy', '-password')
       .exec();
 
@@ -159,8 +159,7 @@ export class AttendeesService {
   } catch (error) {
     throw new HttpException(`Failed to retrieve attendees: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
-}
-  async getBusAttendeesByPickup(eventId: string, pickupLocation: string): Promise<AttendeeDocument[]> {
+}  async getBusAttendeesByPickup(eventId: string, pickupLocation: string): Promise<AttendeeDocument[]> {
   try {
     const attendees = await this.attendeeModel
       .find({
@@ -168,6 +167,7 @@ export class AttendeesService {
         transportPreference: 'bus',
         'busPickup.location': pickupLocation,
       })
+      .populate('event')
       .populate('registeredBy', '-password')
       .exec();
 

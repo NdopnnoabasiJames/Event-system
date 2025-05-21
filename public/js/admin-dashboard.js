@@ -266,10 +266,20 @@ async function loadAttendeesData() {
             });
             
             // Get marketer name
-            const marketerName = attendee.registeredBy?.name || 'System';              row.innerHTML = `
+            const marketerName = attendee.registeredBy?.name || 'System';            // Get event name, handling both populated objects and string IDs
+            let eventName = 'Unknown Event';
+            if (attendee.event) {
+                if (typeof attendee.event === 'object' && attendee.event.name) {
+                    eventName = attendee.event.name;
+                } else if (typeof attendee.event === 'string') {
+                    eventName = 'Event ID: ' + attendee.event;
+                }
+            }
+            
+            row.innerHTML = `
                 <td>${attendee.name}</td>
                 <td>${attendee.phone || 'Not provided'}</td>
-                <td>${attendee.event.name}</td>
+                <td>${eventName}</td>
                 <td>${marketerName}</td>
                 <td>${attendee.transportPreference === 'bus' ? 
                     `<span class="badge bg-success">Bus (${attendee.busPickup?.location || 'N/A'})</span>` : 
