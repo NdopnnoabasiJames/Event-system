@@ -105,13 +105,15 @@ async function getCheckedInAttendees(eventId, conciergeId) {
     try {
         // Try to fetch from server
         try {
-            const response = await apiCall(`/attendees/checked-in?eventId=${eventId}&conciergeId=${conciergeId}`, 'GET', null, auth.getToken());
+            // Use the specific endpoint with populated fields for registeredBy (marketer info)
+            const response = await apiCall(`/attendees/checked-in?eventId=${eventId}&conciergeId=${conciergeId}&populate=registeredBy`, 'GET', null, auth.getToken());
             return response.data || response || [];
         } catch (error) {
             console.warn('Server endpoint error:', error);
               // Try fallback to regular attendees endpoint with filtering
             try {
-                const allAttendeesResponse = await apiCall('/attendees', 'GET', null, auth.getToken());
+                // Request populated marketer data
+                const allAttendeesResponse = await apiCall('/attendees?populate=registeredBy', 'GET', null, auth.getToken());
                 console.log('All attendees response:', allAttendeesResponse);
                 
                 // Handle nested data structure (response.data.data or response.data)
@@ -216,23 +218,30 @@ function updateAttendeesTable(attendees) {
     
     // Hide the "no attendees" message
     noCheckinsMessage.classList.add('d-none');
-    
-    // Populate the table
+      // Populate the table
     attendees.forEach((attendee, index) => {
         const row = document.createElement('tr');
         
-        // Format the check-in time
-        const checkInTime = attendee.checkInTime ? formatDate(attendee.checkInTime, true) : 'N/A';
+        // Format the check-in time - corrected from checkInTime to checkedInTime
+        const checkInTime = attendee.checkedInTime ? formatDate(attendee.checkedInTime, true) : 'N/A';
         
-        // Get marketer name
-        const marketerName = attendee.marketer?.name || 'N/A';
+        // Get marketer name - looking for registeredBy instead of marketer
+        const marketerName = attendee.registeredBy?.name || 'N/A';
+        
+        // Get transport preference display
+        let transportDisplay = 'N/A';
+        if (attendee.transportPreference === 'bus') {
+            transportDisplay = `Bus (${attendee.busPickup?.location || 'No location'})`;
+        } else if (attendee.transportPreference === 'private') {
+            transportDisplay = 'Private';
+        }
         
         row.innerHTML = `
             <td>${index + 1}</td>
             <td>${attendee.name || 'N/A'}</td>
             <td>${attendee.phone || 'N/A'}</td>
             <td>${marketerName}</td>
-            <td>${attendee.transportOption || 'N/A'}</td>
+            <td>${transportDisplay}</td>
             <td>${checkInTime}</td>
             <td>
                 <button class="btn btn-sm btn-info view-attendee-btn" data-attendee-id="${attendee._id || attendee.id}">
@@ -274,24 +283,31 @@ function showAttendeeDetails(attendee) {
         document.getElementById('modal-attendee-name').textContent = attendee.name || 'N/A';
         document.getElementById('modal-attendee-phone').textContent = `Phone: ${attendee.phone || 'N/A'}`;
         document.getElementById('modal-attendee-email').textContent = `Email: ${attendee.email || 'N/A'}`;
-        
-        // Format dates
-        const registrationDate = attendee.registrationDate ? formatDate(attendee.registrationDate) : 'N/A';
-        const checkinTime = attendee.checkInTime ? formatDate(attendee.checkInTime, true) : 'N/A';
+          // Format dates
+        const registrationDate = attendee.createdAt ? formatDate(attendee.createdAt) : 'N/A';
+        const checkinTime = attendee.checkedInTime ? formatDate(attendee.checkedInTime, true) : 'N/A';
         
         document.getElementById('modal-registration-date').textContent = registrationDate;
         document.getElementById('modal-checkin-time').textContent = checkinTime;
         
         // Other details - Use optional chaining to safely access nested properties
         let marketerName = 'N/A';
-        if (typeof attendee.marketer === 'object' && attendee.marketer) {
-            marketerName = attendee.marketer.name || 'Unknown Marketer';
-        } else if (typeof attendee.marketer === 'string') {
-            marketerName = 'ID: ' + attendee.marketer;
+        if (typeof attendee.registeredBy === 'object' && attendee.registeredBy) {
+            marketerName = attendee.registeredBy.name || 'Unknown Marketer';
+        } else if (typeof attendee.registeredBy === 'string') {
+            marketerName = 'ID: ' + attendee.registeredBy;
         }
         
         document.getElementById('modal-marketer').textContent = marketerName;
-        document.getElementById('modal-transport').textContent = attendee.transportOption || 'N/A';
+        
+        // Format transport preference
+        let transportDisplay = 'N/A';
+        if (attendee.transportPreference === 'bus') {
+            transportDisplay = `Bus (${attendee.busPickup?.location || 'No location'})`;
+        } else if (attendee.transportPreference === 'private') {
+            transportDisplay = 'Private';
+        }
+        document.getElementById('modal-transport').textContent = transportDisplay;
         
         // Notes section (if any)
         const notesSection = document.getElementById('modal-notes-section');
