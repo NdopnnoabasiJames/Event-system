@@ -85,6 +85,7 @@ export class AttendeesService {
       .find(query)
       .populate('event')
       .populate('registeredBy', '-password')
+      .populate('checkedInBy', '-password')
       .exec();
     
     return attendees;
@@ -126,12 +127,12 @@ export class AttendeesService {
     throw new HttpException(`Failed to fetch event attendees: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }
-
   async getMarketerAttendees(marketerId: string): Promise<AttendeeDocument[]> {
   try {
     const attendees = await this.attendeeModel
       .find({ registeredBy: marketerId })
       .populate('event')
+      .populate('checkedInBy', '-password')
       .exec();
 
     if (!attendees || attendees.length === 0) {

@@ -194,7 +194,6 @@ export class MarketersService {
       .sort((a, b) => b.stats.totalAttendeesRegistered - a.stats.totalAttendeesRegistered)
       .slice(0, limit);
   }
-
   async getMarketerEventPerformance(marketerId: string, eventId: string) {
     const attendees = await this.attendeesService.findByQuery({
       registeredBy: marketerId,
@@ -214,7 +213,11 @@ export class MarketersService {
         id: attendee._id,
         name: attendee.name,
         email: attendee.email,
-        transportPreference: attendee.transportPreference
+        phone: attendee.phone,
+        transportPreference: attendee.transportPreference,
+        checkedIn: attendee.checkedIn || false,
+        checkedInTime: attendee.checkedInTime,
+        checkedInBy: attendee.checkedInBy
       }))
     };
   }

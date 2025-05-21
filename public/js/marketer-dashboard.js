@@ -307,9 +307,9 @@ async function loadMarketerAttendees() {
                         }                    } catch (dateError) {
                         // Silently handle date formatting errors
                     }
-                      // Access event name safely
-                    const eventName = attendee.event?.name || 'Unknown event';
-                      row.innerHTML = `
+                    
+                    // Access event name safely
+                    const eventName = attendee.event?.name || 'Unknown event';                      row.innerHTML = `
                         <td>${attendee.name || 'No name'}</td>
                         <td>${attendee.phone || 'No phone'}</td>
                         <td>${eventName}</td>
@@ -321,7 +321,7 @@ async function loadMarketerAttendees() {
                         <td>${getCheckInStatusDisplay(attendee)}</td>
                     `;
                     
-                    tableBody.appendChild(row);} catch (attendeeError) {
+                    tableBody.appendChild(row);                } catch (attendeeError) {
                     // Silently handle attendee processing errors
                 }
             }
@@ -340,7 +340,7 @@ async function loadMarketerAttendees() {
                         <td>${attendee.createdAt || 'Date not available'}</td>
                         <td>${getCheckInStatusDisplay(attendee)}</td>
                     `;
-                    tableBody.appendChild(row);} catch (e) {
+                    tableBody.appendChild(row);                } catch (e) {
                     // Silently handle display errors
                 }
             }
@@ -374,12 +374,12 @@ async function showEventPerformance(eventId) {
         // Populate attendees table
         const attendeesTable = document.getElementById('event-attendees-table');
         attendeesTable.innerHTML = '';
-          if (performanceData.attendees.length === 0) {
+        
+        if (performanceData.attendees.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="4" class="text-center">No attendees registered yet</td>';
+            row.innerHTML = '<td colspan="3" class="text-center">No attendees registered yet</td>';
             attendeesTable.appendChild(row);
-        } else {
-            performanceData.attendees.forEach(attendee => {
+        } else {            performanceData.attendees.forEach(attendee => {
                 const row = document.createElement('tr');                row.innerHTML = `
                     <td>${attendee.name}</td>
                     <td>${attendee.phone || 'Not provided'}</td>
@@ -761,7 +761,7 @@ function getCheckInStatusDisplay(attendee) {
     
     if (attendee.checkedIn === true) {
         return '<span class="badge bg-success">Checked In</span>';
-    } else if (attendee.checkInTime) {
+    } else if (attendee.checkedInTime) {
         return '<span class="badge bg-success">Checked In</span>';
     } else {
         return '<span class="badge bg-warning text-dark">Not Checked In</span>';
