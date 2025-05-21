@@ -47,7 +47,7 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
 
         return responseData;
     } catch (error) {
-        console.error('API Error:', error);
+        // console.error('API Error:', error);
         
         if (!window.navigator.onLine) {
             showToast('error', 'You are offline. Please check your internet connection.');

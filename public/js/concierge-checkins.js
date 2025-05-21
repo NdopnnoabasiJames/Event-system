@@ -109,7 +109,7 @@ async function getCheckedInAttendees(eventId, conciergeId) {
             const response = await apiCall(`/attendees/checked-in?eventId=${eventId}&conciergeId=${conciergeId}&populate=registeredBy`, 'GET', null, auth.getToken());
             return response.data || response || [];
         } catch (error) {
-            console.warn('Server endpoint error:', error);
+            // console.warn('Server endpoint error:', error);
               // Try fallback to regular attendees endpoint with filtering
             try {
                 // Request populated marketer data

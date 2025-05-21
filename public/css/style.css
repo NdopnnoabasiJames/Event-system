@@ -177,7 +177,7 @@ footer {
 
 .approved-concierge-row:hover {
     background-color: grey !important;
-    transform: translateY(-2px);
+    /* transform: translateY(-2px); */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     z-index: 1;
 }
@@ -186,7 +186,7 @@ footer {
     border-color: rgba(13, 110, 253, 0.5);
 }
 
-.approved-concierge-row:hover::before {
+/* .approved-concierge-row:hover::before {
     content: '';
     position: absolute;
     left: 0;
@@ -199,4 +199,4 @@ footer {
 .approved-concierge-row:active {
     transform: translateY(0);
     background-color: rgba(13, 110, 253, 0.2) !important;
-}
+} */
