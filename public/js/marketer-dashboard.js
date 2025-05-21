@@ -307,8 +307,7 @@ async function loadMarketerAttendees() {
                         }                    } catch (dateError) {
                         // Silently handle date formatting errors
                     }
-                    
-                    // Access event name safely
+                      // Access event name safely
                     const eventName = attendee.event?.name || 'Unknown event';
                       row.innerHTML = `
                         <td>${attendee.name || 'No name'}</td>
@@ -319,9 +318,10 @@ async function loadMarketerAttendees() {
                             '<span class="badge bg-secondary">Private</span>'}
                         </td>
                         <td>${formattedDate}</td>
+                        <td>${getCheckInStatusDisplay(attendee)}</td>
                     `;
                     
-                    tableBody.appendChild(row);                } catch (attendeeError) {
+                    tableBody.appendChild(row);} catch (attendeeError) {
                     // Silently handle attendee processing errors
                 }
             }
@@ -338,8 +338,9 @@ async function loadMarketerAttendees() {
                         <td>${attendee.event?.name || 'Unknown event'}</td>
                         <td>${attendee.transportPreference === 'bus' ? 'Bus' : 'Private'}</td>
                         <td>${attendee.createdAt || 'Date not available'}</td>
+                        <td>${getCheckInStatusDisplay(attendee)}</td>
                     `;
-                    tableBody.appendChild(row);                } catch (e) {
+                    tableBody.appendChild(row);} catch (e) {
                     // Silently handle display errors
                 }
             }
@@ -373,10 +374,9 @@ async function showEventPerformance(eventId) {
         // Populate attendees table
         const attendeesTable = document.getElementById('event-attendees-table');
         attendeesTable.innerHTML = '';
-        
-        if (performanceData.attendees.length === 0) {
+          if (performanceData.attendees.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="3" class="text-center">No attendees registered yet</td>';
+            row.innerHTML = '<td colspan="4" class="text-center">No attendees registered yet</td>';
             attendeesTable.appendChild(row);
         } else {
             performanceData.attendees.forEach(attendee => {
@@ -384,6 +384,7 @@ async function showEventPerformance(eventId) {
                     <td>${attendee.name}</td>
                     <td>${attendee.phone || 'Not provided'}</td>
                     <td>${attendee.transportPreference === 'bus' ? 'Bus' : 'Private'}</td>
+                    <td>${getCheckInStatusDisplay(attendee)}</td>
                 `;
                 attendeesTable.appendChild(row);
             });
@@ -749,5 +750,20 @@ async function volunteerForEvent(eventId) {    try {
         }
         
         showToast('error', errorMessage);
+    }
+}
+
+/**
+ * Get the check-in status display with appropriate badge
+ */
+function getCheckInStatusDisplay(attendee) {
+    if (!attendee) return '<span class="badge bg-secondary">Unknown</span>';
+    
+    if (attendee.checkedIn === true) {
+        return '<span class="badge bg-success">Checked In</span>';
+    } else if (attendee.checkInTime) {
+        return '<span class="badge bg-success">Checked In</span>';
+    } else {
+        return '<span class="badge bg-warning text-dark">Not Checked In</span>';
     }
 }
