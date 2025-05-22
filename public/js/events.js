@@ -122,7 +122,7 @@ function setupEventListeners() {
             const searchTerm = e.target.value.toLowerCase();
             const filteredEvents = currentEvents.filter(event => 
                 event.name.toLowerCase().includes(searchTerm) ||
-                event.description.toLowerCase().includes(searchTerm) ||
+                event.description.toLowerCase().iDncludes(searchTerm) ||
                 event.location.toLowerCase().includes(searchTerm)
             );
             displayEvents(filteredEvents);
