@@ -44,7 +44,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (eventFilter) {
             eventFilter.addEventListener('change', loadAttendeesData);
         }
-          // Setup event creation handlers with better error handling
+
+        // Populate and add event listener for marketer filter
+        await setupMarketerFilter();
+        const marketerFilter = document.getElementById('marketer-filter');
+        if (marketerFilter) {
+            marketerFilter.addEventListener('change', loadAttendeesData);
+        }
+          
+        // Setup event creation handlers with better error handling
         try {
             await setupEventCreationHandlers();
         } catch (error) {
@@ -236,8 +244,21 @@ async function setupEventFilter() {
 
 async function loadAttendeesData() {
     try {
+        // Get filter values
         const eventId = document.getElementById('event-filter').value;
-        const endpoint = eventId ? `/attendees?eventId=${eventId}` : '/attendees';
+        const marketerId = document.getElementById('marketer-filter').value;
+        
+        // Construct the endpoint with query parameters
+        let endpoint = '/attendees';
+        const queryParams = [];
+        
+        if (eventId) {
+            queryParams.push(`eventId=${eventId}`);
+        }
+        
+        if (queryParams.length > 0) {
+            endpoint += '?' + queryParams.join('&');
+        }
         
         const response = await apiCall(endpoint, 'GET', null, auth.getToken());
         const attendees = Array.isArray(response) ? response : (response.data || []);
@@ -247,14 +268,30 @@ async function loadAttendeesData() {
         tableBody.innerHTML = '';
         
         if (!attendees || attendees.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No attendees found</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No attendees found</td></tr>';
             return;
         }
         
-        // Sort attendees by registration date (newest first)
-        attendees.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        // Filter by marketer if selected
+        let filteredAttendees = attendees;
+        if (marketerId) {
+            filteredAttendees = attendees.filter(attendee => {
+                // Check if registeredBy exists and matches the selected marketer ID
+                const attendeeMarketerId = attendee.registeredBy?._id || 
+                                          (typeof attendee.registeredBy === 'string' ? attendee.registeredBy : null);
+                return attendeeMarketerId === marketerId;
+            });
+            
+            // Update the table if no attendees match the marketer filter
+            if (filteredAttendees.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No attendees found for this marketer</td></tr>';
+                return;
+            }
+        }
         
-        for (const attendee of attendees) {
+        // Sort attendees by registration date (newest first)
+        filteredAttendees.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          for (const attendee of filteredAttendees) {
             const row = document.createElement('tr');
             
             // Format date
@@ -948,4 +985,44 @@ function formatEventData(formData) {
     }
 
     return eventData;
+}
+
+async function setupMarketerFilter() {
+    try {
+        // Get all marketers
+        const response = await marketersApi.getTopMarketers();
+        const marketers = Array.isArray(response) ? response : (response.data || []);
+        
+        const selectElement = document.getElementById('marketer-filter');
+        
+        // Clear existing options except the first one
+        while (selectElement.options.length > 1) {
+            selectElement.remove(1);
+        }
+        
+        if (!marketers || marketers.length === 0) {
+            return;
+        }
+        
+        // Sort marketers by name
+        marketers.sort((a, b) => {
+            const nameA = a.marketer?.name || '';
+            const nameB = b.marketer?.name || '';
+            return nameA.localeCompare(nameB);
+        });
+        
+        // Add marketer options
+        marketers.forEach(item => {
+            const marketer = item.marketer;
+            if (marketer && marketer.name) {
+                const option = document.createElement('option');
+                option.value = marketer._id || marketer.id;
+                option.textContent = marketer.name;
+                selectElement.appendChild(option);
+            }
+        });
+    } catch (error) {
+        // Silently handle marketer filter setup errors
+        console.error('Error setting up marketer filter:', error);
+    }
 }
