@@ -1,4 +1,19 @@
 // Admin Dashboard JavaScript
+
+// Define states and branches data structure
+const statesAndBranches = {
+    'Lagos': ['Lagos Island', 'Lagos Mainland', 'Ikeja', 'Lekki', 'Ajah', 'Ikorodu', 'Epe'],
+    'Abuja': ['Central Area', 'Maitama', 'Wuse', 'Garki', 'Asokoro', 'Gwarinpa'],
+    'Rivers': ['Port Harcourt', 'Obio/Akpor', 'Eleme', 'Oyigbo'],
+    'Kano': ['Kano Municipal', 'Fagge', 'Dala', 'Gwale'],
+    'Oyo': ['Ibadan North', 'Ibadan South', 'Ogbomosho', 'Oyo East'],
+    'Kaduna': ['Kaduna North', 'Kaduna South', 'Zaria', 'Kafanchan'],
+    'Delta': ['Warri', 'Asaba', 'Ughelli', 'Sapele'],
+    'Enugu': ['Enugu North', 'Enugu South', 'Nsukka', 'Udi'],
+    'Anambra': ['Awka', 'Onitsha', 'Nnewi', 'Ekwulobia'],
+    'Imo': ['Owerri', 'Orlu', 'Okigwe', 'Mbaise']
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Check if user is authenticated
     if (!auth.isAuthenticated()) {
@@ -530,59 +545,95 @@ async function setupEventCreationHandlers() {
                 eventBanner.value = '';
                 bannerPreviewContainer.classList.add('d-none');
             });
-        }
+        }        // Setup state selection
+        const stateSelectionContainer = document.getElementById('stateSelectionContainer');
+        if (stateSelectionContainer) {
+            // Clear existing content
+            stateSelectionContainer.innerHTML = '';
+            
+            // Create state checkboxes
+            const stateCheckboxesDiv = document.createElement('div');
+            stateCheckboxesDiv.className = 'state-checkboxes mb-3';
+            stateCheckboxesDiv.innerHTML = '<label class="form-label fw-bold mb-2">Select States for Event*</label>';
+            
+            // Add checkboxes for each state
+            for (const state of Object.keys(statesAndBranches)) {
+                const checkboxDiv = document.createElement('div');
+                checkboxDiv.className = 'form-check';
+                checkboxDiv.innerHTML = `
+                    <input class="form-check-input state-checkbox" type="checkbox" value="${state}" id="state-${state.toLowerCase().replace(/\s+/g, '-')}" name="selectedStates">
+                    <label class="form-check-label" for="state-${state.toLowerCase().replace(/\s+/g, '-')}">
+                        ${state}
+                    </label>
+                `;
+                stateCheckboxesDiv.appendChild(checkboxDiv);
+            }
+            stateSelectionContainer.appendChild(stateCheckboxesDiv);
 
-        // Add Branch button handler
-        const addBranchBtn = document.getElementById('addBranchBtn');
-        if (!addBranchBtn) {
-            return;
+            // Create branch selection container
+            const branchSelectionDiv = document.createElement('div');
+            branchSelectionDiv.id = 'branchSelectionContainer';
+            branchSelectionDiv.className = 'branch-selection mb-3';
+            branchSelectionDiv.innerHTML = '<label class="form-label fw-bold mb-2">Select Branches for Event*</label><div id="branchCheckboxes" class="branch-checkboxes"></div>';
+            stateSelectionContainer.appendChild(branchSelectionDiv);
+            
+            // Add event listener for state checkboxes
+            const stateCheckboxes = document.querySelectorAll('.state-checkbox');
+            stateCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', updateBranchSelection);
+            });
         }
         
-        let branchCount = 1;
-          addBranchBtn.addEventListener('click', () => {
-            const branchesContainer = document.getElementById('branchesContainer');
-            if (!branchesContainer) {
-                return;
+        // Function to update branch selection based on selected states
+        function updateBranchSelection() {
+            const selectedStates = [];
+            const stateCheckboxes = document.querySelectorAll('.state-checkbox:checked');
+            stateCheckboxes.forEach(checkbox => {
+                selectedStates.push(checkbox.value);
+            });
+            
+            const branchCheckboxes = document.getElementById('branchCheckboxes');
+            if (!branchCheckboxes) return;
+            
+            // Clear existing branch checkboxes
+            branchCheckboxes.innerHTML = '';
+            
+            // Create branch checkboxes for each selected state
+            selectedStates.forEach(state => {
+                // Add state header
+                const stateHeader = document.createElement('h6');
+                stateHeader.className = 'mt-3 mb-2';
+                stateHeader.textContent = state;
+                branchCheckboxes.appendChild(stateHeader);
+                
+                // Add branch checkboxes
+                if (statesAndBranches[state]) {
+                    statesAndBranches[state].forEach(branch => {
+                        const branchId = `${state}-${branch}`.toLowerCase().replace(/\s+/g, '-');
+                        const checkboxDiv = document.createElement('div');
+                        checkboxDiv.className = 'form-check';
+                        checkboxDiv.innerHTML = `
+                            <input class="form-check-input branch-checkbox" type="checkbox" value="${branch}" 
+                                id="${branchId}" name="branches" data-state="${state}">
+                            <label class="form-check-label" for="${branchId}">
+                                ${branch}
+                            </label>
+                        `;
+                        branchCheckboxes.appendChild(checkboxDiv);
+                    });
+                }
+            });
+            
+            // Show or hide branch selection container based on whether states are selected
+            const branchSelectionContainer = document.getElementById('branchSelectionContainer');
+            if (branchSelectionContainer) {
+                if (selectedStates.length > 0) {
+                    branchSelectionContainer.classList.remove('d-none');
+                } else {
+                    branchSelectionContainer.classList.add('d-none');
+                }
             }
-            
-            const newBranch = document.createElement('div');
-            newBranch.className = 'branch-entry mb-3 p-3 border rounded';
-            newBranch.innerHTML = `
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="mb-0">Branch ${branchCount + 1}</h6>
-                    <button type="button" class="btn btn-sm btn-outline-danger remove-branch">
-                        <i class="bi bi-trash"></i> Remove
-                    </button>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Branch Name*</label>
-                    <input type="text" class="form-control" name="branches[${branchCount}].name" required>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Location*</label>
-                    <input type="text" class="form-control" name="branches[${branchCount}].location" required>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Manager Name</label>
-                    <input type="text" class="form-control" name="branches[${branchCount}].manager">
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Contact</label>
-                    <input type="tel" class="form-control" name="branches[${branchCount}].contact">
-                </div>
-            `;
-            
-            branchesContainer.appendChild(newBranch);
-            branchCount++;
-            
-            // Add event listener to remove button
-            const removeBtn = newBranch.querySelector('.remove-branch');
-            if (removeBtn) {
-                removeBtn.addEventListener('click', () => {
-                    branchesContainer.removeChild(newBranch);
-                });
-            }
-        });
+        }
           // Add Bus Pickup button handler
         const addBusPickupBtn = document.getElementById('addBusPickupBtn');
         if (!addBusPickupBtn) {
@@ -701,12 +752,45 @@ async function setupEventCreationHandlers() {
                         showToast('error', 'Failed to upload banner image: ' + (uploadError.message || 'Unknown error'));
                         return;
                     }
-                }
-                  // Get form data and convert to appropriate format
+                }                  // Get form data and convert to appropriate format
                 const formData = getFormDataAsObject(form);
                 if (bannerImageName) {
                     formData.bannerImage = bannerImageName;
                     console.log('Banner image added to form data:', bannerImageName);
+                }
+                
+                // Process selected states and branches
+                const selectedStates = [];
+                document.querySelectorAll('.state-checkbox:checked').forEach(checkbox => {
+                    selectedStates.push(checkbox.value);
+                });
+                
+                // Group branches by state
+                const selectedBranches = {};
+                document.querySelectorAll('.branch-checkbox:checked').forEach(checkbox => {
+                    const state = checkbox.getAttribute('data-state');
+                    const branch = checkbox.value;
+                    
+                    if (!selectedBranches[state]) {
+                        selectedBranches[state] = [];
+                    }
+                    
+                    selectedBranches[state].push(branch);
+                });
+                
+                // Add selections to form data
+                formData.selectedStates = selectedStates;
+                formData.selectedBranches = selectedBranches;
+                
+                // Validate states and branches are selected
+                if (selectedStates.length === 0) {
+                    showToast('error', 'Please select at least one state for the event');
+                    return;
+                }
+                
+                if (Object.keys(selectedBranches).length === 0) {
+                    showToast('error', 'Please select at least one branch for the event');
+                    return;
                 }
                 
                 const isoEventDate = toFullISOString(formData.date);
@@ -967,10 +1051,10 @@ function formatEventData(formData) {
     const eventData = {
         name: formData.name,
         date: toFullISOString(formData.date), // Use full ISO string
-        state: formData.state,
+        states: formData.selectedStates || [],
         maxAttendees: formData.maxAttendees ? parseInt(formData.maxAttendees) : undefined,
         isActive: formData.isActive === 'true',
-        branches: formData.branches || [],
+        branches: formData.selectedBranches || {},
         busPickups: [],
         bannerImage: formData.bannerImage || null // Include the banner image
     };

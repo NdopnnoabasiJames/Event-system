@@ -282,11 +282,11 @@
                         <div class="mb-3">
                             <label for="eventDate" class="form-label">Event Date*</label>
                             <input type="datetime-local" class="form-control" id="eventDate" name="date" required>
+                        </div>                        <!-- State and Branch Selection -->
+                        <div class="mb-3" id="stateSelectionContainer">
+                            <!-- State checkboxes will be dynamically populated here -->
                         </div>
-                        <div class="mb-3">
-                            <label for="eventState" class="form-label">State*</label>
-                            <input type="text" class="form-control" id="eventState" name="state" required>
-                        </div>
+                        
                         <div class="mb-3">
                             <label for="maxAttendees" class="form-label">Maximum Attendees</label>
                             <input type="number" class="form-control" id="maxAttendees" name="maxAttendees" min="1">
@@ -308,33 +308,10 @@
                         </div>
                         
                         <!-- Branch Information -->
-                        <div class="card mb-3">
-                            <div class="card-header">Branch Information</div>
-                            <div class="card-body" id="branchesContainer">
-                                <div class="branch-entry mb-3 p-3 border rounded">
-                                    <div class="mb-2">
-                                        <label class="form-label">Branch Name*</label>
-                                        <input type="text" class="form-control" name="branches[0].name" required>
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label">Location*</label>
-                                        <input type="text" class="form-control" name="branches[0].location" required>
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label">Manager Name</label>
-                                        <input type="text" class="form-control" name="branches[0].manager">
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label">Contact</label>
-                                        <input type="tel" class="form-control" name="branches[0].contact">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card-footer">
-                                <button type="button" class="btn btn-outline-primary" id="addBranchBtn">
-                                    <i class="bi bi-plus"></i> Add Another Branch
-                                </button>
-                            </div>
+                        <!-- Branch information is now handled in the state selection section -->
+                        <!-- We're keeping this div with display:none to maintain compatibility with any JS that might reference it -->
+                        <div id="branchesContainer" class="d-none">
+                            <!-- This container is kept but hidden as branches are now selected using checkboxes -->
                         </div>
                         
                         <!-- Bus Pickup Information -->
