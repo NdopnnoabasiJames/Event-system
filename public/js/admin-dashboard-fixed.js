@@ -512,17 +512,17 @@ async function showMarketerDetails(marketerId) {
 
 async function setupEventCreationHandlers() {
     try {
-        // First, add a submit event handler to the form to prevent default submission
+        // First, properly prevent default submission
         const form = document.getElementById('createEventForm');
         if (form) {
-            // Add event listener for form submission to prevent default behavior
             form.addEventListener('submit', function(e) {
                 // Always prevent the default form submission
                 e.preventDefault();
+                // Form submission will be handled by the saveEventBtn click handler
                 return false;
             });
             
-            // Also add event listeners to all input fields to prevent Enter key from submitting the form
+            // Add event listeners to all form inputs to prevent Enter key from submitting
             const formInputs = form.querySelectorAll('input, select, textarea');
             formInputs.forEach(input => {
                 input.addEventListener('keydown', function(e) {
@@ -573,7 +573,9 @@ async function setupEventCreationHandlers() {
                 eventBanner.value = '';
                 bannerPreviewContainer.classList.add('d-none');
             });
-        }        // Setup state selection
+        }        
+        
+        // Setup state selection
         const stateSelectionContainer = document.getElementById('stateSelectionContainer');
         if (stateSelectionContainer) {
             // Clear existing content
@@ -662,14 +664,16 @@ async function setupEventCreationHandlers() {
                 }
             }
         }
-          // Add Bus Pickup button handler
+          
+        // Add Bus Pickup button handler
         const addBusPickupBtn = document.getElementById('addBusPickupBtn');
         if (!addBusPickupBtn) {
             return;
         }
         
         let pickupCount = 1;
-          addBusPickupBtn.addEventListener('click', () => {
+          
+        addBusPickupBtn.addEventListener('click', () => {
             const busPickupsContainer = document.getElementById('busPickupsContainer');
             if (!busPickupsContainer) {
                 return;
@@ -708,13 +712,27 @@ async function setupEventCreationHandlers() {
                     busPickupsContainer.removeChild(newPickup);
                 });
             }
-        });        // Form submission handler
+            
+            // Prevent Enter key from submitting in new inputs
+            const newInputs = newPickup.querySelectorAll('input');
+            newInputs.forEach(input => {
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey) {
+                        e.preventDefault();
+                        return false;
+                    }
+                });
+            });
+        });
+        
+        // Form submission handler
         const saveEventBtn = document.getElementById('saveEventBtn');
         if (!saveEventBtn) {
             return;
         }
-          saveEventBtn.addEventListener('click', async (e) => {
-            // Always prevent default behavior to stop form submission
+        
+        saveEventBtn.addEventListener('click', async (e) => {
+            // Always prevent default behavior
             e.preventDefault();
             
             try {
@@ -723,24 +741,11 @@ async function setupEventCreationHandlers() {
                     return;
                 }
                 
-                // Collect all validation errors
-                let validationErrors = [];
+                // Step 1: Collect all form data first
+                // Get basic form data
+                const formData = getFormDataAsObject(form);
                 
-                // Basic form validation - add required fields to validation errors
-                if (!form.checkValidity()) {
-                    // Find all invalid inputs and add their error messages
-                    const invalidInputs = form.querySelectorAll(':invalid');
-                    invalidInputs.forEach(input => {
-                        if (input.validationMessage) {
-                            validationErrors.push(input.validationMessage);
-                        }
-                    });
-                    
-                    // Don't call form.reportValidity() as it would trigger browser's default validation UI
-                    // Instead, we'll handle errors ourselves
-                }
-                
-                // Process selected states and branches first
+                // Step 2: Collect selected states and branches
                 const selectedStates = [];
                 document.querySelectorAll('.state-checkbox:checked').forEach(checkbox => {
                     selectedStates.push(checkbox.value);
@@ -759,7 +764,20 @@ async function setupEventCreationHandlers() {
                     selectedBranches[state].push(branch);
                 });
                 
-                // State and branch validations - add errors to the collection
+                // Add selections to form data
+                formData.selectedStates = selectedStates;
+                formData.selectedBranches = selectedBranches;
+                
+                // Step 3: Validate everything and collect errors
+                let validationErrors = [];
+                
+                // Basic form validation
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;  // Stop here if basic HTML validation fails
+                }
+                
+                // Validate states and branches
                 if (selectedStates.length === 0) {
                     validationErrors.push('Please select at least one state for the event');
                 }
@@ -777,14 +795,7 @@ async function setupEventCreationHandlers() {
                     validationErrors.push(`Please select at least one branch for each selected state: ${statesWithoutBranches.join(', ')}`);
                 }
                 
-                // Get form data for additional validations
-                const formData = getFormDataAsObject(form);
-                
-                // Add selections to form data
-                formData.selectedStates = selectedStates;
-                formData.selectedBranches = selectedBranches;
-                
-                // Date validations
+                // Validate date fields
                 const isoEventDate = toFullISOString(formData.date);
                 if (!isoEventDate) {
                     validationErrors.push('Event date is missing or invalid. Please select a valid date and time.');
@@ -799,51 +810,87 @@ async function setupEventCreationHandlers() {
                     });
                 }
                 
-                // If any validation errors occurred, show them and stop here but keep modal open
+                // Step 4: If there are validation errors, show them and stop here
                 if (validationErrors.length > 0) {
-                    // Display all validation errors as toasts
+                    // Show each error as a toast
                     validationErrors.forEach(errorMsg => {
                         showToast('error', errorMsg);
                     });
-                    return; // Stop but keep modal open with current form data
+                    return; // Stop here - do not continue with form submission
                 }
                 
-                const eventData = formatEventData(formData);                // Defensive validation for ISO 8601 strings
-                if (!eventData.date || isNaN(Date.parse(eventData.date))) {
-                    showToast('error', 'Event date is missing or invalid. Please select a valid date and time.');
-                    return; // Return without closing modal
-                }
-                if (eventData.busPickups && Array.isArray(eventData.busPickups)) {
-                    let hasPickupErrors = false;
-                    for (let i = 0; i < eventData.busPickups.length; i++) {
-                        const pickup = eventData.busPickups[i];
-                        if (!pickup.departureTime || isNaN(Date.parse(pickup.departureTime))) {
-                            showToast('error', `Bus pickup ${i + 1} departure time is missing or invalid. Please select a valid date and time.`);
-                            hasPickupErrors = true;
+                // Step 5: Handle banner image upload
+                const bannerInput = document.getElementById('eventBanner');
+                let bannerImageName = '';
+                
+                if (bannerInput && bannerInput.files && bannerInput.files.length > 0) {
+                    const bannerFile = bannerInput.files[0];
+                    
+                    // Validate file size (max 2MB)
+                    if (bannerFile.size > 2 * 1024 * 1024) {
+                        showToast('error', 'Banner image size should not exceed 2MB');
+                        return;
+                    }
+                    
+                    // Validate file type
+                    if (!['image/jpeg', 'image/png', 'image/jpg', 'image/gif'].includes(bannerFile.type)) {
+                        showToast('error', 'Please select a valid image file (JPG, PNG, or GIF)');
+                        return;
+                    }
+                    
+                    // Upload the banner image
+                    try {
+                        const uploadFormData = new FormData();
+                        uploadFormData.append('image', bannerFile);
+                        const token = auth.getToken();
+                        
+                        // Use the apiCall utility for consistency, but we need direct fetch for FormData
+                        const uploadUrl = `${API_BASE_URL}/upload/event-banner`;
+                        
+                        const response = await fetch(uploadUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: uploadFormData,
+                            credentials: 'include'
+                        });
+                        
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(`Failed to upload banner image: ${response.status} ${response.statusText}`);
                         }
+                        
+                        const result = await response.json();
+                        bannerImageName = result.filename;
+                    } catch (uploadError) {
+                        showToast('error', 'Failed to upload banner image: ' + (uploadError.message || 'Unknown error'));
+                        return;
                     }
-                    if (hasPickupErrors) {
-                        return; // Return without closing modal
-                    }
-                }// Log data being sent to API
-                console.log('Creating event with data:', JSON.stringify(eventData, null, 2));
+                }
                 
-                // Create the event
+                // Add banner image to form data if uploaded
+                if (bannerImageName) {
+                    formData.bannerImage = bannerImageName;
+                }
+                
+                // Step 6: Format event data for API submission
+                const eventData = formatEventData(formData);
+                
+                // Step 7: Submit the event data to the server
                 const createdEvent = await eventsApi.createEvent(eventData);
                 
-                // Log response from API
-                console.log('Event created response:', createdEvent);
-                
-                // Show success message toast
+                // Step 8: Handle successful creation
                 showToast('success', 'Event created successfully!');
                 
-                // Also show a more prominent alert popup
+                // Show alert popup
                 alert('Event created successfully!');
                 
-                // Close the modal and reload events data
+                // Close the modal
                 const modalElement = document.getElementById('createEventModal');
                 if (modalElement) {
-                    const modal = bootstrap.Modal.getInstance(modalElement);                    if (modal) {
+                    const modal = bootstrap.Modal.getInstance(modalElement);
+                    if (modal) {
                         modal.hide();
                     }
                 }
@@ -853,10 +900,12 @@ async function setupEventCreationHandlers() {
                 
                 // Reload events data
                 await loadEventsData();
-                await setupEventFilter();            } catch (error) {
+                await setupEventFilter();
+            } catch (error) {
                 showToast('error', 'Failed to create event: ' + (error.message || 'Unknown error'));
             }
-        });    } catch (error) {
+        });
+    } catch (error) {
         showToast('error', 'Failed to set up event creation functionality');
     }
 }
@@ -973,57 +1022,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
-
-// Show Toast notification
-function showToast(type, message) {
-    // Create toast container if it doesn't exist
-    let toastContainer = document.querySelector('.toast-container');
-    
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
-        document.body.appendChild(toastContainer);
-    }
-    
-    // Create a unique ID for this toast
-    const toastId = 'toast-' + Date.now();
-    
-    // Create toast element
-    const toastEl = document.createElement('div');
-    toastEl.className = `toast ${type === 'error' ? 'bg-danger text-white' : type === 'success' ? 'bg-success text-white' : 'bg-primary text-white'}`;
-    toastEl.setAttribute('role', 'alert');
-    toastEl.setAttribute('aria-live', 'assertive');
-    toastEl.setAttribute('aria-atomic', 'true');
-    toastEl.id = toastId;
-    
-    // Add toast content
-    toastEl.innerHTML = `
-        <div class="toast-header">
-            <strong class="me-auto">${type === 'error' ? 'Error' : type === 'success' ? 'Success' : 'Notification'}</strong>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-        <div class="toast-body">
-            ${message}
-        </div>
-    `;
-    
-    // Add to container
-    toastContainer.appendChild(toastEl);
-    
-    // Initialize and show the toast
-    const toastInstance = new bootstrap.Toast(toastEl, {
-        delay: 5000 // Auto-hide after 5 seconds
-    });
-    
-    toastInstance.show();
-    
-    // Remove from DOM after hidden
-    toastEl.addEventListener('hidden.bs.toast', function() {
-        if (toastContainer.contains(toastEl)) {
-            toastContainer.removeChild(toastEl);
-        }
-    });
-}
 
 // Helper function to validate dates
 function isValidDate(dateString) {
