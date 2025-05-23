@@ -54,21 +54,16 @@ export class EventsController {
   @ApiBody({
     type: CreateEventDto,
     description: 'Event creation data',
-    examples: {
-      example1: {
+    examples: {      example1: {
         value: {
           name: 'Summer Tech Conference 2025',
           date: '2025-07-15T09:00:00Z',
-          state: 'California',
+          states: ['California', 'New York'],
           maxAttendees: 500,
-          branches: [
-            {
-              name: 'Downtown Branch',
-              location: '123 Main St',
-              manager: 'John Smith',
-              contact: '+1234567890',
-            },
-          ],
+          branches: {
+            "California": ["San Francisco", "Los Angeles"],
+            "New York": ["Manhattan", "Brooklyn"]
+          },
           busPickups: [
             {
               location: 'Central Station',

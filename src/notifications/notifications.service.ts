@@ -154,7 +154,6 @@ export class NotificationsService implements OnModuleInit {
       await this.initializeTransporter();
     }
   }
-
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
   async sendEventReminders() {
     try {
@@ -169,6 +168,7 @@ export class NotificationsService implements OnModuleInit {
       endOfDay.setHours(23, 59, 59, 999);
       
       // Find events happening in 3 days - using Date objects for query
+      this.logger.log(`Finding events scheduled between ${startOfDay.toISOString()} and ${endOfDay.toISOString()}`);
       const upcomingEvents = await this.eventModel.find({
         date: {
           $gte: startOfDay,
@@ -177,71 +177,93 @@ export class NotificationsService implements OnModuleInit {
         isActive: true,
       });
       
-      this.logger.log(`Found ${upcomingEvents.length} events scheduled for ${startOfDay.toISOString().split('T')[0]}`);
-      
-      for (const event of upcomingEvents) {
-        // Safeguard in case we somehow got an event without an _id
-        if (!event._id) {
-          this.logger.warn('Found event without ID, skipping');
-          continue;
-        }
-        
-        const attendees = await this.attendeeModel
-          .find({ event: event._id })
-          .populate('event')
-          .exec();
-          
-        this.logger.log(`Processing ${attendees.length} attendees for event: ${event.name}`);
-        
-        for (const attendee of attendees) {
-          // Skip if the attendee doesn't have an email
-          if (!attendee.email) {
-            this.logger.warn(`Attendee ${attendee._id} has no email, skipping notification`);
+      this.logger.log(`Found ${upcomingEvents.length} events scheduled for ${startOfDay.toISOString().split('T')[0]}`);      for (const event of upcomingEvents) {
+        try {
+          // Safeguard in case we somehow got an event without an _id
+          if (!event._id) {
+            this.logger.warn('Found event without ID, skipping');
             continue;
           }
-          
-          // Safely access nested properties
-          const eventLocation = event.branches && event.branches.length > 0 
-            ? (event.branches[0].location || 'TBD') 
-            : 'TBD';
-          
-          let transportDetails = null;
-          if (attendee.transportPreference === 'bus' && attendee.busPickup) {
-            // We need to be very careful about the typing here
-            // Create a transport details object with only the properties we know exist from the interface
-            transportDetails = {
-              type: 'bus',
-              location: attendee.busPickup.location || 'TBD',
-              departureTime: attendee.busPickup.departureTime || null,
-            };
-            
-            // Only add optional properties if they exist in the schema
-            if ('pickupPoint' in attendee.busPickup) {
-              transportDetails['pickupPoint'] = attendee.busPickup['pickupPoint'];
-            }
-            
-            if ('busNumber' in attendee.busPickup) {
-              transportDetails['busNumber'] = attendee.busPickup['busNumber'];
-            }
-            
-            if ('driverContact' in attendee.busPickup) {
-              transportDetails['driverContact'] = attendee.busPickup['driverContact'];
-            }
-          } else if (attendee.transportPreference) {
-            transportDetails = { type: attendee.transportPreference };
-          }
-          
-          const reminderContext: EventReminderContext = {
-            attendeeName: attendee.name || 'Attendee',
-            eventName: event.name,
-            eventDate: typeof event.date === 'string' ? event.date : 
-                       new Date(event.date).toISOString(),
-            eventLocation: eventLocation,
-            transportDetails: transportDetails,
-          };
 
-          const template = this.generateEventReminderTemplate(reminderContext);
-          await this.sendEmail(attendee.email, template);
+          // Log the event structure to help debug any schema issues
+          this.logger.log(`Processing event: ${event.name}, ID: ${event._id}`);
+          this.logger.log(`Event branches structure: ${JSON.stringify(event.branches)}`);
+          
+          const attendees = await this.attendeeModel
+            .find({ event: event._id })
+            .populate('event')
+            .exec();
+            
+          this.logger.log(`Processing ${attendees.length} attendees for event: ${event.name}`);
+        
+          for (const attendee of attendees) {
+            try {
+              // Skip if the attendee doesn't have an email
+              if (!attendee.email) {
+                this.logger.warn(`Attendee ${attendee._id} has no email, skipping notification`);
+                continue;
+              }
+              
+              // Safely access nested properties - branches is now a Record<string, string[]>
+              let eventLocation = 'TBD';
+              if (event.branches && typeof event.branches === 'object') {
+                // Get the first state as the primary location
+                const states = Object.keys(event.branches);
+                if (states.length > 0) {
+                  const firstState = states[0];
+                  const branches = event.branches[firstState];
+                  if (branches && branches.length > 0) {
+                    eventLocation = `${firstState} - ${branches[0]}`;
+                  } else {
+                    eventLocation = firstState;
+                  }
+                }
+              }              
+              let transportDetails = null;
+              if (attendee.transportPreference === 'bus' && attendee.busPickup) {
+                // We need to be very careful about the typing here
+                // Create a transport details object with only the properties we know exist from the interface
+                transportDetails = {
+                  type: 'bus',
+                  location: attendee.busPickup.location || 'TBD',
+                  departureTime: attendee.busPickup.departureTime || null,
+                };
+                
+                // Only add optional properties if they exist in the schema
+                if ('pickupPoint' in attendee.busPickup) {
+                  transportDetails['pickupPoint'] = attendee.busPickup['pickupPoint'];
+                }
+                
+                if ('busNumber' in attendee.busPickup) {
+                  transportDetails['busNumber'] = attendee.busPickup['busNumber'];
+                }
+                
+                if ('driverContact' in attendee.busPickup) {
+                  transportDetails['driverContact'] = attendee.busPickup['driverContact'];
+                }
+              } else if (attendee.transportPreference) {
+                transportDetails = { type: attendee.transportPreference };
+              }
+              
+              const reminderContext: EventReminderContext = {
+                attendeeName: attendee.name || 'Attendee',
+                eventName: event.name,
+                eventDate: typeof event.date === 'string' ? event.date : 
+                           new Date(event.date).toISOString(),
+                eventLocation: eventLocation,
+                transportDetails: transportDetails,
+              };
+
+              const template = this.generateEventReminderTemplate(reminderContext);
+              await this.sendEmail(attendee.email, template);
+            } catch (attendeeError) {
+              // Log but continue processing other attendees
+              this.logger.error(`Error processing attendee ${attendee._id}:`, attendeeError?.message || 'Unknown error');
+            }
+          }
+        } catch (eventError) {
+          // Log but continue processing other events
+          this.logger.error(`Error processing event ${event._id || 'unknown'}:`, eventError?.message || 'Unknown error');
         }
       }
     } catch (error) {

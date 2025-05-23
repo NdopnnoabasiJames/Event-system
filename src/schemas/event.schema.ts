@@ -12,15 +12,14 @@ export class Event {
 
   @Prop({ required: true })
   date: string;
-
-  @Prop({ required: true })
-  state: string;
+  @Prop({ type: [String], required: true })
+  states: string[];
 
   @Prop({ required: true })
   maxAttendees: number;
 
-  @Prop({ type: [{ type: Object }], required: true })
-  branches: Branch[];
+  @Prop({ type: Object, required: true })
+  branches: Record<string, string[]>;
 
   @Prop({ type: [{ type: Object }] })
   busPickups: BusPickup[];

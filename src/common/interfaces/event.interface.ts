@@ -32,10 +32,10 @@ export interface IEvent extends Document {
   description?: string;
   date: string; // changed from Date to string for DTO compatibility
   status: EventStatus;
-  state: string;
+  states: string[];
   maxAttendees: number;
   currentAttendees: number;
-  branches: Branch[];
+  branches: Record<string, string[]>;
   busPickups?: BusPickup[];
   marketers: string[];
   isActive: boolean;

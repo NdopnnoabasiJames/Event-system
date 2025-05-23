@@ -18,9 +18,29 @@ export class EventsService {
 
   async create(createEventDto: CreateEventDto): Promise<EventDocument> {
   try {
+    console.log('Creating event with data:', JSON.stringify(createEventDto, null, 2));
+    
+    // Make sure states is an array
+    if (!Array.isArray(createEventDto.states)) {
+      console.log('Converting states to array');
+      // Fix: Handle the type more explicitly
+      createEventDto.states = createEventDto.states ? [String(createEventDto.states)] : [];
+    }
+    
+    // Validate branches is an object
+    if (typeof createEventDto.branches !== 'object' || Array.isArray(createEventDto.branches)) {
+      console.log('Converting branches to object format');
+      // Default to empty object if branches is not in correct format
+      createEventDto.branches = {};
+    }
+    
+    // Create new event with validated data
     const event = new this.eventModel(createEventDto);
-    return await event.save();
+    const savedEvent = await event.save();
+    console.log('Event saved successfully:', savedEvent);
+    return savedEvent;
   } catch (error) {
+    console.error('Failed to create event:', error);
     throw new HttpException(`Failed to create event: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }

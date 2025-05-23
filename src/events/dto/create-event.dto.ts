@@ -111,14 +111,13 @@ export class CreateEventDto {
   @IsDateString()
   @IsFutureDate()
   date: string;
-
   @ApiProperty({
-    example: 'California',
-    description: 'The state where the event takes place'
+    example: ['California', 'New York'],
+    description: 'The states where the event takes place'
   })
-  @IsString()
-  @IsNotEmpty()
-  state: string;
+  @IsArray()
+  @IsString({ each: true })
+  states: string[];
 
   @ApiProperty({
     example: 500,
@@ -127,22 +126,15 @@ export class CreateEventDto {
   })
   @IsNumber()
   @Min(1)
-  maxAttendees: number;
-
-  @ApiProperty({
-    type: [BranchDto],
-    description: 'List of branches involved in organizing the event',
-    example: [{
-      name: 'Downtown Branch',
-      location: '123 Main St, City',
-      manager: 'John Smith',
-      contact: '+1234567890'
-    }]
+  maxAttendees: number;  @ApiProperty({
+    description: 'Map of states to their branches',
+    example: {
+      "California": ["San Francisco", "Los Angeles"],
+      "New York": ["Manhattan", "Brooklyn"]
+    }
   })
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => BranchDto)
-  branches: Branch[];
+  @IsOptional() // Make this optional for compatibility with existing clients
+  branches: Record<string, string[]>;
 
   @ApiPropertyOptional({
     type: [BusPickupDto],

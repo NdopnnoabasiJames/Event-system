@@ -128,14 +128,19 @@ async function loadTopMarketers() {
 
 async function loadEventsData() {
     try {
+        console.log('Fetching events from server...');
         const response = await eventsApi.getAllEvents();
+        console.log('Events response from server:', response);
+        
         const events = Array.isArray(response) ? response : (response.data || []);
+        console.log('Processed events array:', events);
         
         const tableBody = document.getElementById('events-table-body');
         
         tableBody.innerHTML = '';
         
         if (!events || events.length === 0) {
+            console.log('No events found');
             tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No events found</td></tr>';
             return;
         }
@@ -758,8 +763,7 @@ async function setupEventCreationHandlers() {
                     formData.bannerImage = bannerImageName;
                     console.log('Banner image added to form data:', bannerImageName);
                 }
-                
-                // Process selected states and branches
+                  // Process selected states and branches
                 const selectedStates = [];
                 document.querySelectorAll('.state-checkbox:checked').forEach(checkbox => {
                     selectedStates.push(checkbox.value);
@@ -793,6 +797,16 @@ async function setupEventCreationHandlers() {
                     return;
                 }
                 
+                // Validate that each selected state has at least one branch selected
+                const statesWithoutBranches = selectedStates.filter(state => 
+                    !selectedBranches[state] || selectedBranches[state].length === 0
+                );
+                
+                if (statesWithoutBranches.length > 0) {
+                    showToast('error', `Please select at least one branch for each selected state: ${statesWithoutBranches.join(', ')}`);
+                    return;
+                }
+                
                 const isoEventDate = toFullISOString(formData.date);
                 let hasInvalidDate = false;
                 if (!isoEventDate) {
@@ -821,12 +835,20 @@ async function setupEventCreationHandlers() {
                             showToast('error', `Bus pickup ${i + 1} departure time is missing or invalid. Please select a valid date and time.`);
                             return;
                         }                    }
-                }
-                // Create the event
-                await eventsApi.createEvent(eventData);
+                }                // Log data being sent to API
+                console.log('Creating event with data:', JSON.stringify(eventData, null, 2));
                 
-                // Show success message
+                // Create the event
+                const createdEvent = await eventsApi.createEvent(eventData);
+                
+                // Log response from API
+                console.log('Event created response:', createdEvent);
+                
+                // Show success message toast
                 showToast('success', 'Event created successfully!');
+                
+                // Also show a more prominent alert popup
+                alert('Event created successfully!');
                 
                 // Close the modal and reload events data
                 const modalElement = document.getElementById('createEventModal');
@@ -1052,9 +1074,9 @@ function formatEventData(formData) {
         name: formData.name,
         date: toFullISOString(formData.date), // Use full ISO string
         states: formData.selectedStates || [],
-        maxAttendees: formData.maxAttendees ? parseInt(formData.maxAttendees) : undefined,
+        maxAttendees: formData.maxAttendees ? parseInt(formData.maxAttendees) : 100, // Default to 100 if not provided
         isActive: formData.isActive === 'true',
-        branches: formData.selectedBranches || {},
+        branches: formData.selectedBranches || {}, // Send branches as object mapping states to branch arrays
         busPickups: [],
         bannerImage: formData.bannerImage || null // Include the banner image
     };
