@@ -60,17 +60,11 @@ export async function loadMarketerEvents() {
                     }
                 } catch (dateError) {
                     // Silently handle date formatting errors
-                }
-
-                row.innerHTML = `
+                }                row.innerHTML = `
                     <td>${eventName}</td>
                     <td>${formattedDate}</td>
-                    <td id="attendee-count-${eventId}">Loading...</td>
                     <td>
                         <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-info view-performance" data-event-id="${eventId}">
-                                <i class="bi bi-graph-up"></i> Performance
-                            </button>
                             <button class="btn btn-sm btn-success register-attendee" data-event-id="${eventId}" data-event-name="${eventName}">
                                 <i class="bi bi-person-plus"></i> Register Attendee
                             </button>
@@ -82,27 +76,9 @@ export async function loadMarketerEvents() {
                 `;
                 
                 tableBody.appendChild(row);
-                
-                // Load attendee count for this event if we have a valid ID
-                if (eventId !== 'unknown') {
-                    loadEventAttendeeCount(eventId);
-                }
             } catch (eventError) {
                 // Silently handle event processing errors
-            }
-        }
-        
-        // Add event listeners for performance buttons
-        document.querySelectorAll('.view-performance').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const eventId = e.currentTarget.getAttribute('data-event-id');
-                if (eventId && eventId !== 'unknown') {
-                    showEventPerformance(eventId);
-                } else {
-                    showToast('error', 'Cannot view performance for this event');
-                }
-            });
-        });
+            }        }
         
         // Add event listeners for register attendee buttons
         document.querySelectorAll('.register-attendee').forEach(button => {
@@ -637,5 +613,192 @@ export function setupAttendeeRegistrationHandlers() {
             const busSection = document.getElementById('busPickupSection');
             busSection.style.display = checkedRadio.value === 'bus' ? 'block' : 'none';
         }
+    }
+}
+
+/**
+ * Get marketer's events for populating filter dropdown
+ */
+export async function getMarketerEvents() {
+    try {
+        const responseData = await apiCall('/marketers/events/my', 'GET', null, auth.getToken());
+        
+        // Extract events array handling different response formats
+        let eventsArray = Array.isArray(responseData) ? responseData : null;
+        
+        if (!eventsArray && responseData && responseData.data) {
+            eventsArray = Array.isArray(responseData.data) ? responseData.data : null;
+        }
+        
+        if (!eventsArray && responseData && responseData.events) {
+            eventsArray = Array.isArray(responseData.events) ? responseData.events : null;
+        }
+        
+        return eventsArray || [];
+    } catch (error) {
+        console.error('Failed to get marketer events:', error);
+        return [];
+    }
+}
+
+/**
+ * Populate the event filter dropdown
+ */
+export async function populateEventFilter() {
+    try {
+        const events = await getMarketerEvents();
+        const eventFilter = document.getElementById('eventFilter');
+        
+        if (!eventFilter) return;
+        
+        // Clear existing options except "All Events"
+        eventFilter.innerHTML = '<option value="">All Events</option>';
+        
+        // Add event options
+        events.forEach(event => {
+            const option = document.createElement('option');
+            option.value = event._id || event.id;
+            option.textContent = event.name || 'Unnamed Event';
+            eventFilter.appendChild(option);
+        });
+        
+        // Add event listener for filter changes
+        eventFilter.addEventListener('change', (e) => {
+            loadFilteredAttendees(e.target.value);
+        });
+        
+    } catch (error) {
+        console.error('Failed to populate event filter:', error);
+    }
+}
+
+/**
+ * Load attendees with optional event filtering
+ */
+export async function loadFilteredAttendees(eventId = '') {
+    try {
+        const responseData = await marketersApi.getMyAttendees();
+        
+        // Extract attendees array handling different response formats
+        let attendeesArray = Array.isArray(responseData) ? responseData : null;
+        
+        if (!attendeesArray && responseData && responseData.data && responseData.data.data) {
+            attendeesArray = Array.isArray(responseData.data.data) ? responseData.data.data : null;
+        }
+        
+        if (!attendeesArray && responseData && responseData.data) {
+            attendeesArray = Array.isArray(responseData.data) ? responseData.data : null;
+        }
+        
+        if (!attendeesArray && responseData && responseData.attendees) {
+            attendeesArray = Array.isArray(responseData.attendees) ? responseData.attendees : null;
+        }
+        
+        if (!attendeesArray) {
+            attendeesArray = [];
+        }
+        
+        // Filter by event if eventId is provided
+        if (eventId) {
+            attendeesArray = attendeesArray.filter(attendee => {
+                const attendeeEventId = attendee.event?._id || attendee.event?.id || attendee.eventId;
+                return attendeeEventId === eventId;
+            });
+        }
+        
+        const tableBody = document.getElementById('attendees-table-body');
+        const noAttendeesMessage = document.getElementById('no-attendees');
+        
+        if (!attendeesArray || attendeesArray.length === 0) {
+            tableBody.innerHTML = '';
+            noAttendeesMessage.classList.remove('d-none');
+            return;
+        }
+        
+        noAttendeesMessage.classList.add('d-none');
+        tableBody.innerHTML = '';
+        
+        try {
+            // Sort attendees by creation date (newest first)
+            const sortableAttendees = attendeesArray
+                .filter(attendee => attendee && attendee.createdAt)
+                .sort((a, b) => {
+                    try {
+                        return new Date(b.createdAt) - new Date(a.createdAt);
+                    } catch (e) {
+                        return 0;
+                    }
+                });
+            
+            // Show the 10 most recent attendees
+            const recentAttendees = sortableAttendees.slice(0, 10);
+            
+            for (const attendee of recentAttendees) {
+                try {
+                    const row = document.createElement('tr');
+                    
+                    // Format date safely
+                    let formattedDate = 'Date not available';
+                    try {
+                        if (attendee.createdAt) {
+                            const registrationDate = new Date(attendee.createdAt);
+                            formattedDate = registrationDate.toLocaleDateString('en-US', { 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric' 
+                            });
+                        }
+                    } catch (dateError) {
+                        // Silently handle date formatting errors
+                    }
+                    
+                    // Access event name safely
+                    const eventName = attendee.event?.name || 'Unknown event';
+                    
+                    row.innerHTML = `
+                        <td>${attendee.name || 'No name'}</td>
+                        <td>${attendee.phone || 'No phone'}</td>
+                        <td>${eventName}</td>
+                        <td>${attendee.transportPreference === 'bus' ? 
+                            `<span class="badge bg-success">Bus (${attendee.busPickup?.location || 'N/A'})</span>` : 
+                            '<span class="badge bg-secondary">Private</span>'}
+                        </td>
+                        <td>${formattedDate}</td>
+                        <td>${getCheckInStatusDisplay(attendee)}</td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                } catch (attendeeError) {
+                    // Silently handle attendee processing errors
+                }
+            }
+        } catch (sortError) {
+            // Fallback if sorting fails
+            const displayAttendees = attendeesArray.slice(0, 10);
+            for (const attendee of displayAttendees) {
+                try {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${attendee.name || 'No name'}</td>
+                        <td>${attendee.phone || 'No phone'}</td>
+                        <td>${attendee.event?.name || 'Unknown event'}</td>
+                        <td>${attendee.transportPreference === 'bus' ? 'Bus' : 'Private'}</td>
+                        <td>${attendee.createdAt || 'Date not available'}</td>
+                        <td>${getCheckInStatusDisplay(attendee)}</td>
+                    `;
+                    tableBody.appendChild(row);
+                } catch (e) {
+                    // Silently handle display errors
+                }
+            }
+        }
+    } catch (error) {
+        showToast('error', 'Failed to load attendees');
+        
+        // Show no attendees message in case of error
+        const tableBody = document.getElementById('attendees-table-body');
+        const noAttendeesMessage = document.getElementById('no-attendees');
+        if (tableBody) tableBody.innerHTML = '';
+        if (noAttendeesMessage) noAttendeesMessage.classList.remove('d-none');
     }
 }
