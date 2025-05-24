@@ -10,7 +10,8 @@ function getEventBannerUrl(bannerImage) {
   if (!bannerImage) {
     return 'https://placehold.co/800x400?text=Event+Banner';
   }
-  return `/Images/events/${bannerImage}`;
+  // Use the backend server URL for serving images
+  return `http://localhost:3031/Images/events/${bannerImage}`;
 }
 
 /**
