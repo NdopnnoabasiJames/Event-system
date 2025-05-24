@@ -173,11 +173,19 @@ function updatePageInfo(event, concierge, attendees) {
         // Update page title and subtitle
         document.getElementById('page-title').textContent = `Concierge Check-ins: ${event?.name || 'Unknown Event'}`;
         document.getElementById('page-subtitle').textContent = `Attendees checked-in by ${concierge?.name || 'Unknown Concierge'}`;
+          // Format states display - handle both single state and multiple states
+        let eventLocation = 'N/A';
+        if (event?.states && Array.isArray(event.states) && event.states.length > 0) {
+            eventLocation = event.states.join(', ');
+        } else if (event?.state) {
+            // Fallback for legacy single state property
+            eventLocation = event.state;
+        }
         
         // Update event information
         document.getElementById('event-name').textContent = event?.name || 'N/A';
         document.getElementById('event-date').textContent = event?.date ? formatDate(event.date) : 'N/A';
-        document.getElementById('event-location').textContent = event?.state || 'N/A';
+        document.getElementById('event-location').textContent = eventLocation;
         document.getElementById('total-attendees').textContent = event?.attendeesCount || safeAttendees.length || 'N/A';
         
         // Update concierge information

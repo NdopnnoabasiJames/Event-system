@@ -82,11 +82,19 @@ async function loadUpcomingEvents() {
                     });
                 }
             } catch {}
-            // No need to check hasRequested, since filteredEvents already excludes requested events
+            // No need to check hasRequested, since filteredEvents already excludes requested events            // Format states display - handle both single state and multiple states
+            let statesDisplay = 'Location not available';
+            if (event.states && Array.isArray(event.states) && event.states.length > 0) {
+                statesDisplay = event.states.join(', ');
+            } else if (event.state) {
+                // Fallback for legacy single state property
+                statesDisplay = event.state;
+            }
+            
             row.innerHTML = `
                 <td>${eventName}</td>
                 <td>${formattedDate}</td>
-                <td>${event.state || 'Location not available'}</td>
+                <td>${statesDisplay}</td>
                 <td>
                     <button class="btn btn-sm btn-primary request-concierge-btn" 
                         data-event-id="${eventId}" data-event-name="${eventName}">

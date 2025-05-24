@@ -1,5 +1,19 @@
 let currentEvents = [];
 
+// Helper function to format states display
+function formatStatesDisplay(event) {
+    if (event.states && Array.isArray(event.states) && event.states.length > 0) {
+        return event.states.join(', ');
+    } else if (event.state) {
+        // Fallback for legacy single state property
+        return event.state;
+    } else if (event.location) {
+        // Fallback for location property
+        return event.location;
+    }
+    return 'Location not specified';
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Check if user is authenticated
     if (!auth.isAuthenticated()) {
@@ -102,10 +116,9 @@ function displayEvents(events) {
                     <div class="d-flex align-items-center mb-3">
                         <i class="fas fa-calendar-alt text-primary me-2"></i>
                         <span>${new Date(event.date).toLocaleDateString()}</span>
-                    </div>
-                    <div class="d-flex align-items-center mb-3">
+                    </div>                    <div class="d-flex align-items-center mb-3">
                         <i class="fas fa-map-marker-alt text-primary me-2"></i>
-                        <span>${event.state || event.location || 'Location not specified'}</span>
+                        <span>${formatStatesDisplay(event)}</span>
                     </div>
                     <a href="event-details.html?id=${event._id}" class="btn btn-outline-primary w-100">View Details</a>
                 </div>
@@ -119,12 +132,14 @@ function setupEventListeners() {
     const searchInput = document.querySelector('input[placeholder="Search events..."]');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            const filteredEvents = currentEvents.filter(event => 
-                event.name.toLowerCase().includes(searchTerm) ||
-                event.description.toLowerCase().iDncludes(searchTerm) ||
-                event.location.toLowerCase().includes(searchTerm)
-            );
+            const searchTerm = e.target.value.toLowerCase();        const filteredEvents = currentEvents.filter(event => {
+            const searchFields = [
+                event.name.toLowerCase(),
+                event.description.toLowerCase(),
+                formatStatesDisplay(event).toLowerCase()
+            ];
+            return searchFields.some(field => field.includes(searchTerm));
+        });
             displayEvents(filteredEvents);
         });
     }

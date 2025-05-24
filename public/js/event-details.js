@@ -33,11 +33,12 @@ async function loadEventDetails(eventId) {
                 event = response.data;
             } else {
                 event = response;
-            }
-              // Check if the event has all required fields
-            if (!event.name || !event.date || 
-                (!event.state && (!event.branches || event.branches.length === 0)) || 
-                (!event.maxAttendees && event.maxAttendees !== 0)) {
+            }            // Check if the event has all required fields
+            const hasValidLocation = (event.states && Array.isArray(event.states) && event.states.length > 0) ||
+                                   event.state ||
+                                   (event.branches && typeof event.branches === 'object' && Object.keys(event.branches).length > 0);
+            
+            if (!event.name || !event.date || !hasValidLocation || (!event.maxAttendees && event.maxAttendees !== 0)) {
                 // Event is missing some required fields, but we'll still display what we have
             }
         } else {
@@ -135,29 +136,28 @@ async function updateEventUI(event) {
                 });
             } else {
                 eventDate = dateStr; // Fall back to the raw string if all parsing fails
-            }
-        } catch (e) {
+            }        } catch (e) {
             eventDate = String(event.date); // Last resort - just show the raw value
         }
     }
     
-    // Get location more reliably
+    // Get location more reliably - handle multiple states and branches properly
     let location = 'Location not specified';
-    if (event.state && typeof event.state === 'string' && event.state.trim() !== '') {
+    if (event.states && Array.isArray(event.states) && event.states.length > 0) {
+        // Display all selected states
+        location = event.states.join(', ');
+    } else if (event.state && typeof event.state === 'string' && event.state.trim() !== '') {
+        // Fallback for legacy single state property
         location = event.state;
-    } else if (event.branches && Array.isArray(event.branches) && event.branches.length > 0) {
-        // Try to get location from branches
-        const mainBranch = event.branches[0];
-        
-        if (mainBranch) {
-            if (mainBranch.location && typeof mainBranch.location === 'string') {
-                location = mainBranch.location;
-            } else if (mainBranch.name && typeof mainBranch.name === 'string') {
-                location = mainBranch.name;
-            }
+    } else if (event.branches && typeof event.branches === 'object' && event.branches !== null) {
+        // Try to get location from branches object
+        const stateNames = Object.keys(event.branches);
+        if (stateNames.length > 0) {
+            location = stateNames.join(', ');
         }
     }
-      // Calculate available seats more reliably 
+    
+    // Calculate available seats more reliably
     // Default to the raw value first, then try parsing as number
     let maxAttendees = event.maxAttendees;
     
