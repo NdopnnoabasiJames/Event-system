@@ -94,8 +94,7 @@ class BranchDto implements Branch {
   contact?: string;
 }
 
-export class CreateEventDto {
-  @ApiProperty({
+export class CreateEventDto {  @ApiProperty({
     example: 'Summer Tech Conference 2025',
     description: 'The name of the event',
     minLength: 5
@@ -103,6 +102,14 @@ export class CreateEventDto {
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @ApiPropertyOptional({
+    example: 'Join us for the biggest tech conference of the year! Experience cutting-edge technologies...',
+    description: 'A detailed description of the event'
+  })
+  @IsString()
+  @IsOptional()
+  description?: string;
 
   @ApiProperty({
     example: '2025-07-15T09:00:00Z',

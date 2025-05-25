@@ -101,8 +101,31 @@ async function updateEventUI(event) {
     const eventTitle = document.querySelector('h1');
     if (eventTitle) {
         eventTitle.textContent = event.name || 'Event Details';
+    }    // Update event description
+    const descriptionCard = document.getElementById('description-card');
+    const eventDescription = document.getElementById('event-description');
+    
+    if (eventDescription) {
+        // Always show the description card
+        descriptionCard.classList.remove('d-none');
+        
+        if (event.description && event.description.trim() !== '') {
+            // Format the description with line breaks preserved and proper paragraph styling
+            const formattedDescription = event.description
+                .replace(/\n\n/g, '</p><p>') // Double line breaks become new paragraphs
+                .replace(/\n/g, '<br>');      // Single line breaks become <br>
+            
+            eventDescription.innerHTML = `<p>${formattedDescription}</p>`;
+            
+            // Handle case where we might have started with empty paragraph due to formatting
+            eventDescription.innerHTML = eventDescription.innerHTML.replace('<p></p>', '');
+        } else {
+            // If there's no description, show a message indicating that
+            eventDescription.innerHTML = '<p class="text-muted"><i class="fas fa-info-circle me-2"></i>No description available for this event.</p>';
+        }
     }
-      // Format date more reliably
+      
+    // Format date more reliably
     let eventDate = 'Date not available';
     if (event.date) {
         try {

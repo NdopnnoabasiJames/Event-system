@@ -558,6 +558,7 @@ export async function setupEventCreationHandlers() {
  */
 export function formatEventData(formData) {    const eventData = {
         name: formData.name,
+        description: formData.description || null, // Include optional description
         date: toFullISOString(formData.date), // Use full ISO string
         states: formData.selectedStates || [],
         isActive: formData.isActive === 'true',

@@ -154,30 +154,21 @@ function setupEventListeners() {
                 : currentEvents.filter(event => event.category === category);
             displayEvents(filteredEvents);
         });
-    }    // Create Event button
-    const createEventBtn = document.querySelector('button.btn-primary');
+    }    // Create Event button - only show for admins
+    const createEventBtn = document.querySelector('button.btn-primary.admin-only-element');
     if (createEventBtn) {
-        createEventBtn.addEventListener('click', () => {
-            // Check if user is authenticated
-            if (!auth.isAuthenticated()) {
-                // Redirect to login page with a return URL
-                showToast('info', 'Please login to create an event');
-                setTimeout(() => {
-                    // Store the intended destination in session storage
-                    sessionStorage.setItem('returnToAfterLogin', 'admin-dashboard.html');
-                    window.location.href = 'login.html';
-                }, 1000);
-            } else if (auth.getUser().role !== 'admin') {
-                // Only admins can create events
-                showToast('error', 'Only administrators can create events');
-            } else {
-                // User is authenticated and is an admin, proceed to admin dashboard
+        // Only show the button if the user is an admin
+        if (auth.isAuthenticated() && auth.getUser().role === 'admin') {
+            createEventBtn.classList.remove('d-none');
+            
+            createEventBtn.addEventListener('click', () => {
+                // Admin is authenticated, proceed to admin dashboard
                 showToast('success', 'Redirecting to admin dashboard...');
                 setTimeout(() => {
                     window.location.href = 'admin-dashboard.html';
                 }, 1000);
-            }
-        });
+            });
+        }
     }
 }
 

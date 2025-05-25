@@ -200,3 +200,17 @@ footer {
     transform: translateY(0);
     background-color: rgba(13, 110, 253, 0.2) !important;
 } */
+
+/* Event Description Styles */
+.event-description-container {
+    line-height: 1.6;
+    margin-top: 10px;
+}
+
+.event-description-container p {
+    margin-bottom: 15px;
+}
+
+.event-description-container .text-muted {
+    font-style: italic;
+}

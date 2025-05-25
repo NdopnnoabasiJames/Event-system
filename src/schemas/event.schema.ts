@@ -22,12 +22,14 @@ export class Event {
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }] })
   marketers: Types.ObjectId[];
-
   @Prop({ default: false })
   isActive: boolean;
   
   @Prop()
   bannerImage: string;
+  
+  @Prop()
+  description: string;
 
   @Prop({
     type: [
