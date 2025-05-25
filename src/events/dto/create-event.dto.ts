@@ -118,15 +118,7 @@ export class CreateEventDto {
   @IsArray()
   @IsString({ each: true })
   states: string[];
-
-  @ApiProperty({
-    example: 500,
-    description: 'Maximum number of attendees allowed for the event',
-    minimum: 1
-  })
-  @IsNumber()
-  @Min(1)
-  maxAttendees: number;  @ApiProperty({
+@ApiProperty({
     description: 'Map of states to their branches',
     example: {
       "California": ["San Francisco", "Los Angeles"],

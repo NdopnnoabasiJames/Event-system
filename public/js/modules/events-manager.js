@@ -556,12 +556,10 @@ export async function setupEventCreationHandlers() {
  * @param {Object} formData - The form data collected from the event creation form
  * @returns {Object} Formatted event data for API submission
  */
-export function formatEventData(formData) {
-    const eventData = {
+export function formatEventData(formData) {    const eventData = {
         name: formData.name,
         date: toFullISOString(formData.date), // Use full ISO string
         states: formData.selectedStates || [],
-        maxAttendees: formData.maxAttendees ? parseInt(formData.maxAttendees) : 100, // Default to 100 if not provided
         isActive: formData.isActive === 'true',
         branches: formData.selectedBranches || {}, // Send branches as object mapping states to branch arrays
         busPickups: [],

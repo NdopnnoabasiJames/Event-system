@@ -140,11 +140,9 @@ Create a new event (Admin only)
 - Role: Admin
 - Body: 
 ```json
-{
-  "name": string,
+{  "name": string,
   "date": Date,
   "state": string,
-  "maxAttendees": number,
   "branches": Array<{
     name: string,
     location: string

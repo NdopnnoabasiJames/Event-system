@@ -11,12 +11,8 @@ export class Event {
   name: string;
 
   @Prop({ required: true })
-  date: string;
-  @Prop({ type: [String], required: true })
+  date: string;  @Prop({ type: [String], required: true })
   states: string[];
-
-  @Prop({ required: true })
-  maxAttendees: number;
 
   @Prop({ type: Object, required: true })
   branches: Record<string, string[]>;

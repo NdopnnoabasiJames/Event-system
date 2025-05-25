@@ -27,13 +27,11 @@ export interface EventLocation {
   };
 }
 
-export interface IEvent extends Document {
-  name: string;
+export interface IEvent extends Document {  name: string;
   description?: string;
   date: string; // changed from Date to string for DTO compatibility
   status: EventStatus;
   states: string[];
-  maxAttendees: number;
   currentAttendees: number;
   branches: Record<string, string[]>;
   busPickups?: BusPickup[];

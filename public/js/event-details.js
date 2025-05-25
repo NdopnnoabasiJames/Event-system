@@ -38,7 +38,7 @@ async function loadEventDetails(eventId) {
                                    event.state ||
                                    (event.branches && typeof event.branches === 'object' && Object.keys(event.branches).length > 0);
             
-            if (!event.name || !event.date || !hasValidLocation || (!event.maxAttendees && event.maxAttendees !== 0)) {
+            if (!event.name || !event.date || !hasValidLocation) {
                 // Event is missing some required fields, but we'll still display what we have
             }
         } else {
@@ -156,31 +156,10 @@ async function updateEventUI(event) {
             location = stateNames.join(', ');
         }
     }
-    
-    // Calculate available seats more reliably
-    // Default to the raw value first, then try parsing as number
-    let maxAttendees = event.maxAttendees;
-    
-    // If it's not already a number, try to parse it
-    if (typeof maxAttendees !== 'number') {
-        // Handle null/undefined
-        if (maxAttendees == null) {
-            maxAttendees = 0;
-        }
-        // Try parsing as integer if it's a string
-        else if (typeof maxAttendees === 'string') {
-            maxAttendees = parseInt(maxAttendees, 10);
-            if (isNaN(maxAttendees)) maxAttendees = 0;
-        }
-    }
-    
-    // For attendee count - default to 0 if not available
+      // For attendee count - default to 0 if not available
     const attendeeCount = typeof event.attendeeCount === 'number' ? event.attendeeCount :
                         (event.attendeeCount ? parseInt(event.attendeeCount, 10) : 0);
-    
-    const availableSeats = Math.max(0, maxAttendees - (isNaN(attendeeCount) ? 0 : attendeeCount));
-    
-    // Update event badges with correct labels
+      // Update event badges with correct labels
     const badges = document.querySelector('.d-flex.flex-wrap.gap-3');
     if (badges) {
         badges.innerHTML = `
@@ -193,29 +172,13 @@ async function updateEventUI(event) {
             <span class="badge bg-info fs-6">
                 <i class="fas fa-map-marker-alt me-2"></i>${location}
             </span>
-            <span class="badge bg-warning fs-6">
-                <i class="fas fa-users me-2"></i>${isNaN(availableSeats) ? maxAttendees : availableSeats} Seats Remaining
-            </span>
         `;
     }    // Update stats with more reliable values and error handling
     const stats = document.querySelectorAll('.col h5');
-    
-    if (stats && stats.length >= 3) {
+      if (stats && stats.length >= 2) {
         // Attendee count - ensure it displays properly
         const displayAttendeeCount = parseInt(event.attendeeCount || 0, 10);
         stats[0].textContent = isNaN(displayAttendeeCount) ? '0' : String(displayAttendeeCount);
-        
-        // Available seats
-        if (typeof availableSeats === 'number' && !isNaN(availableSeats)) {
-            stats[1].textContent = String(availableSeats);
-        } else {
-            // If we have maxAttendees but no availability calculation, just show maxAttendees
-            if (typeof maxAttendees === 'number' && !isNaN(maxAttendees)) {
-                stats[1].textContent = String(maxAttendees);
-            } else {
-                stats[1].textContent = '0';
-            }
-        }
         
         // Calculate days remaining - similar approach as date parsing above
         let daysRemaining = 0;
