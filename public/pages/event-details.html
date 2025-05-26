@@ -61,24 +61,57 @@
                             <!-- Event description will be inserted here dynamically -->
                         </div>
                     </div>
-                </div>            </div>
-
-            <!-- Event Stats Sidebar -->
+                </div>            </div>            <!-- Event Stats Sidebar -->
             <div class="col-lg-4">
                 <div class="card shadow-sm sticky-top" style="top: 20px;">
                     <div class="card-body">
                         <h4 class="card-title">Event Information</h4>
                         <hr>
+                        
+                        <!-- Event Status -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold">Status</h6>
+                            <span id="event-status" class="badge bg-success">Active</span>
+                        </div>
+
                         <!-- Event Stats -->
-                        <div class="text-center mb-4">                            <div class="row g-0">
-                                <div class="col">
-                                    <h5 class="mb-0">350</h5>
-                                    <small class="text-muted">Registered</small>
+                        <div class="mb-4">
+                            <h6 class="fw-bold">Registration Statistics</h6>
+                            <div class="row g-2 text-center">
+                                <div class="col-6">
+                                    <div class="border rounded p-2">
+                                        <h6 class="mb-0" id="total-marketers">0</h6>
+                                        <small class="text-muted">Marketers</small>
+                                    </div>
                                 </div>
-                                <div class="col">
-                                    <h5 class="mb-0">15</h5>
-                                    <small class="text-muted">Days Left</small>
+                                <div class="col-6">
+                                    <div class="border rounded p-2">
+                                        <h6 class="mb-0" id="total-attendees">0</h6>
+                                        <small class="text-muted">Attendees</small>
+                                    </div>
                                 </div>
+                                <div class="col-12">
+                                    <div class="border rounded p-2">
+                                        <h6 class="mb-0" id="checked-in-attendees">0</h6>
+                                        <small class="text-muted">Checked In</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Location Information -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold">Location Information</h6>
+                            <div id="event-locations">
+                                <!-- Will be filled by JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- Bus Pickup Information -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold">Bus Pickup Stations</h6>
+                            <div id="bus-pickup-info">
+                                <!-- Will be filled by JavaScript -->
                             </div>
                         </div>
   

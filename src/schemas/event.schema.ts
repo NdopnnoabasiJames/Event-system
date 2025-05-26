@@ -21,6 +21,7 @@ export class Event {
   busPickups: BusPickup[];
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }] })
+  
   marketers: Types.ObjectId[];
   @Prop({ default: false })
   isActive: boolean;
