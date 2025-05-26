@@ -2,10 +2,89 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <title>Event Details - EVANGELION</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <title>Event Details - EVANGELION</title>    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="../css/style.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Fixed layout styles */
+        body {
+            height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* Fixed navbar */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+        }
+        
+        /* Main content area */
+        .main-content {
+            margin-top: 56px; /* Account for fixed navbar height */
+            height: calc(100vh - 56px);
+            overflow-y: auto;
+        }
+        
+        /* Right sidebar with fixed height */
+        .event-info-sidebar {
+            height: calc(100vh - 120px); /* Account for navbar and some padding */
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .event-info-sidebar .card {
+            height: 150%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .event-info-sidebar .card-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* Fixed sections (status, stats) */
+        .fixed-info-sections {
+            flex-shrink: 0;
+        }
+        
+        /* Scrollable location information container */
+        .scrollable-location-container {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 1rem;
+            padding-right: 0.5rem;
+        }
+        
+        /* Custom scrollbar for location container */
+        .scrollable-location-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .scrollable-location-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        .scrollable-location-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        
+        .scrollable-location-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* Remove sticky behavior from sidebar */
+        .event-info-sidebar .sticky-top {
+            position: static !important;
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -30,10 +109,9 @@
                 </div>
             </div>
         </div>
-    </nav>
-
-    <!-- Event Details -->
-    <div class="container py-5">
+    </nav>    <!-- Event Details -->
+    <div class="main-content">
+        <div class="container py-5">
         <!-- Back Button -->
         <a href="events.html" class="btn btn-outline-primary mb-4">
             <i class="fas fa-arrow-left me-2"></i>Back to Events
@@ -62,78 +140,85 @@
                         </div>
                     </div>
                 </div>            </div>            <!-- Event Stats Sidebar -->
-            <div class="col-lg-4">
-                <div class="card shadow-sm sticky-top" style="top: 20px;">
+            <div class="col-lg-4 event-info-sidebar">
+                <div class="card shadow-sm">
                     <div class="card-body">
                         <h4 class="card-title">Event Information</h4>
                         <hr>
                         
-                        <!-- Event Status -->
-                        <div class="mb-4">
-                            <h6 class="fw-bold">Status</h6>
-                            <span id="event-status" class="badge bg-success">Active</span>
-                        </div>
+                        <!-- Fixed Info Sections -->
+                        <div class="fixed-info-sections">
+                            <!-- Event Status -->
+                            <div class="mb-4">
+                                <h6 class="fw-bold">Status</h6>
+                                <span id="event-status" class="badge bg-success">Active</span>
+                            </div>
 
-                        <!-- Event Stats -->
-                        <div class="mb-4">
-                            <h6 class="fw-bold">Registration Statistics</h6>
-                            <div class="row g-2 text-center">
-                                <div class="col-6">
-                                    <div class="border rounded p-2">
-                                        <h6 class="mb-0" id="total-marketers">0</h6>
-                                        <small class="text-muted">Marketers</small>
+                            <!-- Event Stats -->
+                            <div class="mb-4">
+                                <h6 class="fw-bold">Registration Statistics</h6>
+                                <div class="row g-2 text-center">
+                                    <div class="col-6">
+                                        <div class="border rounded p-2">
+                                            <h6 class="mb-0" id="total-marketers">0</h6>
+                                            <small class="text-muted">Marketers</small>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="border rounded p-2">
-                                        <h6 class="mb-0" id="total-attendees">0</h6>
-                                        <small class="text-muted">Attendees</small>
+                                    <div class="col-6">
+                                        <div class="border rounded p-2">
+                                            <h6 class="mb-0" id="total-attendees">0</h6>
+                                            <small class="text-muted">Attendees</small>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="border rounded p-2">
-                                        <h6 class="mb-0" id="checked-in-attendees">0</h6>
-                                        <small class="text-muted">Checked In</small>
+                                    <div class="col-12">
+                                        <div class="border rounded p-2">
+                                            <h6 class="mb-0" id="checked-in-attendees">0</h6>
+                                            <small class="text-muted">Checked In</small>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Location Information -->
-                        <div class="mb-4">
-                            <h6 class="fw-bold">Location Information</h6>
-                            <div id="event-locations">
-                                <!-- Will be filled by JavaScript -->
+                        <!-- Scrollable Location Container -->
+                        <div class="scrollable-location-container">
+                            <!-- Location Information -->
+                            <div class="mb-4">
+                                <h6 class="fw-bold">Location Information</h6>
+                                <div id="event-locations">
+                                    <!-- Will be filled by JavaScript -->
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Bus Pickup Information -->
-                        <div class="mb-4">
-                            <h6 class="fw-bold">Bus Pickup Stations</h6>
-                            <div id="bus-pickup-info">
-                                <!-- Will be filled by JavaScript -->
+                            <!-- Bus Pickup Information -->
+                            <div class="mb-4">
+                                <h6 class="fw-bold">Bus Pickup Stations</h6>
+                                <div id="bus-pickup-info">
+                                    <!-- Will be filled by JavaScript -->
+                                </div>
                             </div>
                         </div>
   
                     </div>
                 </div>
-            </div>
-        </div>
+            </div>        </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-dark text-light py-4 mt-5">
-        <div class="container">
-            <div class="row">                <div class="col-md-6">
-                    <h5>EVANGELION</h5>
-                    <p>Making event management simple and efficient.</p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <p>&copy; 2025 EVANGELION. All rights reserved.</p>
+        <!-- Footer -->
+        <footer class="bg-dark text-light py-4 mt-5">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>EVANGELION</h5>
+                        <p>Making event management simple and efficient.</p>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <p>&copy; 2025 EVANGELION. All rights reserved.</p>
+                    </div>
                 </div>
             </div>
-        </div>
-    </footer>    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        </footer>
+    </div><script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/api.js"></script>
     <script src="../js/image-utils.js"></script>
     <script src="../js/event-details.js"></script>
