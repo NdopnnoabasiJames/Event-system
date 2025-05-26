@@ -38,27 +38,23 @@
             <button class="btn btn-primary admin-only-element d-none">
                 <i class="fas fa-plus me-2"></i>Create Event
             </button>
-        </div>
-
-        <!-- Search and Filter -->
+        </div>        <!-- Search and Filter -->
         <div class="row mb-4">
             <div class="col-md-6">
                 <div class="input-group">
-                    <input type="text" class="form-control" placeholder="Search events...">
-                    <button class="btn btn-outline-secondary" type="button">
+                    <span class="input-group-text">
                         <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" id="event-search-input" class="form-control" placeholder="Start typing to search events...">
+                    <button class="btn btn-outline-secondary d-none" type="button" id="clear-search-btn">
+                        <i class="fas fa-times"></i>
                     </button>
                 </div>
+                <small id="search-feedback" class="form-text text-muted mt-1 d-none">
+                    Showing filtered results. Type more to refine your search.
+                </small>
             </div>
-            <div class="col-md-6 text-md-end">
-                <select class="form-select d-inline-block w-auto">
-                    <option>All Categories</option>
-                    <option>Conferences</option>
-                    <option>Workshops</option>
-                    <option>Seminars</option>
-                </select>
-            </div>
-        </div>        <!-- Events Grid -->
+        </div><!-- Events Grid -->
         <div class="row g-4">
             <!-- Events will be loaded from the database -->
             <div id="loading-placeholder" class="col-12 text-center py-5">

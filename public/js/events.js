@@ -2,6 +2,8 @@ let currentEvents = [];
 
 // Helper function to format states display
 function formatStatesDisplay(event) {
+    if (!event) return 'Location not specified';
+    
     if (event.states && Array.isArray(event.states) && event.states.length > 0) {
         return event.states.join(', ');
     } else if (event.state) {
@@ -38,6 +40,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await loadEvents();
     setupEventListeners();
+    
+    // Focus the search input after a short delay to ensure the page is fully loaded
+    setTimeout(() => {
+        const searchInput = document.getElementById('event-search-input');
+        if (searchInput) {
+            searchInput.focus();
+        }
+    }, 500);
 });
 
 async function loadEvents() {
@@ -90,13 +100,19 @@ function displayEvents(events) {
         loadingPlaceholder.style.display = 'none';
     }
     
-    // If no events are available, show a message
+    // Check if we're showing filtered results
+    const searchInput = document.getElementById('event-search-input');
+    const isFiltered = searchInput && searchInput.value.trim() !== '';
+    
+    // If no events are available, show an appropriate message
     if (!events || events.length === 0) {
         eventsContainer.innerHTML = `
             <div class="col-12 text-center py-5">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    No events are currently available. Please check back later.
+                <div class="alert alert-${isFiltered ? 'warning' : 'info'}">
+                    <i class="fas fa-${isFiltered ? 'filter' : 'info-circle'} me-2"></i>
+                    ${isFiltered ? 
+                      'No events match your search. Try different keywords or clear the search.' : 
+                      'No events are currently available. Please check back later.'}
                 </div>
             </div>
         `;
@@ -106,17 +122,16 @@ function displayEvents(events) {
     // Display the events from the database
     eventsContainer.innerHTML = events.map(event => `
         <div class="col-md-6 col-lg-4">
-            <div class="card h-100">                <img src="${getEventBannerUrl(event.bannerImage)}" class="card-img-top" alt="${event.name}">
-                <div class="card-body">
+            <div class="card h-100">                <img src="${getEventBannerUrl(event.bannerImage)}" class="card-img-top" alt="${event.name}">                <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h5 class="card-title mb-0">${event.name}</h5>
+                        <h5 class="card-title mb-0">${event.name || 'Unnamed Event'}</h5>
                         <span class="badge bg-${getStatusBadgeColor(event.status || 'UPCOMING')}">${event.status || 'UPCOMING'}</span>
                     </div>
-                    <p class="card-text">${event.description || 'No description available'}</p>
+                    <p class="card-text">${event.description ? (event.description.length > 100 ? event.description.substring(0, 100) + '...' : event.description) : 'No description available'}</p>
                     <div class="d-flex align-items-center mb-3">
                         <i class="fas fa-calendar-alt text-primary me-2"></i>
-                        <span>${new Date(event.date).toLocaleDateString()}</span>
-                    </div>                    <div class="d-flex align-items-center mb-3">
+                        <span>${event.date ? new Date(event.date).toLocaleDateString() : 'Date not specified'}</span>
+                    </div><div class="d-flex align-items-center mb-3">
                         <i class="fas fa-map-marker-alt text-primary me-2"></i>
                         <span>${formatStatesDisplay(event)}</span>
                     </div>
@@ -128,19 +143,59 @@ function displayEvents(events) {
 }
 
 function setupEventListeners() {
-    // Search functionality
-    const searchInput = document.querySelector('input[placeholder="Search events..."]');
+    // Search functionality - real-time filtering as user types
+    const searchInput = document.getElementById('event-search-input');
+    const clearSearchBtn = document.getElementById('clear-search-btn');
+    const searchFeedback = document.getElementById('search-feedback');
+    
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();        const filteredEvents = currentEvents.filter(event => {
-            const searchFields = [
-                event.name.toLowerCase(),
-                event.description.toLowerCase(),
-                formatStatesDisplay(event).toLowerCase()
-            ];
-            return searchFields.some(field => field.includes(searchTerm));
-        });
+            // Get the search term and trim whitespace
+            const searchTerm = e.target.value.toLowerCase().trim();
+              // Show/hide clear button and feedback based on search term
+            if (searchTerm.length > 0) {
+                clearSearchBtn.classList.remove('d-none');
+                searchFeedback.classList.remove('d-none');
+                
+                // Update feedback message with count of matching events
+                const matchCount = currentEvents.filter(event => {
+                    const nameMatch = event.name ? event.name.toLowerCase().includes(searchTerm) : false;
+                    const descriptionMatch = event.description ? event.description.toLowerCase().includes(searchTerm) : false;
+                    const locationMatch = formatStatesDisplay(event).toLowerCase().includes(searchTerm);
+                    return nameMatch || descriptionMatch || locationMatch;
+                }).length;
+                
+                searchFeedback.textContent = `Found ${matchCount} matching event${matchCount !== 1 ? 's' : ''} for "${searchTerm}"`;
+            } else {
+                clearSearchBtn.classList.add('d-none');
+                searchFeedback.classList.add('d-none');
+            }
+            
+            // Filter events that match the search term in name, description, or location
+            const filteredEvents = currentEvents.filter(event => {
+                // Safely check each field exists before including in search
+                const nameMatch = event.name ? event.name.toLowerCase().includes(searchTerm) : false;
+                const descriptionMatch = event.description ? event.description.toLowerCase().includes(searchTerm) : false;
+                const locationMatch = formatStatesDisplay(event).toLowerCase().includes(searchTerm);
+                
+                return nameMatch || descriptionMatch || locationMatch;
+            });
+            
+            // Display the filtered events
             displayEvents(filteredEvents);
+        });
+    }
+    
+    // Clear search button
+    if (clearSearchBtn) {
+        clearSearchBtn.addEventListener('click', () => {
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus();
+                clearSearchBtn.classList.add('d-none');
+                searchFeedback.classList.add('d-none');
+                displayEvents(currentEvents);
+            }
         });
     }
 
