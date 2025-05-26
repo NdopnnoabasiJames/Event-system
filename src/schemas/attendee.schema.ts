@@ -26,9 +26,14 @@ export class Attendee {  @Prop({ required: true, index: 'text' })
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: false })
   checkedInBy: MongooseSchema.Types.ObjectId;
-
   @Prop({ type: Date, required: false })
   checkedInTime: Date;
+
+  @Prop({ required: true, index: true })
+  state: string;
+
+  @Prop({ required: true, index: true })
+  branch: string;
   
   @Prop({ 
     type: {
@@ -52,6 +57,7 @@ export const AttendeeSchema = SchemaFactory.createForClass(Attendee);
 AttendeeSchema.index({ event: 1, transportPreference: 1 });
 AttendeeSchema.index({ registeredBy: 1, event: 1 });
 AttendeeSchema.index({ 'busPickup.location': 1, event: 1 });
+AttendeeSchema.index({ state: 1, branch: 1 });
 
 // Add unique constraint for one registration per phone number per event
 AttendeeSchema.index({ phone: 1, event: 1 }, { unique: true });

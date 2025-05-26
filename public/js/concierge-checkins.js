@@ -313,9 +313,12 @@ function showAttendeeDetails(attendee) {
         if (attendee.transportPreference === 'bus') {
             transportDisplay = `Bus (${attendee.busPickup?.location || 'No location'})`;
         } else if (attendee.transportPreference === 'private') {
-            transportDisplay = 'Private';
-        }
+            transportDisplay = 'Private';        }
         document.getElementById('modal-transport').textContent = transportDisplay;
+        
+        // Display state and branch information
+        document.getElementById('modal-state').textContent = attendee.state || 'N/A';
+        document.getElementById('modal-branch').textContent = attendee.branch || 'N/A';
         
         // Notes section (if any)
         const notesSection = document.getElementById('modal-notes-section');

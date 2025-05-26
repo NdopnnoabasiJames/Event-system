@@ -1,6 +1,9 @@
 // Event Management Module for Marketer Dashboard
 // This module handles all event-related functionality for the marketer dashboard
 
+// Import the states and branches data
+import { statesAndBranches } from '../../modules/states-branches.js';
+
 /**
  * Load marketer's events that they are volunteering for
  */
@@ -464,18 +467,32 @@ export async function registerAttendee() {
             form.reportValidity();
             return;
         }
-        
-        // Get form data
+          // Get form data
         const eventId = document.getElementById('registerEventId').value;
         const name = document.getElementById('attendeeName').value;
         const email = document.getElementById('attendeeEmail').value;
         const phone = document.getElementById('attendeePhone').value;
+        const state = document.getElementById('attendeeState').value;
+        const branch = document.getElementById('attendeeBranch').value;
         const transportPreference = document.querySelector('input[name="transportPreference"]:checked').value;
+        
+        // Validate state and branch selection
+        if (!state) {
+            showToast('error', 'Please select a state');
+            return;
+        }
+        
+        if (!branch) {
+            showToast('error', 'Please select a branch');
+            return;
+        }
         
         // Prepare attendee data
         const attendeeData = {
             name,
             phone, // Phone is now required
+            state,
+            branch,
             transportPreference,
             event: eventId // Add event ID to the attendee data
         };
@@ -523,9 +540,17 @@ export async function registerAttendee() {
         if (modal) {
             modal.hide();
         }
-        
-        // Reset form
+          // Reset form
         form.reset();
+        
+        // Reset state and branch dropdowns to initial state
+        const stateSelect = document.getElementById('attendeeState');
+        const branchSelect = document.getElementById('attendeeBranch');
+        if (stateSelect && branchSelect) {
+            stateSelect.selectedIndex = 0;
+            branchSelect.innerHTML = '<option value="" disabled selected>Select state first</option>';
+            branchSelect.disabled = true;
+        }
         
         // Reload attendees data
         await loadMarketerAttendees();
@@ -597,6 +622,9 @@ export function setupAttendeeRegistrationHandlers() {
         saveAttendeeBtn.addEventListener('click', registerAttendee);
     }
     
+    // Set up state and branch selection
+    setupStateAndBranchSelection();
+    
     // Set up event listeners for transport preference radios
     const transportRadios = document.querySelectorAll('input[name="transportPreference"]');
     if (transportRadios.length > 0) {
@@ -614,6 +642,45 @@ export function setupAttendeeRegistrationHandlers() {
             busSection.style.display = checkedRadio.value === 'bus' ? 'block' : 'none';
         }
     }
+}
+
+/**
+ * Set up state and branch selection for attendee registration
+ */
+function setupStateAndBranchSelection() {
+    const stateSelect = document.getElementById('attendeeState');
+    const branchSelect = document.getElementById('attendeeBranch');
+    
+    if (!stateSelect || !branchSelect) {
+        return;
+    }
+    
+    // Populate state dropdown
+    stateSelect.innerHTML = '<option value="" disabled selected>Select state</option>';
+    Object.keys(statesAndBranches).forEach(state => {
+        const option = document.createElement('option');
+        option.value = state;
+        option.textContent = state;
+        stateSelect.appendChild(option);
+    });
+    
+    // Handle state selection change
+    stateSelect.addEventListener('change', function() {
+        const selectedState = this.value;
+        branchSelect.innerHTML = '<option value="" disabled selected>Select branch</option>';
+        
+        if (selectedState && statesAndBranches[selectedState]) {
+            statesAndBranches[selectedState].forEach(branch => {
+                const option = document.createElement('option');
+                option.value = branch;
+                option.textContent = branch;
+                branchSelect.appendChild(option);
+            });
+            branchSelect.disabled = false;
+        } else {
+            branchSelect.disabled = true;
+        }
+    });
 }
 
 /**
@@ -754,11 +821,12 @@ export async function loadFilteredAttendees(eventId = '') {
                     
                     // Access event name safely
                     const eventName = attendee.event?.name || 'Unknown event';
-                    
-                    row.innerHTML = `
+                      row.innerHTML = `
                         <td>${attendee.name || 'No name'}</td>
                         <td>${attendee.phone || 'No phone'}</td>
                         <td>${eventName}</td>
+                        <td>${attendee.state || 'N/A'}</td>
+                        <td>${attendee.branch || 'N/A'}</td>
                         <td>${attendee.transportPreference === 'bus' ? 
                             `<span class="badge bg-success">Bus (${attendee.busPickup?.location || 'N/A'})</span>` : 
                             '<span class="badge bg-secondary">Private</span>'}
@@ -777,11 +845,12 @@ export async function loadFilteredAttendees(eventId = '') {
             const displayAttendees = attendeesArray.slice(0, 10);
             for (const attendee of displayAttendees) {
                 try {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
+                    const row = document.createElement('tr');                    row.innerHTML = `
                         <td>${attendee.name || 'No name'}</td>
                         <td>${attendee.phone || 'No phone'}</td>
                         <td>${attendee.event?.name || 'Unknown event'}</td>
+                        <td>${attendee.state || 'N/A'}</td>
+                        <td>${attendee.branch || 'N/A'}</td>
                         <td>${attendee.transportPreference === 'bus' ? 'Bus' : 'Private'}</td>
                         <td>${attendee.createdAt || 'Date not available'}</td>
                         <td>${getCheckInStatusDisplay(attendee)}</td>
@@ -802,3 +871,15 @@ export async function loadFilteredAttendees(eventId = '') {
         if (noAttendeesMessage) noAttendeesMessage.classList.remove('d-none');
     }
 }
+
+// Set up modal show event to reset state/branch when opened
+    const registerModal = document.getElementById('registerAttendeeModal');
+    if (registerModal) {
+        registerModal.addEventListener('show.bs.modal', function() {
+            const branchSelect = document.getElementById('attendeeBranch');
+            if (branchSelect) {
+                branchSelect.disabled = true;
+                branchSelect.innerHTML = '<option value="" disabled selected>Select state first</option>';
+            }
+        });
+    }

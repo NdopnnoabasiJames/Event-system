@@ -114,7 +114,7 @@ async function loadAttendeesData() {
             
             // Update the table if no attendees match the marketer filter
             if (filteredAttendees.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No attendees found for this marketer</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="9" class="text-center">No attendees found for this marketer</td></tr>';
                 return;
             }
         }
@@ -142,11 +142,12 @@ async function loadAttendeesData() {
                     eventName = 'Event ID: ' + attendee.event;
                 }
             }
-            
-            row.innerHTML = `
+              row.innerHTML = `
                 <td>${attendee.name}</td>
                 <td>${attendee.phone || 'Not provided'}</td>
                 <td>${eventName}</td>
+                <td>${attendee.state || 'N/A'}</td>
+                <td>${attendee.branch || 'N/A'}</td>
                 <td>${marketerName}</td>
                 <td>${attendee.transportPreference === 'bus' ? 
                     `<span class="badge bg-success">Bus (${attendee.busPickup?.location || 'N/A'})</span>` : 

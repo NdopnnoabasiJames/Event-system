@@ -138,6 +138,8 @@
                                         <th>Name</th>
                                         <th>Phone</th>
                                         <th>Event</th>
+                                        <th>State</th>
+                                        <th>Branch</th>
                                         <th>Transport</th>
                                         <th>Registration Date</th>
                                         <th>Check-in Status</th>
@@ -214,10 +216,25 @@
                             <label for="attendeeEmail" class="form-label">Email Address</label>
                             <input type="email" class="form-control" id="attendeeEmail" name="email">
                         </div>
-                        
-                        <div class="mb-3">
+                          <div class="mb-3">
                             <label for="attendeePhone" class="form-label">Phone Number*</label>
                             <input type="tel" class="form-control" id="attendeePhone" name="phone" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="attendeeState" class="form-label">State*</label>
+                            <select class="form-select" id="attendeeState" name="state" required>
+                                <option value="" disabled selected>Select state</option>
+                                <!-- Will be populated by JavaScript -->
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="attendeeBranch" class="form-label">Branch*</label>
+                            <select class="form-select" id="attendeeBranch" name="branch" required>
+                                <option value="" disabled selected>Select state first</option>
+                                <!-- Will be populated by JavaScript -->
+                            </select>
                         </div>
                         
                         <div class="mb-3">

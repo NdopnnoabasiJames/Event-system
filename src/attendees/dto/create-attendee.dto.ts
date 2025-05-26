@@ -32,11 +32,16 @@ export class CreateAttendeeDto {  @IsString()
 
   @IsEnum(['bus', 'private'], { message: 'Transport preference must be either bus or private' })
   transportPreference: string;
-
   @ValidateIf(o => o.transportPreference === 'bus')
   @ValidateNested()
   @Type(() => BusPickupDto)
   busPickup?: BusPickupDto;
+
+  @IsString()
+  state: string;
+
+  @IsString()
+  branch: string;
 
   @IsString()
   event: string;
