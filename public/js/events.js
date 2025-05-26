@@ -1,4 +1,70 @@
 let currentEvents = [];
+let currentFilter = 'upcoming'; // Default to upcoming events
+let currentSearchTerm = '';
+
+// Helper function to determine if an event is past or upcoming
+function isEventPast(eventDate) {
+    if (!eventDate) return false;
+    
+    const today = new Date('2025-05-26'); // Current date as specified
+    const event = new Date(eventDate);
+    
+    // Reset time to compare dates only
+    today.setHours(0, 0, 0, 0);
+    event.setHours(0, 0, 0, 0);
+    
+    return event < today;
+}
+
+// Helper function to filter events based on the selected filter
+function filterEventsByDate(events, filter) {
+    switch (filter) {
+        case 'upcoming':
+            return events.filter(event => !isEventPast(event.date));
+        case 'past':
+            return events.filter(event => isEventPast(event.date));
+        case 'all':
+        default:
+            return events;
+    }
+}
+
+// Helper function to get event counts for each filter
+function getEventCounts(events) {
+    const upcoming = events.filter(event => !isEventPast(event.date)).length;
+    const past = events.filter(event => isEventPast(event.date)).length;
+    const all = events.length;
+    
+    return { upcoming, past, all };
+}
+
+// Helper function to update page title and dropdown options with counts
+function updatePageTitleAndDropdown(events) {
+    const counts = getEventCounts(events);
+    const pageTitle = document.getElementById('page-title');
+    const filterDropdown = document.getElementById('event-filter');
+    
+    if (pageTitle && filterDropdown) {
+        // Update dropdown options with counts
+        filterDropdown.innerHTML = `
+            <option value="upcoming">Upcoming Events (${counts.upcoming})</option>
+            <option value="all">All Events (${counts.all})</option>
+            <option value="past">Past Events (${counts.past})</option>
+        `;
+        
+        // Set the selected value
+        filterDropdown.value = currentFilter;
+        
+        // Update page title based on current filter
+        const titles = {
+            'upcoming': `Upcoming Events (${counts.upcoming})`,
+            'all': `All Events (${counts.all})`,
+            'past': `Past Events (${counts.past})`
+        };
+        
+        pageTitle.textContent = titles[currentFilter] || 'Events';
+    }
+}
 
 // Helper function to format states display
 function formatStatesDisplay(event) {
@@ -67,10 +133,17 @@ async function loadEvents() {
         
         // Log the events for debugging
         console.log('Events loaded from database:', events);
-        
-        // Update the events list
+          // Update the events list
         currentEvents = events;
-        displayEvents(events);
+        
+        // Update page title and dropdown with counts
+        updatePageTitleAndDropdown(events);
+        
+        // Apply initial filter (default to upcoming events)
+        applyFilters();
+        
+        // Update page title and filter dropdown with event counts
+        updatePageTitleAndDropdown(events);
     } catch (error) {
         console.error('Error loading events:', error);
         showToast('error', 'Failed to load events from the database');
@@ -151,38 +224,30 @@ function setupEventListeners() {
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             // Get the search term and trim whitespace
-            const searchTerm = e.target.value.toLowerCase().trim();
-              // Show/hide clear button and feedback based on search term
-            if (searchTerm.length > 0) {
+            currentSearchTerm = e.target.value.toLowerCase().trim();
+            
+            // Apply both date filter and search filter
+            applyFilters();
+            
+            // Show/hide clear button and feedback based on search term
+            if (currentSearchTerm.length > 0) {
                 clearSearchBtn.classList.remove('d-none');
                 searchFeedback.classList.remove('d-none');
                 
-                // Update feedback message with count of matching events
-                const matchCount = currentEvents.filter(event => {
-                    const nameMatch = event.name ? event.name.toLowerCase().includes(searchTerm) : false;
-                    const descriptionMatch = event.description ? event.description.toLowerCase().includes(searchTerm) : false;
-                    const locationMatch = formatStatesDisplay(event).toLowerCase().includes(searchTerm);
+                // Get currently filtered events (by date) then apply search
+                const dateFilteredEvents = filterEventsByDate(currentEvents, currentFilter);
+                const matchCount = dateFilteredEvents.filter(event => {
+                    const nameMatch = event.name ? event.name.toLowerCase().includes(currentSearchTerm) : false;
+                    const descriptionMatch = event.description ? event.description.toLowerCase().includes(currentSearchTerm) : false;
+                    const locationMatch = formatStatesDisplay(event).toLowerCase().includes(currentSearchTerm);
                     return nameMatch || descriptionMatch || locationMatch;
                 }).length;
                 
-                searchFeedback.textContent = `Found ${matchCount} matching event${matchCount !== 1 ? 's' : ''} for "${searchTerm}"`;
+                searchFeedback.textContent = `Found ${matchCount} matching event${matchCount !== 1 ? 's' : ''} for "${currentSearchTerm}"`;
             } else {
                 clearSearchBtn.classList.add('d-none');
                 searchFeedback.classList.add('d-none');
             }
-            
-            // Filter events that match the search term in name, description, or location
-            const filteredEvents = currentEvents.filter(event => {
-                // Safely check each field exists before including in search
-                const nameMatch = event.name ? event.name.toLowerCase().includes(searchTerm) : false;
-                const descriptionMatch = event.description ? event.description.toLowerCase().includes(searchTerm) : false;
-                const locationMatch = formatStatesDisplay(event).toLowerCase().includes(searchTerm);
-                
-                return nameMatch || descriptionMatch || locationMatch;
-            });
-            
-            // Display the filtered events
-            displayEvents(filteredEvents);
         });
     }
     
@@ -191,25 +256,26 @@ function setupEventListeners() {
         clearSearchBtn.addEventListener('click', () => {
             if (searchInput) {
                 searchInput.value = '';
+                currentSearchTerm = '';
                 searchInput.focus();
                 clearSearchBtn.classList.add('d-none');
                 searchFeedback.classList.add('d-none');
-                displayEvents(currentEvents);
+                applyFilters();
             }
         });
     }
 
-    // Category filter
-    const categorySelect = document.querySelector('select');
-    if (categorySelect) {
-        categorySelect.addEventListener('change', (e) => {
-            const category = e.target.value;
-            const filteredEvents = category === 'All Categories' 
-                ? currentEvents 
-                : currentEvents.filter(event => event.category === category);
-            displayEvents(filteredEvents);
+    // Event filter - by date (upcoming, past, all)
+    const eventFilter = document.getElementById('event-filter');
+    if (eventFilter) {
+        eventFilter.addEventListener('change', (e) => {
+            currentFilter = e.target.value;
+            applyFilters();
+            updatePageTitleAndDropdown(currentEvents);
         });
-    }    // Create Event button - only show for admins
+    }
+
+    // Create Event button - only show for admins
     const createEventBtn = document.querySelector('button.btn-primary.admin-only-element');
     if (createEventBtn) {
         // Only show the button if the user is an admin
@@ -225,6 +291,25 @@ function setupEventListeners() {
             });
         }
     }
+}
+
+// Helper function to apply both date and search filters
+function applyFilters() {
+    // First apply date filter
+    let filteredEvents = filterEventsByDate(currentEvents, currentFilter);
+    
+    // Then apply search filter if there's a search term
+    if (currentSearchTerm.length > 0) {
+        filteredEvents = filteredEvents.filter(event => {
+            const nameMatch = event.name ? event.name.toLowerCase().includes(currentSearchTerm) : false;
+            const descriptionMatch = event.description ? event.description.toLowerCase().includes(currentSearchTerm) : false;
+            const locationMatch = formatStatesDisplay(event).toLowerCase().includes(currentSearchTerm);
+            return nameMatch || descriptionMatch || locationMatch;
+        });
+    }
+    
+    // Display the filtered events
+    displayEvents(filteredEvents);
 }
 
 function getStatusBadgeColor(status) {

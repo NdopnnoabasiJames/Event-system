@@ -34,7 +34,7 @@
 
     <!-- Events List -->    <div class="container py-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Upcoming Events</h2>
+            <h2 id="page-title">Upcoming Events</h2>
             <button class="btn btn-primary admin-only-element d-none">
                 <i class="fas fa-plus me-2"></i>Create Event
             </button>
@@ -53,6 +53,18 @@
                 <small id="search-feedback" class="form-text text-muted mt-1 d-none">
                     Showing filtered results. Type more to refine your search.
                 </small>
+            </div>
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-filter"></i>
+                    </span>
+                    <select id="event-filter" class="form-select">
+                        <option value="upcoming">Upcoming Events</option>
+                        <option value="all">All Events</option>
+                        <option value="past">Past Events</option>
+                    </select>
+                </div>
             </div>
         </div><!-- Events Grid -->
         <div class="row g-4">
