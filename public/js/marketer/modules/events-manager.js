@@ -5,6 +5,58 @@
 import { statesAndBranches } from '../../modules/states-branches.js';
 
 /**
+ * Load marketer performance data and update the performance summary
+ */
+export async function loadMarketerPerformance() {
+    try {
+        const responseData = await apiCall('/marketers/analytics/performance', 'GET', null, auth.getToken());
+        
+        // Handle different response formats
+        const response = responseData.data || responseData;
+        
+        // Update performance summary with safe access
+        const totalAttendeesElement = document.getElementById('total-attendees');
+        const eventsParticipatedElement = document.getElementById('events-participated');
+        const avgAttendeesElement = document.getElementById('avg-attendees');
+        
+        if (totalAttendeesElement) {
+            totalAttendeesElement.textContent = response?.totalAttendeesRegistered || 0;
+        }
+        
+        if (eventsParticipatedElement) {
+            eventsParticipatedElement.textContent = response?.eventsParticipated || 0;
+        }
+        
+        // Safely handle average calculation
+        let avgAttendees = 0;
+        if (response && typeof response.averageAttendeesPerEvent === 'number') {
+            avgAttendees = response.averageAttendeesPerEvent.toFixed(1);
+        } else if (response?.totalAttendeesRegistered && response?.eventsParticipated) {
+            // Calculate average if not provided but we have the components
+            avgAttendees = (response.totalAttendeesRegistered / response.eventsParticipated).toFixed(1);
+        }
+        
+        if (avgAttendeesElement) {
+            avgAttendeesElement.textContent = avgAttendees;
+        }
+    } catch (error) {
+        console.error('Failed to load performance data:', error);
+        
+        // Set default values in case of error
+        const totalAttendeesElement = document.getElementById('total-attendees');
+        const eventsParticipatedElement = document.getElementById('events-participated');
+        const avgAttendeesElement = document.getElementById('avg-attendees');
+        
+        if (totalAttendeesElement) totalAttendeesElement.textContent = '0';
+        if (eventsParticipatedElement) eventsParticipatedElement.textContent = '0';
+        if (avgAttendeesElement) avgAttendeesElement.textContent = '0.0';
+        
+        // Don't show toast error here as it will be called frequently
+        // The dashboard will handle showing the main error if needed
+    }
+}
+
+/**
  * Load marketer's events that they are volunteering for
  */
 export async function loadMarketerEvents() {
@@ -905,9 +957,11 @@ export async function loadFilteredAttendees(eventId = '') {
         const tableBody = document.getElementById('attendees-table-body');
         const noAttendeesMessage = document.getElementById('no-attendees');
         if (tableBody) tableBody.innerHTML = '';
-        if (noAttendeesMessage) noAttendeesMessage.classList.remove('d-none');
-    }
+        if (noAttendeesMessage) noAttendeesMessage.classList.remove('d-none');    }
 }
+
+// Note: Modal state/branch reset is now handled in openRegisterAttendeeModal()
+// to populate with event-specific states and branches only
 
 // Note: Modal state/branch reset is now handled in openRegisterAttendeeModal()
 // to populate with event-specific states and branches only
