@@ -589,9 +589,8 @@ export async function registerAttendee() {
             branchSelect.innerHTML = '<option value="" disabled selected>Select state first</option>';
             branchSelect.disabled = true;
         }
-        
-        // Reload attendees data
-        await loadMarketerAttendees();
+          // Reload attendees data
+        await loadFilteredAttendees();
         
         // Update attendee count for this event
         loadEventAttendeeCount(eventId);
