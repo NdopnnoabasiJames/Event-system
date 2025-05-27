@@ -433,6 +433,44 @@ export async function openRegisterAttendeeModal(eventId, eventName) {
             document.getElementById('busPickupSection').style.display = 'none';
             document.getElementById('transportPrivate').checked = true;
         }
+          // Populate state dropdown with only event-specific states
+        const stateSelect = document.getElementById('attendeeState');
+        const branchSelect = document.getElementById('attendeeBranch');
+        
+        if (stateSelect && branchSelect) {
+            // Clear existing options
+            stateSelect.innerHTML = '<option value="" disabled selected>Select state</option>';
+            branchSelect.innerHTML = '<option value="" disabled selected>Select state first</option>';
+            branchSelect.disabled = true;
+            
+            // Populate with event-specific states only
+            if (eventData.states && Array.isArray(eventData.states)) {
+                eventData.states.forEach(state => {
+                    const option = document.createElement('option');
+                    option.value = state;
+                    option.textContent = state;
+                    stateSelect.appendChild(option);
+                });
+            }
+            
+            // Set up state change handler for event-specific branches
+            stateSelect.addEventListener('change', function() {
+                const selectedState = this.value;
+                branchSelect.innerHTML = '<option value="" disabled selected>Select branch</option>';
+                
+                if (selectedState && eventData.branches && eventData.branches[selectedState]) {
+                    eventData.branches[selectedState].forEach(branch => {
+                        const option = document.createElement('option');
+                        option.value = branch;
+                        option.textContent = branch;
+                        branchSelect.appendChild(option);
+                    });
+                    branchSelect.disabled = false;
+                } else {
+                    branchSelect.disabled = true;
+                }
+            });
+        }
         
         // Set up event listeners for transport preference radios
         document.querySelectorAll('input[name="transportPreference"]').forEach(radio => {
@@ -622,8 +660,8 @@ export function setupAttendeeRegistrationHandlers() {
         saveAttendeeBtn.addEventListener('click', registerAttendee);
     }
     
-    // Set up state and branch selection
-    setupStateAndBranchSelection();
+    // Note: State and branch selection is now handled in openRegisterAttendeeModal()
+    // to show only event-specific states and branches
     
     // Set up event listeners for transport preference radios
     const transportRadios = document.querySelectorAll('input[name="transportPreference"]');
@@ -872,14 +910,5 @@ export async function loadFilteredAttendees(eventId = '') {
     }
 }
 
-// Set up modal show event to reset state/branch when opened
-    const registerModal = document.getElementById('registerAttendeeModal');
-    if (registerModal) {
-        registerModal.addEventListener('show.bs.modal', function() {
-            const branchSelect = document.getElementById('attendeeBranch');
-            if (branchSelect) {
-                branchSelect.disabled = true;
-                branchSelect.innerHTML = '<option value="" disabled selected>Select state first</option>';
-            }
-        });
-    }
+// Note: Modal state/branch reset is now handled in openRegisterAttendeeModal()
+// to populate with event-specific states and branches only

@@ -6,7 +6,7 @@ export type MarketerDocument = Marketer & Document;
 
 @Schema({ timestamps: true })
 export class Marketer {
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true, index: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   user: MongooseSchema.Types.ObjectId;
 
   @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Event' }], default: [] })
