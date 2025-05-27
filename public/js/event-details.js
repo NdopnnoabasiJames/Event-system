@@ -123,6 +123,8 @@ function updateEventDescription(event) {
 function updateEventBadges(event) {
     // Format date
     let eventDate = 'Date not available';
+    let eventTime = 'Time not available';
+    
     if (event.date) {
         try {
             const date = new Date(event.date);
@@ -131,6 +133,13 @@ function updateEventBadges(event) {
                     year: 'numeric', 
                     month: 'long', 
                     day: 'numeric' 
+                });
+                
+                // Extract time from the date
+                eventTime = date.toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
                 });
             } else {
                 eventDate = String(event.date);
@@ -156,7 +165,7 @@ function updateEventBadges(event) {
                 <i class="fas fa-calendar-alt me-2"></i>${eventDate}
             </span>
             <span class="badge bg-success fs-6">
-                <i class="fas fa-clock me-2"></i>${event.time || '9:00 AM - 5:00 PM'}
+                <i class="fas fa-clock me-2"></i>${eventTime}
             </span>
             <span class="badge bg-info fs-6">
                 <i class="fas fa-map-marker-alt me-2"></i>${location}
