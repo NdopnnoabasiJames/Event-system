@@ -39,31 +39,27 @@
             <button class="btn btn-primary">
                 <i class="fas fa-plus me-2"></i>Add Attendee
             </button>
-        </div>
-
-        <!-- Filters and Search -->
+        </div>        <!-- Filters and Search -->
         <div class="row mb-4">
             <div class="col-md-4">
                 <div class="input-group">
-                    <input type="text" class="form-control" placeholder="Search attendees...">
+                    <input type="text" id="searchInput" class="form-control" placeholder="Search attendees...">
                     <button class="btn btn-outline-secondary" type="button">
                         <i class="fas fa-search"></i>
                     </button>
                 </div>
             </div>
             <div class="col-md-4">
-                <select class="form-select">
-                    <option value="">Select Event</option>
-                    <option>Tech Conference 2025</option>
-                    <option>Digital Workshop</option>
-                    <option>Leadership Summit</option>
+                <select id="eventFilter" class="form-select">
+                    <option value="">All Events</option>
+                    <!-- Will be populated by JavaScript -->
                 </select>
             </div>
             <div class="col-md-4">
-                <select class="form-select">
-                    <option value="">Transport Type</option>
-                    <option>Bus</option>
-                    <option>Private</option>
+                <select id="transportFilter" class="form-select">
+                    <option value="">All Transport Types</option>
+                    <option value="bus">Bus</option>
+                    <option value="private">Private</option>
                 </select>
             </div>
         </div>
@@ -82,57 +78,11 @@
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
-                        </thead>
-                        <tbody>                            <tr>
-                                <td>John Doe</td>
-                                <td>Tech Conference 2025</td>
-                                <td>+2347012345678</td>
-                                <td>Bus</td>
-                                <td>Central Station</td>
-                                <td><span class="badge bg-success">Confirmed</span></td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-primary me-1">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Jane Smith</td>
-                                <td>Digital Workshop</td>
-                                <td>jane@example.com</td>
-                                <td>Private</td>
-                                <td>-</td>
-                                <td><span class="badge bg-warning">Pending</span></td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-primary me-1">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
+                        </thead>                        <tbody id="attendeesTableBody">
+                            <!-- Dynamic content will be loaded here -->
                         </tbody>
                     </table>
                 </div>
-
-                <!-- Pagination -->
-                <nav class="mt-4">
-                    <ul class="pagination justify-content-center">
-                        <li class="page-item disabled">
-                            <a class="page-link" href="#" tabindex="-1">Previous</a>
-                        </li>
-                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                        <li class="page-item"><a class="page-link" href="#">2</a></li>
-                        <li class="page-item"><a class="page-link" href="#">3</a></li>
-                        <li class="page-item">
-                            <a class="page-link" href="#">Next</a>
-                        </li>
-                    </ul>
-                </nav>
             </div>
         </div>
     </div>

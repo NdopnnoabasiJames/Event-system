@@ -1,4 +1,5 @@
 let currentAttendees = [];
+let allEvents = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
     if (!auth.isAuthenticated()) {
@@ -9,9 +10,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    await loadEvents();
     await loadAttendees();
     setupEventListeners();
 });
+
+async function loadEvents() {
+    try {
+        const response = await apiCall('/events', 'GET', null, auth.getToken());
+        allEvents = Array.isArray(response) ? response : (response.data || []);
+        populateEventFilter();
+    } catch (error) {
+        console.error('Error loading events:', error);
+        showToast('error', 'Failed to load events');
+    }
+}
+
+function populateEventFilter() {
+    const eventSelect = document.getElementById('eventFilter');
+    if (!eventSelect) return;
+
+    // Clear existing options except the first one
+    eventSelect.innerHTML = '<option value="">All Events</option>';
+    
+    allEvents.forEach(event => {
+        const option = document.createElement('option');
+        option.value = event._id || event.id;
+        option.textContent = event.name;
+        eventSelect.appendChild(option);
+    });
+}
 
 async function loadAttendees(eventId = null) {
     try {
@@ -65,7 +93,7 @@ async function loadAttendees(eventId = null) {
 }
 
 function displayAttendees(attendees) {
-    const tableBody = document.querySelector('tbody');
+    const tableBody = document.getElementById('attendeesTableBody');
     if (!tableBody) return;
     
     if (!attendees || attendees.length === 0) {
@@ -91,7 +119,8 @@ function displayAttendees(attendees) {
         
         // Handle status (which might not exist in marketer API)
         const status = attendee.status || 'Registered';
-          return `
+        
+        return `
         <tr>
             <td>${name}</td>
             <td>${eventName}</td>
@@ -113,55 +142,28 @@ function displayAttendees(attendees) {
 }
 
 function setupEventListeners() {
-    // Search functionality    const searchInput = document.querySelector('input[placeholder="Search attendees..."]');
+    // Real-time search functionality
+    const searchInput = document.getElementById('searchInput');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase();
-            const filteredAttendees = currentAttendees.filter(attendee => {
-                // Create a searchable string based on available properties
-                let nameStr = '';
-                
-                // Use name property if available, otherwise try firstName/lastName
-                if (attendee.name) {
-                    nameStr = attendee.name.toLowerCase();
-                } else {
-                    const firstName = (attendee.firstName || '').toLowerCase();
-                    const lastName = (attendee.lastName || '').toLowerCase();
-                    nameStr = `${firstName} ${lastName}`.trim();
-                }
-                  const phoneStr = (attendee.phone || '').toLowerCase();
-                
-                // Return true if either name or phone contains the search term
-                return nameStr.includes(searchTerm) || phoneStr.includes(searchTerm);
-            });
-            displayAttendees(filteredAttendees);
+            applyFilters();
         });
     }
 
     // Event filter
-    const eventSelect = document.querySelector('select[name="event"]');
+    const eventSelect = document.getElementById('eventFilter');
     if (eventSelect) {
         eventSelect.addEventListener('change', (e) => {
-            const eventId = e.target.value;
-            if (eventId) {
-                loadAttendees(eventId);
-            } else {
-                loadAttendees();
-            }
+            applyFilters();
         });
-    }    // Transport filter
-    const transportSelect = document.querySelector('select[name="transport"]');
+    }
+
+    // Transport filter
+    const transportSelect = document.getElementById('transportFilter');
     if (transportSelect) {
         transportSelect.addEventListener('change', (e) => {
-            const transport = e.target.value;
-            const filteredAttendees = transport 
-                ? currentAttendees.filter(attendee => {
-                    // Check both transportPreference and transport fields
-                    const attendeeTransport = attendee.transportPreference || attendee.transport || '';
-                    return attendeeTransport === transport;
-                })
-                : currentAttendees;
-            displayAttendees(filteredAttendees);
+            applyFilters();
         });
     }
 
@@ -172,6 +174,53 @@ function setupEventListeners() {
             showAddAttendeeModal();
         });
     }
+}
+
+function applyFilters() {
+    const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || '';
+    const selectedEventId = document.getElementById('eventFilter')?.value || '';
+    const selectedTransport = document.getElementById('transportFilter')?.value || '';
+
+    let filteredAttendees = currentAttendees;
+
+    // Apply search filter (name or phone)
+    if (searchTerm) {
+        filteredAttendees = filteredAttendees.filter(attendee => {
+            let nameStr = '';
+            
+            // Use name property if available, otherwise try firstName/lastName
+            if (attendee.name) {
+                nameStr = attendee.name.toLowerCase();
+            } else {
+                const firstName = (attendee.firstName || '').toLowerCase();
+                const lastName = (attendee.lastName || '').toLowerCase();
+                nameStr = `${firstName} ${lastName}`.trim();
+            }
+            
+            const phoneStr = (attendee.phone || '').toLowerCase();
+            
+            // Return true if either name or phone contains the search term
+            return nameStr.includes(searchTerm) || phoneStr.includes(searchTerm);
+        });
+    }
+
+    // Apply event filter
+    if (selectedEventId) {
+        filteredAttendees = filteredAttendees.filter(attendee => {
+            const attendeeEventId = attendee.event?._id || attendee.event?.id || attendee.event;
+            return attendeeEventId === selectedEventId;
+        });
+    }
+
+    // Apply transport filter
+    if (selectedTransport) {
+        filteredAttendees = filteredAttendees.filter(attendee => {
+            const attendeeTransport = attendee.transportPreference || attendee.transport || '';
+            return attendeeTransport.toLowerCase() === selectedTransport.toLowerCase();
+        });
+    }
+
+    displayAttendees(filteredAttendees);
 }
 
 async function editAttendee(id) {

@@ -171,19 +171,16 @@ async function loadConciergeRequests() {
         const response = await apiCall('/events/concierge-requests/pending', 'GET', null, auth.getToken());
         const requests = Array.isArray(response) ? response : (response.data || []);
         const tableBody = document.getElementById('concierge-requests-table-body');
-        tableBody.innerHTML = '';
-        if (!requests.length) {
-            tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No pending requests.</td></tr>';
+        tableBody.innerHTML = '';        if (!requests.length) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No pending requests.</td></tr>';
             return;
         }
         for (const req of requests) {
-            const row = document.createElement('tr');
-            row.innerHTML = `
+            const row = document.createElement('tr');            row.innerHTML = `
                 <td>${req.eventName}</td>
                 <td>${new Date(req.eventDate).toLocaleDateString()}</td>
                 <td>${req.user?.name || 'N/A'}</td>
                 <td>${req.user?.email || 'N/A'}</td>
-                <td>${req.user?.phone || 'N/A'}</td>
                 <td>${new Date(req.requestedAt).toLocaleString()}</td>
                 <td>
                     <button class="btn btn-success btn-sm approve-concierge" data-event-id="${req.eventId}" data-request-id="${req.requestId}">Approve</button>
@@ -221,9 +218,8 @@ async function loadApprovedConcierges() {
         const response = await apiCall('/events/concierge-requests/approved', 'GET', null, auth.getToken());
         const approved = Array.isArray(response) ? response : (response.data || []);
         const tableBody = document.getElementById('approved-concierges-table-body');
-        tableBody.innerHTML = '';
-        if (!approved.length) {
-            tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No approved concierges.</td></tr>';
+        tableBody.innerHTML = '';        if (!approved.length) {
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center">No approved concierges.</td></tr>';
             return;
         }
         // Deduplicate by eventId + userId (concierge)

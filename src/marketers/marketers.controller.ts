@@ -293,7 +293,6 @@ export class MarketersController {
     }
     return this.marketersService.getMarketerPerformanceStats(userId);
   }
-
   @Get('analytics/event/:eventId')
   @ApiOperation({ summary: 'Get marketer performance for specific event' })
   @ApiParam({
@@ -301,6 +300,7 @@ export class MarketersController {
     description: 'The ID of the event to check performance for',
     example: '645f3c7e8d6e5a7b1c9d2e3f'
   })
+  @ApiQuery({ name: 'marketerId', required: false, description: 'Specific marketer ID (Admin only)' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Event performance statistics'
@@ -311,8 +311,16 @@ export class MarketersController {
   getEventPerformance(
     @Param('eventId') eventId: string,
     @Request() req,
+    @Query('marketerId') marketerId?: string,
   ) {
-    return this.marketersService.getMarketerEventPerformance(req.user.userId, eventId);
+    const userId = marketerId || req.user.userId;
+    // If marketerId is provided and user is not admin, verify access
+    if (marketerId && req.user.role !== Role.ADMIN) {
+      if (marketerId !== req.user.userId) {
+        throw new ForbiddenException('Cannot access another marketer\'s event performance stats');
+      }
+    }
+    return this.marketersService.getMarketerEventPerformance(userId, eventId);
   }
 
   @Get('analytics/top')
