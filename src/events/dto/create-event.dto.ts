@@ -11,23 +11,26 @@ import {
   IsMongoId
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { EventPickupStation } from '../../common/interfaces/event.interface';
 import { IsFutureDate } from '../../common/decorators/date-validators.decorator';
 
-class EventPickupStationDto implements EventPickupStation {
+class EventPickupStationDto {
   @IsMongoId()
-  pickupStationId: string;
+  @IsNotEmpty()
+  pickupStationId: string; // Using string for DTOs, will be converted to Types.ObjectId
 
   @IsDateString()
+  @IsNotEmpty()
   departureTime: string;
 
   @IsNumber()
   @Min(1)
-  maxCapacity: number;
+  @IsOptional()
+  maxCapacity?: number; // Make optional with default
 
   @IsNumber()
   @Min(0)
-  currentCount: number;
+  @IsOptional()
+  currentCount?: number; // Make optional with default
 
   @IsString()
   @IsOptional()

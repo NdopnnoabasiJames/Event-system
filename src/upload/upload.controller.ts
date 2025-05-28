@@ -66,15 +66,15 @@ export class UploadController {
       throw new BadRequestException('No file uploaded');
     }
 
-    // Process the image (resize, optimize, etc.)
-    const processedImagePath = await this.uploadService.processEventImage(file);
+    // Get the uploads path from the service
+    const uploadsPath = this.uploadService.getUploadsPath('events');
 
     return {
       statusCode: HttpStatus.OK,
       message: 'File uploaded successfully',
       data: {
         filename: file.filename,
-        path: processedImagePath.replace('public/', ''),
+        path: file.path.replace('public/', ''),
       },
     };
   }

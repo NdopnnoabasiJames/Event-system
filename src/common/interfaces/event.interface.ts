@@ -23,7 +23,7 @@ export interface EventLocation {
 export interface IEvent extends Document {
   name: string;
   description?: string;
-  date: string; // changed from Date to string for DTO compatibility
+  date: string; 
   status: EventStatus;
   states: Types.ObjectId[];
   branches: Types.ObjectId[];

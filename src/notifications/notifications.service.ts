@@ -58,11 +58,10 @@ export class NotificationsService implements OnModuleInit {
       this.logger.warn('Email notifications will be disabled');
     }
   }
-
   private generateEventReminderTemplate(context: EventReminderContext): EmailTemplate {
     const { attendeeName, eventName, eventDate, eventLocation, transportDetails } = context;
     
-    // Ensure we have a proper Date object for formatting
+    // Format the date - eventDate is already a string
     const dateObj = new Date(eventDate);
     const formattedDate = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString() : eventDate;
     
@@ -74,11 +73,11 @@ export class NotificationsService implements OnModuleInit {
         let departureTime = 'TBD';
         
         if (transportDetails.departureTime) {
-          // Ensure we have a proper Date object for the departure time
+          // Format the departure time if it exists
           const departureTimeObj = new Date(transportDetails.departureTime);
           
           departureTime = !isNaN(departureTimeObj.getTime()) ? 
-            departureTimeObj.toLocaleTimeString() : 'TBD';
+            departureTimeObj.toLocaleTimeString() : transportDetails.departureTime || 'TBD';
         }
         
         transportInfo = `
@@ -167,17 +166,21 @@ export class NotificationsService implements OnModuleInit {
       const endOfDay = new Date(threeDaysFromNow);
       endOfDay.setHours(23, 59, 59, 999);
       
-      // Find events happening in 3 days - using Date objects for query
-      this.logger.log(`Finding events scheduled between ${startOfDay.toISOString()} and ${endOfDay.toISOString()}`);
+      // Find events happening in 3 days - using ISO string format to match with string date field
+      const startOfDayStr = startOfDay.toISOString().split('T')[0];
+      const endOfDayStr = endOfDay.toISOString().split('T')[0];
+      
+      this.logger.log(`Finding events scheduled between ${startOfDayStr} and ${endOfDayStr}`);
+      
+      // Since date is stored as string in the schema, we need to query using string comparison
       const upcomingEvents = await this.eventModel.find({
-        date: {
-          $gte: startOfDay,
-          $lt: endOfDay,
-        },
+        date: startOfDayStr, // Exact date match
         isActive: true,
       });
       
-      this.logger.log(`Found ${upcomingEvents.length} events scheduled for ${startOfDay.toISOString().split('T')[0]}`);      for (const event of upcomingEvents) {
+      this.logger.log(`Found ${upcomingEvents.length} events scheduled for ${startOfDayStr}`);
+      
+      for (const event of upcomingEvents) {
         try {
           // Safeguard in case we somehow got an event without an _id
           if (!event._id) {
@@ -187,11 +190,10 @@ export class NotificationsService implements OnModuleInit {
 
           // Log the event structure to help debug any schema issues
           this.logger.log(`Processing event: ${event.name}, ID: ${event._id}`);
-          this.logger.log(`Event branches structure: ${JSON.stringify(event.branches)}`);
           
+          // Find attendees for this event
           const attendees = await this.attendeeModel
             .find({ event: event._id })
-            .populate('event')
             .exec();
             
           this.logger.log(`Processing ${attendees.length} attendees for event: ${event.name}`);
@@ -204,52 +206,31 @@ export class NotificationsService implements OnModuleInit {
                 continue;
               }
               
-              // Safely access nested properties - branches is now a Record<string, string[]>
+              // Find branch and state information
               let eventLocation = 'TBD';
-              if (event.branches && typeof event.branches === 'object') {
-                // Get the first state as the primary location
-                const states = Object.keys(event.branches);
-                if (states.length > 0) {
-                  const firstState = states[0];
-                  const branches = event.branches[firstState];
-                  if (branches && branches.length > 0) {
-                    eventLocation = `${firstState} - ${branches[0]}`;
-                  } else {
-                    eventLocation = firstState;
-                  }
-                }
-              }              
+              if (event.branches && event.branches.length > 0) {
+                // We need to populate branch names
+                eventLocation = `Event Location`;
+              }
+              
+              // Handle transport details
               let transportDetails = null;
-              if (attendee.transportPreference === 'bus' && attendee.busPickup) {
-                // We need to be very careful about the typing here
-                // Create a transport details object with only the properties we know exist from the interface
+              if (attendee.transportPreference === 'bus') {
                 transportDetails = {
-                  type: 'bus',
-                  location: attendee.busPickup.location || 'TBD',
-                  departureTime: attendee.busPickup.departureTime || null,
+                  type: 'bus' as const,
+                  location: 'Pickup Station', // This should be retrieved from the pickup station
+                  departureTime: attendee.departureTime || null,
                 };
-                
-                // Only add optional properties if they exist in the schema
-                if ('pickupPoint' in attendee.busPickup) {
-                  transportDetails['pickupPoint'] = attendee.busPickup['pickupPoint'];
-                }
-                
-                if ('busNumber' in attendee.busPickup) {
-                  transportDetails['busNumber'] = attendee.busPickup['busNumber'];
-                }
-                
-                if ('driverContact' in attendee.busPickup) {
-                  transportDetails['driverContact'] = attendee.busPickup['driverContact'];
-                }
-              } else if (attendee.transportPreference) {
-                transportDetails = { type: attendee.transportPreference };
+              } else if (attendee.transportPreference === 'private') {
+                transportDetails = { 
+                  type: 'private' as const
+                };
               }
               
               const reminderContext: EventReminderContext = {
                 attendeeName: attendee.name || 'Attendee',
                 eventName: event.name,
-                eventDate: typeof event.date === 'string' ? event.date : 
-                           new Date(event.date).toISOString(),
+                eventDate: event.date,
                 eventLocation: eventLocation,
                 transportDetails: transportDetails,
               };

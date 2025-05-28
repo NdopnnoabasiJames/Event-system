@@ -1,4 +1,3 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsOptional, IsBoolean, IsMongoId } from 'class-validator';
 
 export class UpdatePickupStationDto {

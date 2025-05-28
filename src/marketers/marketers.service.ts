@@ -64,14 +64,14 @@ export class MarketersService {
     
     if (!isMarketerAuthorized) {
       throw new UnauthorizedException('You are not authorized to register attendees for this event');
-    }// If bus pickup is selected, validate the pickup location exists
-    if (attendeeData.transportPreference === 'bus' && attendeeData.busPickup) {
-      const validPickup = event.busPickups.some(
-        pickup => pickup.location === attendeeData.busPickup.location &&
-        new Date(pickup.departureTime).getTime() === new Date(attendeeData.busPickup.departureTime).getTime()
+    }    // If bus pickup is selected, validate the pickup station exists
+    if (attendeeData.transportPreference === 'bus' && attendeeData.pickupStation) {
+      // Verify the pickup station exists in the event
+      const validStation = event.pickupStations.some(
+        station => station.pickupStationId.toString() === attendeeData.pickupStation.toString()
       );
-      if (!validPickup) {
-        throw new NotFoundException('Invalid bus pickup location');
+      if (!validStation) {
+        throw new NotFoundException('Invalid pickup station for this event');
       }
     }
 
@@ -89,15 +89,15 @@ export class MarketersService {
     // Verify marketer registered this attendee
     if (attendee.registeredBy.toString() !== marketerId) {
       throw new UnauthorizedException('You can only edit attendees you registered');
-    }
-    // If updating bus pickup, validate the new pickup location
-    if (updateData.transportPreference === 'bus' && updateData.busPickup) {      const event = await this.eventsService.findOne(attendee.event.toString());
-      const validPickup = event.busPickups.some(
-        pickup => pickup.location === updateData.busPickup.location &&
-        new Date(pickup.departureTime).getTime() === new Date(updateData.busPickup.departureTime).getTime()
+    }    // If updating bus pickup, validate the new pickup station
+    if (updateData.transportPreference === 'bus' && updateData.pickupStation) {
+      const event = await this.eventsService.findOne(attendee.event.toString());
+      // Verify the pickup station exists in the event
+      const validStation = event.pickupStations.some(
+        station => station.pickupStationId.toString() === updateData.pickupStation.toString()
       );
-      if (!validPickup) {
-        throw new NotFoundException('Invalid bus pickup location');
+      if (!validStation) {
+        throw new NotFoundException('Invalid pickup station for this event');
       }
     }
 
