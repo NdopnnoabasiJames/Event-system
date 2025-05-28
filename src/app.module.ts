@@ -11,6 +11,9 @@ import { UploadModule } from './upload/upload.module';
 import { TestModule } from './test/test.module';
 // import { NotificationsModule } from './notifications/notifications.module';
 import { SeedModule } from './seed/seed.module';
+import { StatesModule } from './states/states.module';
+import { BranchesModule } from './branches/branches.module';
+import { PickupStationsModule } from './pickup-stations/pickup-stations.module';
 import { databaseConfig, jwtConfig, emailConfig } from './config/configuration';
 import { configValidationSchema } from './config/validation.schema';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
@@ -54,7 +57,11 @@ import { ConciergesModule } from './concierges/concierges.module';
     }),    CommonModule,
     AuthModule,
     UsersModule,    
-    EventsModule,    MarketersModule,
+    EventsModule,
+    StatesModule,
+    BranchesModule,
+    PickupStationsModule,
+    MarketersModule,
     AttendeesModule,
     // NotificationsModule,
     SeedModule,

@@ -3,7 +3,14 @@ import { Document, Schema as MongooseSchema, Types } from 'mongoose';
 
 export type EventDocument = Event & Document;
 
-import { BusPickup, Branch } from '../common/interfaces/event.interface';
+// Event-specific pickup station with departure time
+export interface EventPickupStation {
+  pickupStationId: Types.ObjectId;
+  departureTime: string;
+  maxCapacity?: number;
+  currentCount?: number;
+  notes?: string;
+}
 
 @Schema({ timestamps: true })
 export class Event {
@@ -11,14 +18,25 @@ export class Event {
   name: string;
 
   @Prop({ required: true })
-  date: string;  @Prop({ type: [String], required: true })
-  states: string[];
+  date: string;
 
-  @Prop({ type: Object, required: true })
-  branches: Record<string, string[]>;
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'State' }], required: true })
+  states: Types.ObjectId[];
 
-  @Prop({ type: [{ type: Object }] })
-  busPickups: BusPickup[];
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Branch' }], required: true })
+  branches: Types.ObjectId[];
+
+  @Prop({ 
+    type: [{ 
+      pickupStationId: { type: Types.ObjectId, ref: 'PickupStation', required: true },
+      departureTime: { type: String, required: true },
+      maxCapacity: { type: Number },
+      currentCount: { type: Number, default: 0 },
+      notes: { type: String }
+    }],
+    default: []
+  })
+  pickupStations: EventPickupStation[];
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }] })
   

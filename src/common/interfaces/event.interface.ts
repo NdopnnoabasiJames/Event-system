@@ -1,19 +1,12 @@
 import { EventStatus } from '../enums/event-status.enum';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
-export interface BusPickup {
-  location: string;
-  departureTime: string; // changed from Date to string for DTO compatibility
+export interface EventPickupStation {
+  pickupStationId: Types.ObjectId;
+  departureTime: string;
   maxCapacity: number;
   currentCount: number;
   notes?: string;
-}
-
-export interface Branch {
-  name: string;
-  location: string;
-  manager?: string;
-  contact?: string;
 }
 
 export interface EventLocation {
@@ -27,14 +20,15 @@ export interface EventLocation {
   };
 }
 
-export interface IEvent extends Document {  name: string;
+export interface IEvent extends Document {
+  name: string;
   description?: string;
   date: string; // changed from Date to string for DTO compatibility
   status: EventStatus;
-  states: string[];
+  states: Types.ObjectId[];
+  branches: Types.ObjectId[];
+  pickupStations?: EventPickupStation[];
   currentAttendees: number;
-  branches: Record<string, string[]>;
-  busPickups?: BusPickup[];
   marketers: string[];
   isActive: boolean;
   createdAt: Date;

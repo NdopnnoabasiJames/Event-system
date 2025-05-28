@@ -3,10 +3,14 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Event, EventDocument } from '../schemas/event.schema';
 import { CreateEventDto } from './dto/create-event.dto';
+import { UpdateEventDto } from './dto/update-event.dto';
 import { Role } from '../common/enums/role.enum';
 import { UsersService } from '../users/users.service';
 import { User } from '../schemas/user.schema';
 import { AttendeesService } from '../attendees/attendees.service';
+import { StatesService } from '../states/states.service';
+import { BranchesService } from '../branches/branches.service';
+import { PickupStationsService } from '../pickup-stations/pickup-stations.service';
 
 @Injectable()
 export class EventsService {
@@ -14,77 +18,198 @@ export class EventsService {
     @InjectModel(Event.name) private eventModel: Model<EventDocument>,
     private usersService: UsersService,
     private attendeesService: AttendeesService,
+    private statesService: StatesService,
+    private branchesService: BranchesService,
+    private pickupStationsService: PickupStationsService,
   ) {}
-
   async create(createEventDto: CreateEventDto): Promise<EventDocument> {
-  try {
-    console.log('Creating event with data:', JSON.stringify(createEventDto, null, 2));
-    
-    // Make sure states is an array
-    if (!Array.isArray(createEventDto.states)) {
-      console.log('Converting states to array');
-      // Fix: Handle the type more explicitly
-      createEventDto.states = createEventDto.states ? [String(createEventDto.states)] : [];
+    try {
+      console.log('Creating event with data:', JSON.stringify(createEventDto, null, 2));
+      
+      // Validate states exist
+      if (createEventDto.states && createEventDto.states.length > 0) {
+        for (const stateId of createEventDto.states) {
+          const state = await this.statesService.findOne(stateId);
+          if (!state) {
+            throw new HttpException(`State with ID ${stateId} not found`, HttpStatus.BAD_REQUEST);
+          }
+        }
+      }
+      
+      // Validate branches exist and belong to the specified states
+      if (createEventDto.branches && createEventDto.branches.length > 0) {
+        for (const branchId of createEventDto.branches) {
+          const branch = await this.branchesService.findOne(branchId);
+          if (!branch) {
+            throw new HttpException(`Branch with ID ${branchId} not found`, HttpStatus.BAD_REQUEST);
+          }
+          
+          // Check if branch belongs to one of the specified states
+          if (createEventDto.states && !createEventDto.states.includes(branch.stateId.toString())) {
+            throw new HttpException(`Branch ${branchId} does not belong to any of the specified states`, HttpStatus.BAD_REQUEST);
+          }
+        }
+      }
+      
+      // Validate pickup stations exist and belong to the specified branches
+      if (createEventDto.pickupStations && createEventDto.pickupStations.length > 0) {
+        for (const pickupStation of createEventDto.pickupStations) {
+          const station = await this.pickupStationsService.findOne(pickupStation.pickupStationId);
+          if (!station) {
+            throw new HttpException(`Pickup station with ID ${pickupStation.pickupStationId} not found`, HttpStatus.BAD_REQUEST);
+          }
+          
+          // Check if pickup station belongs to one of the specified branches
+          if (createEventDto.branches && !createEventDto.branches.includes(station.branchId.toString())) {
+            throw new HttpException(`Pickup station ${pickupStation.pickupStationId} does not belong to any of the specified branches`, HttpStatus.BAD_REQUEST);
+          }
+        }
+      }
+      
+      // Convert string IDs to ObjectIds for pickup stations
+      const eventData = {
+        ...createEventDto,
+        pickupStations: createEventDto.pickupStations?.map(ps => ({
+          ...ps,
+          pickupStationId: new Types.ObjectId(ps.pickupStationId)
+        }))
+      };
+      
+      // Create new event with validated data
+      const event = new this.eventModel(eventData);
+      const savedEvent = await event.save();
+      console.log('Event saved successfully:', savedEvent);
+      return savedEvent;
+    } catch (error) {
+      console.error('Failed to create event:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(`Failed to create event: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
-    
-    // Validate branches is an object
-    if (typeof createEventDto.branches !== 'object' || Array.isArray(createEventDto.branches)) {
-      console.log('Converting branches to object format');
-      // Default to empty object if branches is not in correct format
-      createEventDto.branches = {};
-    }
-    
-    // Create new event with validated data
-    const event = new this.eventModel(createEventDto);
-    const savedEvent = await event.save();
-    console.log('Event saved successfully:', savedEvent);
-    return savedEvent;
-  } catch (error) {
-    console.error('Failed to create event:', error);
-    throw new HttpException(`Failed to create event: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
-}
-
   async findAll(): Promise<EventDocument[]> {
-  try {
-    return await this.eventModel.find().populate('marketers', '-password').exec();
-  } catch (error) {
-    throw new HttpException(`Failed to retrieve events: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    try {
+      return await this.eventModel
+        .find()
+        .populate('marketers', '-password')
+        .populate('states', 'name code')
+        .populate('branches', 'name location')
+        .populate('pickupStations.pickupStationId', 'location')
+        .exec();
+    } catch (error) {
+      throw new HttpException(`Failed to retrieve events: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
-}
-
   async findOne(id: string): Promise<EventDocument> {
     const event = await this.eventModel
       .findById(id)
       .populate('marketers', '-password')
+      .populate('states', 'name code')
+      .populate('branches', 'name location')
+      .populate('pickupStations.pickupStationId', 'location')
       .exec();
     
     if (!event) {
       throw new NotFoundException('Event not found');
     }
     return event;
-  }
- async addBusPickup(eventId: string, location: string, departureTime: string): Promise<EventDocument> {
-  try {
-    const event = await this.findOne(eventId);
-    if (!event) {
-      throw new HttpException('Event not found', HttpStatus.NOT_FOUND);
+  }  async addPickupStation(eventId: string, pickupStationId: string, departureTime: string, maxCapacity: number = 50, notes?: string): Promise<EventDocument> {
+    try {
+      const event = await this.findOne(eventId);
+      if (!event) {
+        throw new HttpException('Event not found', HttpStatus.NOT_FOUND);
+      }
+
+      // Validate pickup station exists
+      const pickupStation = await this.pickupStationsService.findOne(pickupStationId);
+      if (!pickupStation) {
+        throw new HttpException('Pickup station not found', HttpStatus.NOT_FOUND);
+      }
+
+      // Check if pickup station's branch is part of this event
+      if (!event.branches.some(branchId => branchId.toString() === pickupStation.branchId.toString())) {
+        throw new HttpException('Pickup station does not belong to any branch participating in this event', HttpStatus.BAD_REQUEST);
+      }
+
+      // Check if pickup station is already added to this event
+      if (event.pickupStations?.some(ps => ps.pickupStationId.toString() === pickupStationId)) {
+        throw new HttpException('Pickup station already added to this event', HttpStatus.BAD_REQUEST);
+      }
+
+      event.pickupStations = event.pickupStations || [];
+      event.pickupStations.push({ 
+        pickupStationId: new Types.ObjectId(pickupStationId),
+        departureTime,
+        maxCapacity,
+        currentCount: 0,
+        notes
+      });
+
+      return await event.save();
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(`Failed to add pickup station: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
-
-    event.busPickups = event.busPickups || [];
-    event.busPickups.push({ 
-      location, 
-      departureTime, // departureTime is already a string
-      maxCapacity: 50,
-      currentCount: 0,
-      notes: ''
-    });
-
-    return await event.save();
-  } catch (error) {
-    throw new HttpException(`Failed to add bus pickup: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
-}
+
+  async removePickupStation(eventId: string, pickupStationId: string): Promise<EventDocument> {
+    try {
+      const event = await this.findOne(eventId);
+      if (!event) {
+        throw new HttpException('Event not found', HttpStatus.NOT_FOUND);
+      }
+
+      if (!event.pickupStations) {
+        throw new HttpException('No pickup stations found for this event', HttpStatus.NOT_FOUND);
+      }
+
+      const initialLength = event.pickupStations.length;
+      event.pickupStations = event.pickupStations.filter(
+        ps => ps.pickupStationId.toString() !== pickupStationId
+      );
+
+      if (event.pickupStations.length === initialLength) {
+        throw new HttpException('Pickup station not found in this event', HttpStatus.NOT_FOUND);
+      }
+
+      return await event.save();
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(`Failed to remove pickup station: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async updatePickupStation(eventId: string, pickupStationId: string, updateData: Partial<{ departureTime: string; maxCapacity: number; notes: string }>): Promise<EventDocument> {
+    try {
+      const event = await this.findOne(eventId);
+      if (!event) {
+        throw new HttpException('Event not found', HttpStatus.NOT_FOUND);
+      }
+
+      const pickupStation = event.pickupStations?.find(
+        ps => ps.pickupStationId.toString() === pickupStationId
+      );
+
+      if (!pickupStation) {
+        throw new HttpException('Pickup station not found in this event', HttpStatus.NOT_FOUND);
+      }
+
+      // Update the pickup station data
+      Object.assign(pickupStation, updateData);
+
+      return await event.save();
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(`Failed to update pickup station: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
 
 async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocument> {
   const [event, marketer] = await Promise.all([
@@ -142,12 +267,20 @@ async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocu
     throw new HttpException(`Failed to remove marketer from event: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }
-
- async getEventsByState(state: string): Promise<EventDocument[]> {
+ async getEventsByState(stateId: string): Promise<EventDocument[]> {
   try {
+    // Validate state exists
+    const state = await this.statesService.findOne(stateId);
+    if (!state) {
+      throw new HttpException('State not found', HttpStatus.NOT_FOUND);
+    }
+
     const events = await this.eventModel
-      .find({ state })
+      .find({ states: new Types.ObjectId(stateId) })
       .populate('marketers', '-password')
+      .populate('states', 'name code')
+      .populate('branches', 'name location')
+      .populate('pickupStations.pickupStationId', 'location')
       .exec();
 
     if (!events || events.length === 0) {
@@ -156,25 +289,30 @@ async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocu
 
     return events;
   } catch (error) {
+    if (error instanceof HttpException) {
+      throw error;
+    }
     throw new HttpException(`Failed to get events by state: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
-}
-  async getActiveEvents(): Promise<EventDocument[]> {
-  try {
-    const events = await this.eventModel
-      .find({ isActive: true })
-      .populate('marketers', '-password')
-      .exec();
+}  async getActiveEvents(): Promise<EventDocument[]> {
+    try {
+      const events = await this.eventModel
+        .find({ isActive: true })
+        .populate('marketers', '-password')
+        .populate('states', 'name code')
+        .populate('branches', 'name location')
+        .populate('pickupStations.pickupStationId', 'location')
+        .exec();
 
-    if (!events || events.length === 0) {
-      throw new HttpException('No active events found', HttpStatus.NOT_FOUND);
+      if (!events || events.length === 0) {
+        throw new HttpException('No active events found', HttpStatus.NOT_FOUND);
+      }
+
+      return events;
+    } catch (error) {
+      throw new HttpException(`Failed to retrieve active events: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
-
-    return events;
-  } catch (error) {
-    throw new HttpException(`Failed to retrieve active events: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
-}
 
   async remove(id: string): Promise<{ message: string }> {
     try {
@@ -361,6 +499,82 @@ async addMarketerToEvent(eventId: string, marketerId: string): Promise<EventDocu
         throw error;
       }
       throw new HttpException(`Failed to check in attendee: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async update(id: string, updateEventDto: UpdateEventDto): Promise<EventDocument> {
+    try {
+      const event = await this.findOne(id);
+      
+      // Validate states exist if being updated
+      if (updateEventDto.states && updateEventDto.states.length > 0) {
+        for (const stateId of updateEventDto.states) {
+          const state = await this.statesService.findOne(stateId);
+          if (!state) {
+            throw new HttpException(`State with ID ${stateId} not found`, HttpStatus.BAD_REQUEST);
+          }
+        }
+      }
+      
+      // Validate branches exist and belong to the specified states if being updated
+      if (updateEventDto.branches && updateEventDto.branches.length > 0) {
+        for (const branchId of updateEventDto.branches) {
+          const branch = await this.branchesService.findOne(branchId);
+          if (!branch) {
+            throw new HttpException(`Branch with ID ${branchId} not found`, HttpStatus.BAD_REQUEST);
+          }
+          
+          // Check if branch belongs to one of the specified states
+          const statesToCheck = updateEventDto.states || event.states.map(s => s.toString());
+          if (!statesToCheck.includes(branch.stateId.toString())) {
+            throw new HttpException(`Branch ${branchId} does not belong to any of the specified states`, HttpStatus.BAD_REQUEST);
+          }
+        }
+      }
+      
+      // Validate pickup stations exist and belong to the specified branches if being updated
+      if (updateEventDto.pickupStations && updateEventDto.pickupStations.length > 0) {
+        for (const pickupStation of updateEventDto.pickupStations) {
+          const station = await this.pickupStationsService.findOne(pickupStation.pickupStationId);
+          if (!station) {
+            throw new HttpException(`Pickup station with ID ${pickupStation.pickupStationId} not found`, HttpStatus.BAD_REQUEST);
+          }
+          
+          // Check if pickup station belongs to one of the specified branches
+          const branchesToCheck = updateEventDto.branches || event.branches.map(b => b.toString());
+          if (!branchesToCheck.includes(station.branchId.toString())) {
+            throw new HttpException(`Pickup station ${pickupStation.pickupStationId} does not belong to any of the specified branches`, HttpStatus.BAD_REQUEST);
+          }
+        }
+      }
+      
+      // Convert string IDs to ObjectIds for pickup stations if being updated
+      const updateData = {
+        ...updateEventDto,
+        pickupStations: updateEventDto.pickupStations?.map(ps => ({
+          ...ps,
+          pickupStationId: new Types.ObjectId(ps.pickupStationId)
+        }))
+      };
+      
+      const updatedEvent = await this.eventModel
+        .findByIdAndUpdate(id, updateData, { new: true })
+        .populate('marketers', '-password')
+        .populate('states', 'name code')
+        .populate('branches', 'name location')
+        .populate('pickupStations.pickupStationId', 'location')
+        .exec();
+        
+      if (!updatedEvent) {
+        throw new NotFoundException('Event not found');
+      }
+      
+      return updatedEvent;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(`Failed to update event: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }
