@@ -1,27 +1,14 @@
-import { OmitType, PartialType, ApiProperty } from '@nestjs/swagger';
+import { OmitType, PartialType } from '@nestjs/mapped-types';
 import { CreateUserDto } from './create-user.dto';
 import { IsString, MinLength, Matches, IsOptional } from 'class-validator';
 
 export class UpdateUserDto extends PartialType(
   OmitType(CreateUserDto, ['email', 'password', 'role'] as const),
 ) {
-  @ApiProperty({
-    required: false,
-    example: 'OldPass123!',
-    description: 'Current password (required when changing password)'
-  })
   @IsString()
   @IsOptional()
   currentPassword?: string;
 
-
-  
-  @ApiProperty({
-    required: false,
-    example: 'NewPass123!',
-    description: 'New password (must meet password requirements)',
-    minLength: 8
-  })
   @IsString()
   @IsOptional()
   @MinLength(8)
