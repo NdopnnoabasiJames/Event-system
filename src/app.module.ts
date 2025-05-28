@@ -9,7 +9,7 @@ import { MarketersModule } from './marketers/marketers.module';
 import { AttendeesModule } from './attendees/attendees.module';
 import { UploadModule } from './upload/upload.module';
 import { TestModule } from './test/test.module';
-// import { NotificationsModule } from './notifications/notifications.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { SeedModule } from './seed/seed.module';
 import { StatesModule } from './states/states.module';
 import { BranchesModule } from './branches/branches.module';
@@ -63,7 +63,7 @@ import { ConciergesModule } from './concierges/concierges.module';
     PickupStationsModule,
     MarketersModule,
     AttendeesModule,
-    // NotificationsModule,
+    NotificationsModule,
     SeedModule,
     UploadModule,
     TestModule,

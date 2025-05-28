@@ -1,8 +1,6 @@
 // Events Management Module
 // This module handles all event-related functionality for the admin dashboard
 
-// Import the states and branches data for event creation
-import { statesAndBranches } from './states-branches.js';
 // Import form utility functions
 import { getFormDataAsObject, toFullISOString } from '../utils/form-utils.js';
 
@@ -215,52 +213,62 @@ export async function setupEventCreationHandlers() {
                 bannerPreviewContainer.classList.add('d-none');
             });
         }        
-        
-        // Setup state selection
+          // Setup state selection
         const stateSelectionContainer = document.getElementById('stateSelectionContainer');
         if (stateSelectionContainer) {
             // Clear existing content
             stateSelectionContainer.innerHTML = '';
             
-            // Create state checkboxes
-            const stateCheckboxesDiv = document.createElement('div');
-            stateCheckboxesDiv.className = 'state-checkboxes mb-3';
-            stateCheckboxesDiv.innerHTML = '<label class="form-label fw-bold mb-2">Select States for Event*</label>';
-            
-            // Add checkboxes for each state
-            for (const state of Object.keys(statesAndBranches)) {
-                const checkboxDiv = document.createElement('div');
-                checkboxDiv.className = 'form-check';
-                checkboxDiv.innerHTML = `
-                    <input class="form-check-input state-checkbox" type="checkbox" value="${state}" id="state-${state.toLowerCase().replace(/\s+/g, '-')}" name="selectedStates">
-                    <label class="form-check-label" for="state-${state.toLowerCase().replace(/\s+/g, '-')}">
-                        ${state}
-                    </label>
-                `;
-                stateCheckboxesDiv.appendChild(checkboxDiv);
-            }
-            stateSelectionContainer.appendChild(stateCheckboxesDiv);
+            // Load states from API and create state checkboxes
+            try {
+                const states = await statesApi.getAllStates();
+                
+                // Create state checkboxes
+                const stateCheckboxesDiv = document.createElement('div');
+                stateCheckboxesDiv.className = 'state-checkboxes mb-3';
+                stateCheckboxesDiv.innerHTML = '<label class="form-label fw-bold mb-2">Select States for Event*</label>';
+                
+                // Add checkboxes for each state
+                states.forEach(state => {
+                    const checkboxDiv = document.createElement('div');
+                    checkboxDiv.className = 'form-check';
+                    checkboxDiv.innerHTML = `
+                        <input class="form-check-input state-checkbox" type="checkbox" value="${state._id}" 
+                               data-state-name="${state.name}" id="state-${state._id}" name="selectedStates">
+                        <label class="form-check-label" for="state-${state._id}">
+                            ${state.name}
+                        </label>
+                    `;
+                    stateCheckboxesDiv.appendChild(checkboxDiv);
+                });
+                stateSelectionContainer.appendChild(stateCheckboxesDiv);
 
-            // Create branch selection container
-            const branchSelectionDiv = document.createElement('div');
-            branchSelectionDiv.id = 'branchSelectionContainer';
-            branchSelectionDiv.className = 'branch-selection mb-3';
-            branchSelectionDiv.innerHTML = '<label class="form-label fw-bold mb-2">Select Branches for Event*</label><div id="branchCheckboxes" class="branch-checkboxes"></div>';
-            stateSelectionContainer.appendChild(branchSelectionDiv);
-            
-            // Add event listener for state checkboxes
-            const stateCheckboxes = document.querySelectorAll('.state-checkbox');
-            stateCheckboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', updateBranchSelection);
-            });
+                // Create branch selection container
+                const branchSelectionDiv = document.createElement('div');
+                branchSelectionDiv.id = 'branchSelectionContainer';
+                branchSelectionDiv.className = 'branch-selection mb-3';
+                branchSelectionDiv.innerHTML = '<label class="form-label fw-bold mb-2">Select Branches for Event*</label><div id="branchCheckboxes" class="branch-checkboxes"></div>';
+                stateSelectionContainer.appendChild(branchSelectionDiv);
+                
+                // Add event listener for state checkboxes
+                const stateCheckboxes = document.querySelectorAll('.state-checkbox');
+                stateCheckboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', updateBranchSelection);
+                });
+            } catch (error) {
+                console.error('Failed to load states:', error);
+                showToast('error', 'Failed to load states for event creation');
+            }
         }
-        
-        // Function to update branch selection based on selected states
-        function updateBranchSelection() {
+          // Function to update branch selection based on selected states
+        async function updateBranchSelection() {
             const selectedStates = [];
             const stateCheckboxes = document.querySelectorAll('.state-checkbox:checked');
             stateCheckboxes.forEach(checkbox => {
-                selectedStates.push(checkbox.value);
+                selectedStates.push({
+                    id: checkbox.value,
+                    name: checkbox.getAttribute('data-state-name')
+                });
             });
             
             const branchCheckboxes = document.getElementById('branchCheckboxes');
@@ -270,30 +278,37 @@ export async function setupEventCreationHandlers() {
             branchCheckboxes.innerHTML = '';
             
             // Create branch checkboxes for each selected state
-            selectedStates.forEach(state => {
-                // Add state header
-                const stateHeader = document.createElement('h6');
-                stateHeader.className = 'mt-3 mb-2';
-                stateHeader.textContent = state;
-                branchCheckboxes.appendChild(stateHeader);
-                
-                // Add branch checkboxes
-                if (statesAndBranches[state]) {
-                    statesAndBranches[state].forEach(branch => {
-                        const branchId = `${state}-${branch}`.toLowerCase().replace(/\s+/g, '-');
-                        const checkboxDiv = document.createElement('div');
-                        checkboxDiv.className = 'form-check';
-                        checkboxDiv.innerHTML = `
-                            <input class="form-check-input branch-checkbox" type="checkbox" value="${branch}" 
-                                id="${branchId}" name="branches" data-state="${state}">
-                            <label class="form-check-label" for="${branchId}">
-                                ${branch}
-                            </label>
-                        `;
-                        branchCheckboxes.appendChild(checkboxDiv);
-                    });
+            for (const state of selectedStates) {
+                try {
+                    // Load branches for this state from API
+                    const branches = await branchesApi.getBranchesByState(state.id);
+                    
+                    if (branches.length > 0) {
+                        // Add state header
+                        const stateHeader = document.createElement('h6');
+                        stateHeader.className = 'mt-3 mb-2';
+                        stateHeader.textContent = state.name;
+                        branchCheckboxes.appendChild(stateHeader);
+                        
+                        // Add branch checkboxes
+                        branches.forEach(branch => {
+                            const branchId = `branch-${branch._id}`;
+                            const checkboxDiv = document.createElement('div');
+                            checkboxDiv.className = 'form-check';
+                            checkboxDiv.innerHTML = `
+                                <input class="form-check-input branch-checkbox" type="checkbox" value="${branch._id}" 
+                                    id="${branchId}" name="branches" data-state="${state.id}" data-branch-name="${branch.name}">
+                                <label class="form-check-label" for="${branchId}">
+                                    ${branch.name}
+                                </label>
+                            `;
+                            branchCheckboxes.appendChild(checkboxDiv);
+                        });
+                    }
+                } catch (error) {
+                    console.error(`Failed to load branches for state ${state.name}:`, error);
                 }
-            });
+            }
             
             // Show or hide branch selection container based on whether states are selected
             const branchSelectionContainer = document.getElementById('branchSelectionContainer');
@@ -385,24 +400,16 @@ export async function setupEventCreationHandlers() {
                 // Step 1: Collect all form data first
                 // Get basic form data
                 const formData = getFormDataAsObject(form);
-                
-                // Step 2: Collect selected states and branches
+                  // Step 2: Collect selected states and branches
                 const selectedStates = [];
+                const selectedBranches = [];
+                
                 document.querySelectorAll('.state-checkbox:checked').forEach(checkbox => {
-                    selectedStates.push(checkbox.value);
+                    selectedStates.push(checkbox.value); // This is now the state ID
                 });
                 
-                // Group branches by state
-                const selectedBranches = {};
                 document.querySelectorAll('.branch-checkbox:checked').forEach(checkbox => {
-                    const state = checkbox.getAttribute('data-state');
-                    const branch = checkbox.value;
-                    
-                    if (!selectedBranches[state]) {
-                        selectedBranches[state] = [];
-                    }
-                    
-                    selectedBranches[state].push(branch);
+                    selectedBranches.push(checkbox.value); // This is now the branch ID
                 });
                 
                 // Add selections to form data
@@ -417,23 +424,13 @@ export async function setupEventCreationHandlers() {
                     form.reportValidity();
                     return;  // Stop here if basic HTML validation fails
                 }
-                
-                // Validate states and branches
+                  // Validate states and branches
                 if (selectedStates.length === 0) {
                     validationErrors.push('Please select at least one state for the event');
                 }
                 
-                if (Object.keys(selectedBranches).length === 0) {
+                if (selectedBranches.length === 0) {
                     validationErrors.push('Please select at least one branch for the event');
-                }
-                
-                // Validate that each selected state has at least one branch selected
-                const statesWithoutBranches = selectedStates.filter(state => 
-                    !selectedBranches[state] || selectedBranches[state].length === 0
-                );
-                
-                if (statesWithoutBranches.length > 0) {
-                    validationErrors.push(`Please select at least one branch for each selected state: ${statesWithoutBranches.join(', ')}`);
                 }
                 
                 // Validate date fields
@@ -556,21 +553,22 @@ export async function setupEventCreationHandlers() {
  * @param {Object} formData - The form data collected from the event creation form
  * @returns {Object} Formatted event data for API submission
  */
-export function formatEventData(formData) {    const eventData = {
+export function formatEventData(formData) {
+    const eventData = {
         name: formData.name,
-        description: formData.description || null, // Include optional description
-        date: toFullISOString(formData.date), // Use full ISO string
-        states: formData.selectedStates || [],
+        description: formData.description || null,
+        date: toFullISOString(formData.date),
+        states: formData.selectedStates || [], // Array of state IDs
+        branches: formData.selectedBranches || [], // Array of branch IDs
         isActive: formData.isActive === 'true',
-        branches: formData.selectedBranches || {}, // Send branches as object mapping states to branch arrays
         busPickups: [],
-        bannerImage: formData.bannerImage || null // Include the banner image
+        bannerImage: formData.bannerImage || null
     };
 
     if (formData.busPickups && Array.isArray(formData.busPickups)) {
         eventData.busPickups = formData.busPickups.map(pickup => ({
             location: pickup.location,
-            departureTime: toFullISOString(pickup.departureTime), // Use full ISO string
+            departureTime: toFullISOString(pickup.departureTime),
             maxCapacity: pickup.maxCapacity ? parseInt(pickup.maxCapacity) : undefined,
             currentCount: 0
         }));

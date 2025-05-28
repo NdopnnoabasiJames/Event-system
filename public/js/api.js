@@ -204,6 +204,138 @@ const attendeesApi = {
     }
 };
 
+// States API functions
+const statesApi = {
+    async getAllStates(includeInactive = false) {
+        const endpoint = includeInactive ? '/states?includeInactive=true' : '/states';
+        return await apiCall(endpoint, 'GET', null, auth.getToken());
+    },
+
+    async getState(id) {
+        return await apiCall(`/states/${id}`, 'GET', null, auth.getToken());
+    },
+
+    async createState(stateData) {
+        return await apiCall('/states', 'POST', stateData, auth.getToken());
+    },
+
+    async updateState(id, stateData) {
+        return await apiCall(`/states/${id}`, 'PATCH', stateData, auth.getToken());
+    },
+
+    async deleteState(id) {
+        return await apiCall(`/states/${id}`, 'DELETE', null, auth.getToken());
+    },
+
+    async deactivateState(id) {
+        return await apiCall(`/states/${id}/deactivate`, 'PATCH', null, auth.getToken());
+    },
+
+    async activateState(id) {
+        return await apiCall(`/states/${id}/activate`, 'PATCH', null, auth.getToken());
+    }
+};
+
+// Branches API functions
+const branchesApi = {
+    async getAllBranches(includeInactive = false) {
+        const endpoint = includeInactive ? '/branches?includeInactive=true' : '/branches';
+        return await apiCall(endpoint, 'GET', null, auth.getToken());
+    },
+
+    async getBranchesByState(stateId, includeInactive = false) {
+        const endpoint = includeInactive ? 
+            `/branches/by-state/${stateId}?includeInactive=true` : 
+            `/branches/by-state/${stateId}`;
+        return await apiCall(endpoint, 'GET', null, auth.getToken());
+    },
+
+    async getBranch(id) {
+        return await apiCall(`/branches/${id}`, 'GET', null, auth.getToken());
+    },
+
+    async createBranch(branchData) {
+        return await apiCall('/branches', 'POST', branchData, auth.getToken());
+    },
+
+    async updateBranch(id, branchData) {
+        return await apiCall(`/branches/${id}`, 'PATCH', branchData, auth.getToken());
+    },
+
+    async deleteBranch(id) {
+        return await apiCall(`/branches/${id}`, 'DELETE', null, auth.getToken());
+    },
+
+    async deactivateBranch(id) {
+        return await apiCall(`/branches/${id}/deactivate`, 'PATCH', null, auth.getToken());
+    },
+
+    async activateBranch(id) {
+        return await apiCall(`/branches/${id}/activate`, 'PATCH', null, auth.getToken());
+    }
+};
+
+// Pickup Stations API functions
+const pickupStationsApi = {
+    async getAllPickupStations(includeInactive = false) {
+        const endpoint = includeInactive ? '/pickup-stations?includeInactive=true' : '/pickup-stations';
+        return await apiCall(endpoint, 'GET', null, auth.getToken());
+    },
+
+    async getPickupStationsByBranch(branchId, includeInactive = false) {
+        const endpoint = includeInactive ? 
+            `/pickup-stations/by-branch/${branchId}?includeInactive=true` : 
+            `/pickup-stations/by-branch/${branchId}`;
+        return await apiCall(endpoint, 'GET', null, auth.getToken());
+    },
+
+    async getPickupStationsByState(stateId, includeInactive = false) {
+        const endpoint = includeInactive ? 
+            `/pickup-stations/by-state/${stateId}?includeInactive=true` : 
+            `/pickup-stations/by-state/${stateId}`;
+        return await apiCall(endpoint, 'GET', null, auth.getToken());
+    },
+
+    async getPickupStation(id) {
+        return await apiCall(`/pickup-stations/${id}`, 'GET', null, auth.getToken());
+    },
+
+    async createPickupStation(pickupStationData) {
+        return await apiCall('/pickup-stations', 'POST', pickupStationData, auth.getToken());
+    },
+
+    async updatePickupStation(id, pickupStationData) {
+        return await apiCall(`/pickup-stations/${id}`, 'PATCH', pickupStationData, auth.getToken());
+    },
+
+    async deletePickupStation(id) {
+        return await apiCall(`/pickup-stations/${id}`, 'DELETE', null, auth.getToken());
+    },
+
+    async deactivatePickupStation(id) {
+        return await apiCall(`/pickup-stations/${id}/deactivate`, 'PATCH', null, auth.getToken());
+    },
+
+    async activatePickupStation(id) {
+        return await apiCall(`/pickup-stations/${id}/activate`, 'PATCH', null, auth.getToken());
+    }
+};
+
+// Migration API functions
+const migrationApi = {
+    async runMigration() {
+        return await apiCall('/migration/run', 'POST', null, auth.getToken());
+    },
+
+    async getMigrationStatus() {
+        return await apiCall('/migration/status', 'GET', null, auth.getToken());
+    },
+
+    async resetMigrationData() {
+        return await apiCall('/migration/reset', 'DELETE', null, auth.getToken());
+    }
+};
+
 // Marketers API functions
 const marketersApi = {
     async getAvailableEvents() {

@@ -1,9 +1,6 @@
 // Event Management Module for Marketer Dashboard
 // This module handles all event-related functionality for the marketer dashboard
 
-// Import the states and branches data
-import { statesAndBranches } from '../../modules/states-branches.js';
-
 /**
  * Load marketer performance data and update the performance summary
  */
@@ -484,8 +481,7 @@ export async function openRegisterAttendeeModal(eventId, eventName) {
             // If no bus pickups are available, hide the bus section and select private transport
             document.getElementById('busPickupSection').style.display = 'none';
             document.getElementById('transportPrivate').checked = true;
-        }
-          // Populate state dropdown with only event-specific states
+        }        // Populate state dropdown with only event-specific states
         const stateSelect = document.getElementById('attendeeState');
         const branchSelect = document.getElementById('attendeeBranch');
         
@@ -497,27 +493,49 @@ export async function openRegisterAttendeeModal(eventId, eventName) {
             
             // Populate with event-specific states only
             if (eventData.states && Array.isArray(eventData.states)) {
-                eventData.states.forEach(state => {
-                    const option = document.createElement('option');
-                    option.value = state;
-                    option.textContent = state;
-                    stateSelect.appendChild(option);
-                });
+                try {
+                    // Get state details for each state ID in the event
+                    for (const stateId of eventData.states) {
+                        const state = await statesApi.getState(stateId);
+                        if (state) {
+                            const option = document.createElement('option');
+                            option.value = stateId;
+                            option.textContent = state.name;
+                            stateSelect.appendChild(option);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to load states for attendee registration:', error);
+                }
             }
             
             // Set up state change handler for event-specific branches
-            stateSelect.addEventListener('change', function() {
-                const selectedState = this.value;
+            stateSelect.addEventListener('change', async function() {
+                const selectedStateId = this.value;
                 branchSelect.innerHTML = '<option value="" disabled selected>Select branch</option>';
                 
-                if (selectedState && eventData.branches && eventData.branches[selectedState]) {
-                    eventData.branches[selectedState].forEach(branch => {
-                        const option = document.createElement('option');
-                        option.value = branch;
-                        option.textContent = branch;
-                        branchSelect.appendChild(option);
-                    });
-                    branchSelect.disabled = false;
+                if (selectedStateId && eventData.branches && Array.isArray(eventData.branches)) {
+                    try {
+                        // Filter branches that belong to the selected state
+                        const stateBranches = [];
+                        for (const branchId of eventData.branches) {
+                            const branch = await branchesApi.getBranch(branchId);
+                            if (branch && branch.stateId.toString() === selectedStateId) {
+                                stateBranches.push(branch);
+                            }
+                        }
+                        
+                        stateBranches.forEach(branch => {
+                            const option = document.createElement('option');
+                            option.value = branch._id;
+                            option.textContent = branch.name;
+                            branchSelect.appendChild(option);
+                        });
+                        branchSelect.disabled = false;
+                    } catch (error) {
+                        console.error('Failed to load branches for selected state:', error);
+                        branchSelect.disabled = true;
+                    }
                 } else {
                     branchSelect.disabled = true;
                 }
@@ -557,32 +575,48 @@ export async function registerAttendee() {
             form.reportValidity();
             return;
         }
-          // Get form data
-        const eventId = document.getElementById('registerEventId').value;
+          // Get form data        const eventId = document.getElementById('registerEventId').value;
         const name = document.getElementById('attendeeName').value;
         const email = document.getElementById('attendeeEmail').value;
         const phone = document.getElementById('attendeePhone').value;
-        const state = document.getElementById('attendeeState').value;
-        const branch = document.getElementById('attendeeBranch').value;
+        const stateId = document.getElementById('attendeeState').value;
+        const branchId = document.getElementById('attendeeBranch').value;
         const transportPreference = document.querySelector('input[name="transportPreference"]:checked').value;
         
         // Validate state and branch selection
-        if (!state) {
+        if (!stateId) {
             showToast('error', 'Please select a state');
             return;
         }
         
-        if (!branch) {
+        if (!branchId) {
             showToast('error', 'Please select a branch');
             return;
+        }
+        
+        // Get state and branch names for the attendee record
+        let stateName = '';
+        let branchName = '';
+        
+        try {
+            const state = await statesApi.getState(stateId);
+            const branch = await branchesApi.getBranch(branchId);
+            stateName = state ? state.name : stateId;
+            branchName = branch ? branch.name : branchId;
+        } catch (error) {
+            console.error('Failed to get state/branch names:', error);
+            stateName = stateId;
+            branchName = branchId;
         }
         
         // Prepare attendee data
         const attendeeData = {
             name,
             phone, // Phone is now required
-            state,
-            branch,
+            state: stateName, // Store state name for display
+            branch: branchName, // Store branch name for display
+            stateId, // Store state ID for referential integrity
+            branchId, // Store branch ID for referential integrity
             transportPreference,
             event: eventId // Add event ID to the attendee data
         };
@@ -736,7 +770,7 @@ export function setupAttendeeRegistrationHandlers() {
 /**
  * Set up state and branch selection for attendee registration
  */
-function setupStateAndBranchSelection() {
+async function setupStateAndBranchSelection() {
     const stateSelect = document.getElementById('attendeeState');
     const branchSelect = document.getElementById('attendeeBranch');
     
@@ -744,32 +778,46 @@ function setupStateAndBranchSelection() {
         return;
     }
     
-    // Populate state dropdown
-    stateSelect.innerHTML = '<option value="" disabled selected>Select state</option>';
-    Object.keys(statesAndBranches).forEach(state => {
-        const option = document.createElement('option');
-        option.value = state;
-        option.textContent = state;
-        stateSelect.appendChild(option);
-    });
-    
-    // Handle state selection change
-    stateSelect.addEventListener('change', function() {
-        const selectedState = this.value;
-        branchSelect.innerHTML = '<option value="" disabled selected>Select branch</option>';
+    try {
+        // Load all states from API
+        const states = await statesApi.getAllStates();
         
-        if (selectedState && statesAndBranches[selectedState]) {
-            statesAndBranches[selectedState].forEach(branch => {
-                const option = document.createElement('option');
-                option.value = branch;
-                option.textContent = branch;
-                branchSelect.appendChild(option);
-            });
-            branchSelect.disabled = false;
-        } else {
-            branchSelect.disabled = true;
-        }
-    });
+        // Populate state dropdown
+        stateSelect.innerHTML = '<option value="" disabled selected>Select state</option>';
+        states.forEach(state => {
+            const option = document.createElement('option');
+            option.value = state._id;
+            option.textContent = state.name;
+            stateSelect.appendChild(option);
+        });
+        
+        // Handle state selection change
+        stateSelect.addEventListener('change', async function() {
+            const selectedStateId = this.value;
+            branchSelect.innerHTML = '<option value="" disabled selected>Select branch</option>';
+            
+            if (selectedStateId) {
+                try {
+                    const branches = await branchesApi.getBranchesByState(selectedStateId);
+                    branches.forEach(branch => {
+                        const option = document.createElement('option');
+                        option.value = branch._id;
+                        option.textContent = branch.name;
+                        branchSelect.appendChild(option);
+                    });
+                    branchSelect.disabled = false;
+                } catch (error) {
+                    console.error('Failed to load branches:', error);
+                    branchSelect.disabled = true;
+                }
+            } else {
+                branchSelect.disabled = true;
+            }
+        });
+    } catch (error) {
+        console.error('Failed to load states:', error);
+        showToast('error', 'Failed to load location data');
+    }
 }
 
 /**

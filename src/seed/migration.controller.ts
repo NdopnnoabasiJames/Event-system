@@ -11,7 +11,7 @@ import { Role } from '../common/enums/role.enum';
 export class MigrationController {
   constructor(private readonly migrationService: MigrationService) {}
 
-  @Post('migrate')
+  @Post('/migrate')
   async migrateData() {
     await this.migrationService.migrateData();
     return { message: 'Data migration completed successfully' };
