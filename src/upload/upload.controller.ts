@@ -16,14 +16,7 @@ import { UploadService } from './upload.service';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { v4 as uuid } from 'uuid';
-import {
-  ApiTags,
-  ApiConsumes,
-  ApiBody,
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-} from '@nestjs/swagger';
+
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -34,78 +27,55 @@ const ensureDirectoryExists = (dirPath: string) => {
   }
 };
 
-@ApiTags('upload')
-@ApiBearerAuth()
 @Controller('upload')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UploadController {
-  constructor(private readonly uploadService: UploadService) {
-    // Upload service will ensure directories exist
-    console.log('Upload controller initialized');
-  }
-  @Post('event-banner')
+  constructor(private readonly uploadService: UploadService) {}
+
+  @Post('event-image')
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Upload event banner image (Admin only)' })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        image: {
-          type: 'string',
-          format: 'binary',
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.CREATED,
-    description: 'Image uploaded successfully',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid file format or size',
-  })
   @UseInterceptors(
-    FileInterceptor('image', {      storage: diskStorage({
-        destination: './public/Images/events',
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          const uploadPath = './public/Images/events';
+          ensureDirectoryExists(uploadPath);
+          cb(null, uploadPath);
+        },
         filename: (req, file, cb) => {
-          // Generate a unique name with the original extension
-          const uniqueName = `${uuid()}${extname(file.originalname)}`;
-          console.log('Generated filename:', uniqueName);
-          cb(null, uniqueName);
+          const uniqueId = uuid();
+          cb(null, `${uniqueId}${extname(file.originalname)}`);
         },
       }),
       fileFilter: (req, file, cb) => {
-        console.log('File upload attempt:', file.mimetype, file.originalname);
-        // Check file type
-        if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
-          console.log('File rejected - invalid type:', file.mimetype);
+        if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
           return cb(
-            new BadRequestException('Only image files are allowed'),
+            new BadRequestException('Only image files are allowed!'),
             false,
           );
         }
         cb(null, true);
       },
       limits: {
-        fileSize: 2 * 1024 * 1024, // 2MB
+        fileSize: 5 * 1024 * 1024, // 5MB
       },
     }),
   )
-  uploadEventBanner(@UploadedFile() file) {
-    console.log('File upload handler called. Received file:', file ? 'yes' : 'no');
+  async uploadEventImage(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
-      throw new BadRequestException('File upload failed');
+      throw new BadRequestException('No file uploaded');
     }
 
-    // Return the file details
-    const result = {
-      filename: file.filename,
-      path: `/Images/events/${file.filename}`,
+    // Process the image (resize, optimize, etc.)
+    const processedImagePath = await this.uploadService.processEventImage(file);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'File uploaded successfully',
+      data: {
+        filename: file.filename,
+        path: processedImagePath.replace('public/', ''),
+      },
     };
-    
-    console.log('Upload successful:', result);
-    return result;
   }
 }
