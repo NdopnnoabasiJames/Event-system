@@ -9,10 +9,11 @@ import { getFormDataAsObject, toFullISOString } from '../utils/form-utils.js';
  */
 export async function loadEventsData() {
     try {
-        console.log('Fetching events from server...');        const response = await eventsApi.getAllEvents();
+        console.log('Fetching events from server...');
+        const response = await eventsApi.getAllEvents();
         console.log('Events response from server:', response);
         
-        const events = response.data || response || [];
+        const events = Array.isArray(response) ? response : (response.data || []);
         console.log('Processed events array:', events);
         
         const tableBody = document.getElementById('events-table-body');
@@ -116,8 +117,9 @@ export async function loadEventsData() {
  * Setup event filter dropdown for filtering attendees by event
  */
 export async function setupEventFilter() {
-    try {        const response = await eventsApi.getAllEvents();
-        const events = response.data || response || [];
+    try {
+        const response = await eventsApi.getAllEvents();
+        const events = Array.isArray(response) ? response : (response.data || []);
         
         const selectElement = document.getElementById('event-filter');
         
@@ -216,17 +218,11 @@ export async function setupEventCreationHandlers() {
         if (stateSelectionContainer) {
             // Clear existing content
             stateSelectionContainer.innerHTML = '';
-              // Load states from API and create state checkboxes
+            
             try {
-                const response = await statesApi.getAllStates();
-                console.log('States API response:', response);
-                  // Handle the TransformInterceptor format: { data: [...], timestamp: ..., path: ... }
-                const states = response.data || response || [];
-                console.log('Processed states array:', states);
-                
-                if (!Array.isArray(states) || states.length === 0) {
-                    throw new Error('No states found or invalid response format');
-                }
+                // Load states from API
+                const statesResponse = await apiCall('/states', 'GET', null, auth.getToken());
+                const states = Array.isArray(statesResponse) ? statesResponse : (statesResponse.data || []);
                 
                 // Create state checkboxes
                 const stateCheckboxesDiv = document.createElement('div');
@@ -262,10 +258,9 @@ export async function setupEventCreationHandlers() {
                 });
             } catch (error) {
                 console.error('Failed to load states:', error);
-                showToast('error', 'Failed to load states for event creation');
+                showToast('error', 'Failed to load states');
             }
-        }
-          // Function to update branch selection based on selected states
+        }        // Function to update branch selection based on selected states
         async function updateBranchSelection() {
             const selectedStates = [];
             const stateCheckboxes = document.querySelectorAll('.state-checkbox:checked');
@@ -283,35 +278,60 @@ export async function setupEventCreationHandlers() {
             branchCheckboxes.innerHTML = '';
             
             // Create branch checkboxes for each selected state
-            for (const state of selectedStates) {                try {
+            for (const state of selectedStates) {
+                try {
                     // Load branches for this state from API
-                    const response = await branchesApi.getBranchesByState(state.id);                    console.log(`Branches API response for state ${state.name}:`, response);
+                    const branchesResponse = await apiCall(`/branches/by-state/${state.id}`, 'GET', null, auth.getToken());
+                    const branches = Array.isArray(branchesResponse) ? branchesResponse : (branchesResponse.data || []);
                     
-                    // Handle the TransformInterceptor format: { data: [...], timestamp: ..., path: ... }
-                    const branches = response.data || response || [];
-                    console.log(`Processed branches for state ${state.name}:`, branches);
-                    
-                    if (Array.isArray(branches) && branches.length > 0) {
+                    if (branches.length > 0) {
                         // Add state header
                         const stateHeader = document.createElement('h6');
                         stateHeader.className = 'mt-3 mb-2';
                         stateHeader.textContent = state.name;
                         branchCheckboxes.appendChild(stateHeader);
-                          // Add branch checkboxes
-                        branches.forEach(branch => {
+                        
+                        // Add branch checkboxes
+                        branches.forEach((branch, branchIndex) => {
                             const branchId = `branch-${branch._id}`;
                             const checkboxDiv = document.createElement('div');
-                            checkboxDiv.className = 'form-check';
+                            checkboxDiv.className = 'form-check mb-3';
                             checkboxDiv.innerHTML = `
                                 <input class="form-check-input branch-checkbox" type="checkbox" value="${branch._id}" 
                                     id="${branchId}" name="branches" data-state="${state.id}" data-branch-name="${branch.name}">
                                 <label class="form-check-label" for="${branchId}">
                                     ${branch.name}
                                 </label>
+                                <div class="pickup-stations-container mt-2 d-none" id="pickup-container-${branch._id}">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <small class="text-muted">Pickup Stations for ${branch.name}</small>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="pickup-stations-${branch._id}">
+                                                <!-- Pickup stations will be loaded here -->
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" 
+                                                    onclick="handleCreateNewPickupStationForBranch(this.closest('.pickup-stations-container'), '${branch._id}', '${branchIndex}')">
+                                                <i class="bi bi-plus"></i> Add New Pickup Station
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             `;
-                            branchCheckboxes.appendChild(checkboxDiv);                            // Add event listener to update bus pickup sections when branch selection changes
-                            const checkbox = checkboxDiv.querySelector('.branch-checkbox');
-                            checkbox.addEventListener('change', updateBusPickupSections);
+                            branchCheckboxes.appendChild(checkboxDiv);
+                            
+                            // Add event listener to show/hide pickup stations when branch is selected
+                            const branchCheckbox = checkboxDiv.querySelector('.branch-checkbox');
+                            branchCheckbox.addEventListener('change', async function() {
+                                const pickupContainer = document.getElementById(`pickup-container-${branch._id}`);
+                                if (this.checked) {
+                                    pickupContainer.classList.remove('d-none');
+                                    await loadPickupStationsForBranch(pickupContainer, branch, branchIndex);
+                                } else {
+                                    pickupContainer.classList.add('d-none');
+                                }
+                            });
                         });
                     }
                 } catch (error) {
@@ -327,188 +347,153 @@ export async function setupEventCreationHandlers() {
                 } else {
                     branchSelectionContainer.classList.add('d-none');
                 }
-            }            // Update bus pickup sections when branches change
-            await updateBusPickupSections();
-        }// Function to load pickup stations for a specific container
-        async function loadPickupStationsForContainer(containerElement, selectedBranches, pickupIndex) {
-            if (!containerElement || !selectedBranches || selectedBranches.length === 0) {
-                containerElement.innerHTML = '<div class="text-muted text-center py-2">No branches selected</div>';
-                return;
             }
-
-            try {
-                // Show loading state
-                const loadingDiv = containerElement.querySelector('.pickup-stations-loading');
-                if (loadingDiv) {
-                    loadingDiv.style.display = 'block';
-                }
+        }        // Function to load pickup stations for a branch
+        async function loadPickupStationsForBranch(containerElement, branch, branchIndex) {
+            try {                const pickupStationsContainer = containerElement.querySelector(`#pickup-stations-${branch._id}`);
+                if (!pickupStationsContainer) return;
                 
-                // Get all pickup stations for selected branches
-                const allPickupStations = [];
-                for (const branch of selectedBranches) {
-                    try {
-                        const response = await pickupStationsApi.getPickupStationsByBranch(branch.id);
-                        const pickupStations = response.data || response || [];
-                        
-                        // Add branch name to each pickup station for display
-                        pickupStations.forEach(station => {
-                            station.branchName = branch.name;
-                            allPickupStations.push(station);
-                        });
-                    } catch (error) {
-                        console.error(`Failed to load pickup stations for branch ${branch.name}:`, error);
-                    }
-                }
-
-                // Clear the container and populate with checkboxes
-                containerElement.innerHTML = '';
+                // Load existing pickup stations for this branch
+                const response = await apiCall(`/pickup-stations/by-branch/${branch._id}`, 'GET', null, auth.getToken());
+                const pickupStations = Array.isArray(response) ? response : (response.data || []);
                 
-                if (allPickupStations.length === 0) {
-                    containerElement.innerHTML = `
-                        <div class="text-muted text-center py-2">
-                            <p class="mb-2">No pickup stations available</p>
-                            <button type="button" class="btn btn-sm btn-outline-primary create-pickup-station" data-pickup-index="${pickupIndex}">
-                                <i class="bi bi-plus"></i> Create New Pickup Station
-                            </button>
-                        </div>
-                    `;
-                    
-                    // Add event listener for create button
-                    const createBtn = containerElement.querySelector('.create-pickup-station');
-                    if (createBtn) {
-                        createBtn.addEventListener('click', () => {
-                            handleCreateNewPickupStation(containerElement, selectedBranches, pickupIndex);
-                        });
-                    }
+                // Clear existing content
+                pickupStationsContainer.innerHTML = '';
+                
+                if (pickupStations.length === 0) {
+                    pickupStationsContainer.innerHTML = '<p class="text-muted mb-2"><small>No pickup stations found. Create one below.</small></p>';
                 } else {
-                    // Group by branch for better UX
-                    const branchGroups = {};
-                    allPickupStations.forEach(station => {
-                        const branchName = station.branchName || 'Unknown Branch';
-                        if (!branchGroups[branchName]) {
-                            branchGroups[branchName] = [];
-                        }
-                        branchGroups[branchName].push(station);
-                    });
-
-                    // Add checkboxes grouped by branch
-                    Object.keys(branchGroups).forEach(branchName => {
-                        if (Object.keys(branchGroups).length > 1) {
-                            // Add branch header if multiple branches
-                            const branchHeader = document.createElement('div');
-                            branchHeader.className = 'fw-bold text-primary mt-2 mb-1';
-                            branchHeader.textContent = branchName;
-                            containerElement.appendChild(branchHeader);
-                        }
-                        
-                        branchGroups[branchName].forEach(station => {
-                            const checkboxDiv = document.createElement('div');
-                            checkboxDiv.className = 'form-check';
-                            checkboxDiv.innerHTML = `
+                    pickupStations.forEach((station, stationIndex) => {
+                        const stationDiv = document.createElement('div');
+                        stationDiv.className = 'pickup-station-entry mb-2 p-2 border rounded';
+                        stationDiv.innerHTML = `
+                            <div class="form-check">
                                 <input class="form-check-input pickup-station-checkbox" type="checkbox" 
-                                       value="${station._id}" id="pickup_${pickupIndex}_${station._id}" 
-                                       name="busPickups[${pickupIndex}].stations">
-                                <label class="form-check-label" for="pickup_${pickupIndex}_${station._id}">
-                                    ${station.location}
+                                       value="${station._id}" id="station-${station._id}"
+                                       data-branch="${branch._id}" data-station-name="${station.location || station.name}">
+                                <label class="form-check-label" for="station-${station._id}">
+                                    ${station.location || station.name}
                                 </label>
-                            `;
-                            containerElement.appendChild(checkboxDiv);
+                            </div>
+                            <div class="departure-time-container mt-2 d-none">
+                                <label class="form-label small">Departure Time*</label>
+                                <input type="datetime-local" class="form-control form-control-sm" 
+                                       name="pickupStations[${branchIndex}][${stationIndex}].departureTime" required>
+                            </div>
+                        `;
+                        pickupStationsContainer.appendChild(stationDiv);
+                        
+                        // Add event listener to show/hide departure time when station is selected
+                        const stationCheckbox = stationDiv.querySelector('.pickup-station-checkbox');
+                        const departureTimeContainer = stationDiv.querySelector('.departure-time-container');
+                        stationCheckbox.addEventListener('change', function() {
+                            if (this.checked) {
+                                departureTimeContainer.classList.remove('d-none');
+                            } else {
+                                departureTimeContainer.classList.add('d-none');
+                            }
                         });
                     });
-                    
-                    // Add option to create new pickup station
-                    const createDiv = document.createElement('div');
-                    createDiv.className = 'mt-2 pt-2 border-top';
-                    createDiv.innerHTML = `
-                        <button type="button" class="btn btn-sm btn-outline-primary create-pickup-station" data-pickup-index="${pickupIndex}">
-                            <i class="bi bi-plus"></i> Create New Pickup Station
-                        </button>
-                    `;
-                    containerElement.appendChild(createDiv);
-                    
-                    // Add event listener for create button
-                    const createBtn = createDiv.querySelector('.create-pickup-station');
-                    if (createBtn) {
-                        createBtn.addEventListener('click', () => {
-                            handleCreateNewPickupStation(containerElement, selectedBranches, pickupIndex);
-                        });
+                }
+            } catch (error) {
+                console.error(`Failed to load pickup stations for branch ${branch.name}:`, error);
+                const pickupStationsContainer = containerElement.querySelector(`#pickup-stations-${branch._id}`);
+                if (pickupStationsContainer) {
+                    // Handle specific error cases more gracefully
+                    if (error.response?.status === 404) {
+                        // 404 means no pickup stations exist - treat as empty result
+                        pickupStationsContainer.innerHTML = '<p class="text-muted mb-2"><small>No pickup stations found. Create one below.</small></p>';
+                    } else {
+                        // Other errors show error message
+                        pickupStationsContainer.innerHTML = '<p class="text-danger mb-2"><small>Failed to load pickup stations. Please try again.</small></p>';
                     }
                 }
+            }
+        }        // Function to handle creating new pickup station for a branch
+        async function handleCreateNewPickupStationForBranch(containerElement, branchId, branchIndex) {
+            try {
+                const stationLocation = prompt('Enter the location/address for the new pickup station:');
+                if (!stationLocation || stationLocation.trim() === '') {
+                    return;
+                }
 
+                // Create the new pickup station (only location, branchId, and isActive)
+                const createData = {
+                    location: stationLocation.trim(),
+                    branchId: branchId,
+                    isActive: true
+                };
+
+                const newStation = await apiCall('/pickup-stations', 'POST', createData, auth.getToken());
+                
+                showToast('success', `Pickup station "${stationLocation}" created successfully`);
+                
+                // Find the branch data to reload pickup stations
+                const branchCheckbox = document.querySelector(`#branch-${branchId}`);
+                if (branchCheckbox) {
+                    const branchName = branchCheckbox.getAttribute('data-branch-name');
+                    const branch = { _id: branchId, name: branchName };
+                    await loadPickupStationsForBranch(containerElement, branch, branchIndex);
+                }
             } catch (error) {
-                console.error('Failed to load pickup stations:', error);
-                containerElement.innerHTML = '<div class="text-danger text-center py-2">Error loading pickup stations</div>';
-                showToast('error', 'Failed to load pickup stations');
-            }
-        }        // Function to update bus pickup sections based on selected branches
-        async function updateBusPickupSections() {
-            const selectedBranches = [];
-            document.querySelectorAll('.branch-checkbox:checked').forEach(checkbox => {
-                selectedBranches.push({
-                    id: checkbox.value,
-                    name: checkbox.getAttribute('data-branch-name')
-                });
-            });
-
-            const busPickupsContainer = document.getElementById('busPickupsContainer');
-            if (!busPickupsContainer) return;
-
-            // Clear existing pickup sections
-            busPickupsContainer.innerHTML = '';
-
-            if (selectedBranches.length === 0) {
-                busPickupsContainer.innerHTML = '<div class="text-muted text-center py-3">Select branches to see pickup stations</div>';
-                return;
-            }
-
-            // Create a pickup section for each selected branch
-            for (let i = 0; i < selectedBranches.length; i++) {
-                const branch = selectedBranches[i];
-                await createBranchPickupSection(branch, i, busPickupsContainer);
+                console.error('Failed to create pickup station:', error);
+                showToast('error', 'Failed to create pickup station: ' + (error.message || 'Unknown error'));
             }
         }
 
-        // Function to create a pickup section for a specific branch
-        async function createBranchPickupSection(branch, index, container) {
-            const pickupSection = document.createElement('div');
-            pickupSection.className = 'branch-pickup-section mb-4 p-3 border rounded';
-            pickupSection.innerHTML = `
-                <div class="mb-3">
-                    <h6 class="mb-2 text-primary">
-                        <i class="bi bi-geo-alt"></i> ${branch.name} - Bus Pickup
-                    </h6>
-                    <p class="text-muted small mb-0">Select pickup stations and set departure details for this branch</p>
+        // Make the function globally available for onclick handlers
+        window.handleCreateNewPickupStationForBranch = handleCreateNewPickupStationForBranch;
+          
+        // Add Bus Pickup button handler
+        const addBusPickupBtn = document.getElementById('addBusPickupBtn');
+        if (!addBusPickupBtn) {
+            return;
+        }
+        
+        let pickupCount = 1;
+          
+        addBusPickupBtn.addEventListener('click', () => {
+            const busPickupsContainer = document.getElementById('busPickupsContainer');
+            if (!busPickupsContainer) {
+                return;
+            }
+            
+            const newPickup = document.createElement('div');
+            newPickup.className = 'bus-pickup-entry mb-3 p-3 border rounded';
+            newPickup.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Pickup ${pickupCount + 1}</h6>
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-pickup">
+                        <i class="bi bi-trash"></i> Remove
+                    </button>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Pickup Stations* (Select multiple stations where buses will be available)</label>
-                    <div class="pickup-stations-container border rounded p-2" style="max-height: 200px; overflow-y: auto;">
-                        <div class="pickup-stations-loading text-center py-2">
-                            <small class="text-muted">Loading pickup stations for ${branch.name}...</small>
-                        </div>
-                    </div>
+                <div class="mb-2">
+                    <label class="form-label">Pickup Location*</label>
+                    <input type="text" class="form-control" name="busPickups[${pickupCount}].location" required>
                 </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Departure Time*</label>
-                        <input type="datetime-local" class="form-control" name="branchPickups[${index}].departureTime" required>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Maximum Capacity (Total for all selected stations)</label>
-                        <input type="number" class="form-control" name="branchPickups[${index}].maxCapacity" min="1" value="50">
-                    </div>
+                <div class="mb-2">
+                    <label class="form-label">Departure Time*</label>
+                    <input type="datetime-local" class="form-control" name="busPickups[${pickupCount}].departureTime" required>
                 </div>
-                <input type="hidden" name="branchPickups[${index}].branchId" value="${branch.id}">
-                <input type="hidden" name="branchPickups[${index}].branchName" value="${branch.name}">
+                <div class="mb-2">
+                    <label class="form-label">Maximum Capacity</label>
+                    <input type="number" class="form-control" name="busPickups[${pickupCount}].maxCapacity" min="1">
+                </div>
             `;
-
-            container.appendChild(pickupSection);
-
-            // Load pickup stations for this branch
-            const pickupContainer = pickupSection.querySelector('.pickup-stations-container');
-            await loadPickupStationsForBranch(pickupContainer, branch, index);
-
+            
+            busPickupsContainer.appendChild(newPickup);
+            pickupCount++;
+            
+            // Add event listener to remove button
+            const removeBtn = newPickup.querySelector('.remove-pickup');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', () => {
+                    busPickupsContainer.removeChild(newPickup);
+                });
+            }
+            
             // Prevent Enter key from submitting in new inputs
-            const newInputs = pickupSection.querySelectorAll('input');
+            const newInputs = newPickup.querySelectorAll('input');
             newInputs.forEach(input => {
                 input.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey) {
@@ -517,92 +502,7 @@ export async function setupEventCreationHandlers() {
                     }
                 });
             });
-        }
-
-        // Function to load pickup stations for a specific branch
-        async function loadPickupStationsForBranch(containerElement, branch, branchIndex) {
-            if (!containerElement || !branch) {
-                containerElement.innerHTML = '<div class="text-muted text-center py-2">No branch selected</div>';
-                return;
-            }
-
-            try {
-                // Show loading state
-                const loadingDiv = containerElement.querySelector('.pickup-stations-loading');
-                if (loadingDiv) {
-                    loadingDiv.style.display = 'block';
-                }
-
-                // Get pickup stations for this branch
-                const response = await pickupStationsApi.getPickupStationsByBranch(branch.id);
-                const pickupStations = response.data || response || [];
-
-                // Clear the container and populate with checkboxes
-                containerElement.innerHTML = '';
-
-                if (pickupStations.length === 0) {
-                    containerElement.innerHTML = `
-                        <div class="text-muted text-center py-2">
-                            <p class="mb-2">No pickup stations available for ${branch.name}</p>
-                            <button type="button" class="btn btn-sm btn-outline-primary create-pickup-station" data-branch-id="${branch.id}" data-branch-name="${branch.name}" data-branch-index="${branchIndex}">
-                                <i class="bi bi-plus"></i> Create New Pickup Station
-                            </button>
-                        </div>
-                    `;
-
-                    // Add event listener for create button
-                    const createBtn = containerElement.querySelector('.create-pickup-station');
-                    if (createBtn) {
-                        createBtn.addEventListener('click', () => {
-                            handleCreateNewPickupStationForBranch(containerElement, branch, branchIndex);
-                        });
-                    }
-                } else {
-                    // Add checkboxes for each pickup station
-                    pickupStations.forEach(station => {
-                        const checkboxDiv = document.createElement('div');
-                        checkboxDiv.className = 'form-check';
-                        checkboxDiv.innerHTML = `
-                            <input class="form-check-input pickup-station-checkbox" type="checkbox" 
-                                   value="${station._id}" id="branch_${branchIndex}_station_${station._id}" 
-                                   name="branchPickups[${branchIndex}].stations">
-                            <label class="form-check-label" for="branch_${branchIndex}_station_${station._id}">
-                                ${station.location}
-                            </label>
-                        `;
-                        containerElement.appendChild(checkboxDiv);
-                    });
-
-                    // Add option to create new pickup station
-                    const createDiv = document.createElement('div');
-                    createDiv.className = 'mt-2 pt-2 border-top';
-                    createDiv.innerHTML = `
-                        <button type="button" class="btn btn-sm btn-outline-primary create-pickup-station" data-branch-id="${branch.id}" data-branch-name="${branch.name}" data-branch-index="${branchIndex}">
-                            <i class="bi bi-plus"></i> Create New Pickup Station
-                        </button>
-                    `;
-                    containerElement.appendChild(createDiv);
-
-                    // Add event listener for create button
-                    const createBtn = createDiv.querySelector('.create-pickup-station');
-                    if (createBtn) {
-                        createBtn.addEventListener('click', () => {
-                            handleCreateNewPickupStationForBranch(containerElement, branch, branchIndex);
-                        });
-                    }
-                }
-
-            } catch (error) {
-                console.error(`Failed to load pickup stations for branch ${branch.name}:`, error);
-                containerElement.innerHTML = '<div class="text-danger text-center py-2">Error loading pickup stations</div>';
-                showToast('error', `Failed to load pickup stations for ${branch.name}`);
-            }
-        }
-            // Initialize bus pickups container
-        const busPickupsContainer = document.getElementById('busPickupsContainer');
-        if (busPickupsContainer) {
-            busPickupsContainer.innerHTML = '<div class="text-muted text-center py-3">Select branches to see pickup stations</div>';
-        }
+        });
         
         // Form submission handler
         const saveEventBtn = document.getElementById('saveEventBtn');
@@ -647,29 +547,22 @@ export async function setupEventCreationHandlers() {
                     form.reportValidity();
                     return;  // Stop here if basic HTML validation fails
                 }
-                  // Validate states and branches
+                
+                // Validate states and branches
                 if (selectedStates.length === 0) {
                     validationErrors.push('Please select at least one state for the event');
                 }
-                
-                if (selectedBranches.length === 0) {
+                  if (selectedBranches.length === 0) {
                     validationErrors.push('Please select at least one branch for the event');
                 }
-                  // Validate date fields
+                
+                // Validate date fields
                 const isoEventDate = toFullISOString(formData.date);
                 if (!isoEventDate) {
                     validationErrors.push('Event date is missing or invalid. Please select a valid date and time.');
                 }
                 
-                // Validate pickup departure times for both old and new formats
-                if (formData.branchPickups && Array.isArray(formData.branchPickups)) {
-                    formData.branchPickups.forEach((pickup, idx) => {
-                        const isoPickup = toFullISOString(pickup.departureTime);
-                        if (!isoPickup) {
-                            validationErrors.push(`Branch pickup ${idx + 1} departure time is missing or invalid. Please select a valid date and time.`);
-                        }
-                    });
-                } else if (formData.busPickups && Array.isArray(formData.busPickups)) {
+                if (formData.busPickups && Array.isArray(formData.busPickups)) {
                     formData.busPickups.forEach((pickup, idx) => {
                         const isoPickup = toFullISOString(pickup.departureTime);
                         if (!isoPickup) {
@@ -728,18 +621,9 @@ export async function setupEventCreationHandlers() {
                             const errorText = await response.text();
                             throw new Error(`Failed to upload banner image: ${response.status} ${response.statusText}`);
                         }
-                          const result = await response.json();
                         
-                        // Handle both old and new response formats
-                        if (result.data && result.data.publicId) {
-                            // New Cloudinary format
-                            bannerImageName = result.data.publicId;
-                        } else if (result.filename) {
-                            // Legacy format or backward compatibility
-                            bannerImageName = result.filename;
-                        } else {
-                            throw new Error('Invalid response format from upload endpoint');
-                        }
+                        const result = await response.json();
+                        bannerImageName = result.filename;
                     } catch (uploadError) {
                         showToast('error', 'Failed to upload banner image: ' + (uploadError.message || 'Unknown error'));
                         return;
@@ -800,141 +684,20 @@ export function formatEventData(formData) {
         states: formData.selectedStates || [], // Array of state IDs
         branches: formData.selectedBranches || [], // Array of branch IDs
         isActive: formData.isActive === 'true',
-        pickupStations: [],
+        busPickups: [],
         bannerImage: formData.bannerImage || null
-    };    // Handle both old busPickups format and new branchPickups format
-    if (formData.branchPickups && Array.isArray(formData.branchPickups)) {
-        eventData.pickupStations = [];
-        
-        formData.branchPickups.forEach(branchPickup => {
-            // Get all selected stations for this branch pickup
-            const selectedStations = branchPickup.stations || [];
-            
-            // Create a pickup station entry for each selected station
-            selectedStations.forEach(stationId => {
-                eventData.pickupStations.push({
-                    pickupStationId: stationId,
-                    departureTime: toFullISOString(branchPickup.departureTime),
-                    maxCapacity: branchPickup.maxCapacity ? parseInt(branchPickup.maxCapacity) : undefined,
-                    currentCount: 0
-                });
-            });
-        });
-    } else if (formData.busPickups && Array.isArray(formData.busPickups)) {
-        // Fallback for old format
-        eventData.pickupStations = [];
-        
-        formData.busPickups.forEach(pickup => {
-            // Get all selected stations for this pickup
-            const selectedStations = pickup.stations || [];
-            
-            // Create a pickup station entry for each selected station
-            selectedStations.forEach(stationId => {
-                eventData.pickupStations.push({
-                    pickupStationId: stationId,
-                    departureTime: toFullISOString(pickup.departureTime),
-                    maxCapacity: pickup.maxCapacity ? parseInt(pickup.maxCapacity) : undefined,
-                    currentCount: 0
-                });
-            });
-        });
+    };
+
+    if (formData.busPickups && Array.isArray(formData.busPickups)) {
+        eventData.busPickups = formData.busPickups.map(pickup => ({
+            location: pickup.location,
+            departureTime: toFullISOString(pickup.departureTime), // Use full ISO string
+            maxCapacity: pickup.maxCapacity ? parseInt(pickup.maxCapacity) : undefined,
+            currentCount: 0
+        }));
     }
 
     return eventData;
 }
-
-// Function to handle creating new pickup stations
-        async function handleCreateNewPickupStation(containerElement, selectedBranches, pickupIndex) {
-            try {
-                // Show prompt for new pickup station location
-                const location = prompt('Enter the new pickup station location:');
-                if (!location || location.trim() === '') {
-                    return;
-                }
-
-                // Show branch selection if multiple branches
-                let selectedBranchId;
-                if (selectedBranches.length === 1) {
-                    selectedBranchId = selectedBranches[0].id;
-                } else {
-                    const branchNames = selectedBranches.map(b => `${b.name} (${b.id})`).join('\n');
-                    const branchChoice = prompt(`Multiple branches selected. Enter the branch ID where you want to create this pickup station:\n\n${branchNames}\n\nEnter branch ID:`);
-                    
-                    const matchingBranch = selectedBranches.find(b => b.id === branchChoice || b.name === branchChoice);
-                    if (!matchingBranch) {
-                        showToast('error', 'Invalid branch selection');
-                        return;
-                    }
-                    selectedBranchId = matchingBranch.id;
-                }
-
-                // Create the pickup station
-                const newPickupStationData = {
-                    location: location.trim(),
-                    branchId: selectedBranchId,
-                    isActive: true
-                };
-
-                showToast('info', 'Creating new pickup station...');
-                const response = await pickupStationsApi.createPickupStation(newPickupStationData);
-                const newStation = response.data || response;
-
-                showToast('success', 'Pickup station created successfully!');
-
-                // Refresh the container to include the new station
-                await loadPickupStationsForContainer(containerElement, selectedBranches, pickupIndex);
-
-            } catch (error) {
-                console.error('Failed to create pickup station:', error);
-                let errorMessage = 'Failed to create pickup station';
-                
-                if (error.message && error.message.includes('already exists')) {
-                    errorMessage = 'A pickup station with this location already exists in the selected branch';
-                } else if (error.response && error.response.data && error.response.data.message) {
-                    errorMessage = error.response.data.message;
-                }
-                
-                showToast('error', errorMessage);
-            }
-        }
-
-        // Function to handle creating new pickup stations for a specific branch
-        async function handleCreateNewPickupStationForBranch(containerElement, branch, branchIndex) {
-            try {
-                // Show prompt for new pickup station location
-                const location = prompt(`Enter the new pickup station location for ${branch.name}:`);
-                if (!location || location.trim() === '') {
-                    return;
-                }
-
-                // Create the pickup station for the specific branch
-                const newPickupStationData = {
-                    location: location.trim(),
-                    branchId: branch.id,
-                    isActive: true
-                };
-
-                showToast('info', 'Creating new pickup station...');
-                const response = await pickupStationsApi.createPickupStation(newPickupStationData);
-                const newStation = response.data || response;
-
-                showToast('success', 'Pickup station created successfully!');
-
-                // Refresh the container to include the new station
-                await loadPickupStationsForBranch(containerElement, branch, branchIndex);
-
-            } catch (error) {
-                console.error('Failed to create pickup station:', error);
-                let errorMessage = 'Failed to create pickup station';
-                
-                if (error.message && error.message.includes('already exists')) {
-                    errorMessage = 'A pickup station with this location already exists in this branch';
-                } else if (error.response && error.response.data && error.response.data.message) {
-                    errorMessage = error.response.data.message;
-                }
-                
-                showToast('error', errorMessage);
-            }
-        }
 
 

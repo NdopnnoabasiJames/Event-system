@@ -64,15 +64,12 @@ export class MigrationService {
     });
 
     const savedState = await state.save();
-    this.logger.log(`Created state: ${stateName} with ID: ${savedState._id}`);
-
-    // Create branches for this state
+    this.logger.log(`Created state: ${stateName} with ID: ${savedState._id}`);    // Create branches for this state
     for (const branchName of branchNames) {
-      await this.createBranchWithPickupStations(savedState._id, branchName);
+      await this.createBranch(savedState._id, branchName);
     }
   }
-
-  private async createBranchWithPickupStations(stateId: any, branchName: string): Promise<void> {
+  private async createBranch(stateId: any, branchName: string): Promise<void> {
     this.logger.log(`Creating branch: ${branchName}`);
 
     // Create branch
@@ -88,16 +85,8 @@ export class MigrationService {
     const savedBranch = await branch.save();
     this.logger.log(`Created branch: ${branchName} with ID: ${savedBranch._id}`);
 
-    // Create default pickup stations for this branch
-    const defaultPickupStations = [
-      `${branchName} Central Station`,
-      `${branchName} Bus Terminal`,
-      `${branchName} Main Park`,
-    ];
-
-    for (const stationLocation of defaultPickupStations) {
-      await this.createPickupStation(savedBranch._id, stationLocation);
-    }
+    // No default pickup stations are created - users will create them manually as needed
+    this.logger.log(`Branch ${branchName} created successfully - pickup stations will be added manually`);
   }
 
   private async createPickupStation(branchId: any, location: string): Promise<void> {

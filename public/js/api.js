@@ -2,7 +2,7 @@
 const API_BASE_URL = 'http://localhost:3031/api';
 
 // Utility function to handle API calls
-async function apiCall(endpoint, method = 'GET', data = null, token = null) {
+async function apiCall(endpoint, method = 'GET', data = null, token = null, treatNotFoundAsEmpty = false) {
     const headers = {
         'Content-Type': 'application/json'
     };
@@ -14,7 +14,9 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
     
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
-    }    try {
+    }
+
+    try {
         // Ensure we don't have double slashes in the URL
         const adjustedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
         const response = await fetch(`${API_BASE_URL}${adjustedEndpoint}`, {
@@ -25,7 +27,8 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
         });
 
         let responseData;
-        try {            responseData = await response.json();
+        try {
+            responseData = await response.json();
             console.log('API Response:', { 
                 status: response.status, 
                 data: responseData,
@@ -37,6 +40,11 @@ async function apiCall(endpoint, method = 'GET', data = null, token = null) {
         }
 
         if (!response.ok) {
+            // Special handling for 404 when we should treat it as empty result
+            if (response.status === 404 && treatNotFoundAsEmpty) {
+                return [];
+            }
+            
             const error = new Error(responseData.message || 'An error occurred');
             error.response = {
                 status: response.status,
@@ -280,13 +288,11 @@ const pickupStationsApi = {
     async getAllPickupStations(includeInactive = false) {
         const endpoint = includeInactive ? '/pickup-stations?includeInactive=true' : '/pickup-stations';
         return await apiCall(endpoint, 'GET', null, auth.getToken());
-    },
-
-    async getPickupStationsByBranch(branchId, includeInactive = false) {
+    },    async getPickupStationsByBranch(branchId, includeInactive = false) {
         const endpoint = includeInactive ? 
             `/pickup-stations/by-branch/${branchId}?includeInactive=true` : 
             `/pickup-stations/by-branch/${branchId}`;
-        return await apiCall(endpoint, 'GET', null, auth.getToken());
+        return await apiCall(endpoint, 'GET', null, auth.getToken(), true);
     },
 
     async getPickupStationsByState(stateId, includeInactive = false) {
@@ -455,3 +461,16 @@ function updateAuthState() {
 document.addEventListener('DOMContentLoaded', () => {
     updateAuthState();
 });
+
+// Make API objects and functions globally available for modules
+window.eventsApi = eventsApi;
+window.attendeesApi = attendeesApi;
+window.statesApi = statesApi;
+window.branchesApi = branchesApi;
+window.pickupStationsApi = pickupStationsApi;
+window.migrationApi = migrationApi;
+window.marketersApi = marketersApi;
+window.auth = auth;
+window.showToast = showToast;
+window.updateAuthState = updateAuthState;
+window.getFormData = getFormData;

@@ -22,7 +22,7 @@ export class MigrationController {
     return await this.migrationService.getStatistics();
   }
 
-  @Delete('reset')
+  @Delete('/reset')
   async resetData() {
     await this.migrationService.resetData();
     return { message: 'All location data reset successfully' };
