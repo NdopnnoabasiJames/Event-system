@@ -311,30 +311,16 @@
                         <div id="branchesContainer" class="d-none">
                             <!-- This container is kept but hidden as branches are now selected using checkboxes -->
                         </div>
-                        
-                        <!-- Bus Pickup Information -->
+                          <!-- Bus Pickup Information -->
                         <div class="card mb-3">
-                            <div class="card-header">Bus Pickup Locations</div>
-                            <div class="card-body" id="busPickupsContainer">
-                                <div class="bus-pickup-entry mb-3 p-3 border rounded">
-                                    <div class="mb-2">
-                                        <label class="form-label">Pickup Location*</label>
-                                        <input type="text" class="form-control" name="busPickups[0].location" required>
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label">Departure Time*</label>
-                                        <input type="datetime-local" class="form-control" name="busPickups[0].departureTime" required>
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label">Maximum Capacity</label>
-                                        <input type="number" class="form-control" name="busPickups[0].maxCapacity" min="1">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card-footer">
-                                <button type="button" class="btn btn-outline-primary" id="addBusPickupBtn">
-                                    <i class="bi bi-plus"></i> Add Another Bus Pickup
-                                </button>
+                            <div class="card-header">Bus Pickup Locations</div>                            <div class="card-body" id="busPickupsContainer">
+                                <!-- Pickup station entries will be dynamically added here based on selected branches -->
+                                <p class="text-muted mb-0">
+                                    <i class="bi bi-info-circle"></i> 
+                                    Select branches above to automatically generate pickup sections for each branch.
+                                    Each branch will get its own pickup section where you can select multiple pickup stations 
+                                    and set departure times. If no pickup stations exist for a branch, you can create new ones.
+                                </p>
                             </div>
                         </div>
                     </form>                </div>                <div class="modal-footer">

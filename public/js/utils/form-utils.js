@@ -12,7 +12,25 @@ export function getFormDataAsObject(form) {
     const formData = new FormData(form);
     const data = {};
     
+    // First, collect all checkbox values with the same name into arrays
+    const checkboxGroups = {};
+    form.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
+        const name = checkbox.name;
+        if (name) {
+            if (!checkboxGroups[name]) {
+                checkboxGroups[name] = [];
+            }
+            checkboxGroups[name].push(checkbox.value);
+        }
+    });
+    
     for (const [key, value] of formData.entries()) {
+        // Skip checkboxes as we handle them separately above
+        const element = form.querySelector(`[name="${key}"]`);
+        if (element && element.type === 'checkbox') {
+            continue;
+        }
+        
         // Handle nested properties using bracket notation (e.g., branches[0].name)
         if (key.includes('[') && key.includes('].')) {
             const mainKey = key.substring(0, key.indexOf('['));
@@ -30,6 +48,28 @@ export function getFormDataAsObject(form) {
             data[mainKey][index][subKey] = value;
         } else {
             data[key] = value;
+        }
+    }
+    
+    // Now handle checkbox groups
+    for (const [name, values] of Object.entries(checkboxGroups)) {
+        if (name.includes('[') && name.includes('].')) {
+            // Handle nested checkbox arrays like busPickups[0].stations
+            const mainKey = name.substring(0, name.indexOf('['));
+            const index = parseInt(name.substring(name.indexOf('[') + 1, name.indexOf(']')));
+            const subKey = name.substring(name.indexOf('].') + 2);
+            
+            if (!data[mainKey]) {
+                data[mainKey] = [];
+            }
+            
+            if (!data[mainKey][index]) {
+                data[mainKey][index] = {};
+            }
+            
+            data[mainKey][index][subKey] = values;
+        } else {
+            data[name] = values;
         }
     }
     
