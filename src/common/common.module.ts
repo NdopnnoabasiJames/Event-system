@@ -1,14 +1,16 @@
 import { Global, Module } from '@nestjs/common';
 import { WinstonModule } from 'nest-winston';
-import { ConfigService } from '@nestjs/config';
+import { ConfigService, ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { createWinstonLogger } from './utils/logger.util';
 import { CustomThrottlerGuard } from './guards/throttler.guard';
+import { CloudinaryService } from './services/cloudinary.service';
 
 @Global()
 @Module({
   imports: [
+    ConfigModule,
     WinstonModule.forRootAsync({
       useFactory: (configService: ConfigService) => createWinstonLogger(configService),
       inject: [ConfigService],
@@ -30,13 +32,13 @@ import { CustomThrottlerGuard } from './guards/throttler.guard';
         ],
       }),
     }),
-  ],
-  providers: [
+  ],  providers: [
     {
       provide: APP_GUARD,
       useClass: CustomThrottlerGuard,
     },
+    CloudinaryService,
   ],
-  exports: [WinstonModule, ThrottlerModule],
+  exports: [WinstonModule, ThrottlerModule, CloudinaryService],
 })
 export class CommonModule {}

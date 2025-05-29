@@ -9,11 +9,10 @@ import { getFormDataAsObject, toFullISOString } from '../utils/form-utils.js';
  */
 export async function loadEventsData() {
     try {
-        console.log('Fetching events from server...');
-        const response = await eventsApi.getAllEvents();
+        console.log('Fetching events from server...');        const response = await eventsApi.getAllEvents();
         console.log('Events response from server:', response);
         
-        const events = Array.isArray(response) ? response : (response.data || []);
+        const events = response.data || response || [];
         console.log('Processed events array:', events);
         
         const tableBody = document.getElementById('events-table-body');
@@ -117,9 +116,8 @@ export async function loadEventsData() {
  * Setup event filter dropdown for filtering attendees by event
  */
 export async function setupEventFilter() {
-    try {
-        const response = await eventsApi.getAllEvents();
-        const events = Array.isArray(response) ? response : (response.data || []);
+    try {        const response = await eventsApi.getAllEvents();
+        const events = response.data || response || [];
         
         const selectElement = document.getElementById('event-filter');
         
@@ -218,10 +216,17 @@ export async function setupEventCreationHandlers() {
         if (stateSelectionContainer) {
             // Clear existing content
             stateSelectionContainer.innerHTML = '';
-            
-            // Load states from API and create state checkboxes
+              // Load states from API and create state checkboxes
             try {
-                const states = await statesApi.getAllStates();
+                const response = await statesApi.getAllStates();
+                console.log('States API response:', response);
+                  // Handle the TransformInterceptor format: { data: [...], timestamp: ..., path: ... }
+                const states = response.data || response || [];
+                console.log('Processed states array:', states);
+                
+                if (!Array.isArray(states) || states.length === 0) {
+                    throw new Error('No states found or invalid response format');
+                }
                 
                 // Create state checkboxes
                 const stateCheckboxesDiv = document.createElement('div');
@@ -278,12 +283,15 @@ export async function setupEventCreationHandlers() {
             branchCheckboxes.innerHTML = '';
             
             // Create branch checkboxes for each selected state
-            for (const state of selectedStates) {
-                try {
+            for (const state of selectedStates) {                try {
                     // Load branches for this state from API
-                    const branches = await branchesApi.getBranchesByState(state.id);
+                    const response = await branchesApi.getBranchesByState(state.id);                    console.log(`Branches API response for state ${state.name}:`, response);
                     
-                    if (branches.length > 0) {
+                    // Handle the TransformInterceptor format: { data: [...], timestamp: ..., path: ... }
+                    const branches = response.data || response || [];
+                    console.log(`Processed branches for state ${state.name}:`, branches);
+                    
+                    if (Array.isArray(branches) && branches.length > 0) {
                         // Add state header
                         const stateHeader = document.createElement('h6');
                         stateHeader.className = 'mt-3 mb-2';
@@ -498,9 +506,18 @@ export async function setupEventCreationHandlers() {
                             const errorText = await response.text();
                             throw new Error(`Failed to upload banner image: ${response.status} ${response.statusText}`);
                         }
+                          const result = await response.json();
                         
-                        const result = await response.json();
-                        bannerImageName = result.filename;
+                        // Handle both old and new response formats
+                        if (result.data && result.data.publicId) {
+                            // New Cloudinary format
+                            bannerImageName = result.data.publicId;
+                        } else if (result.filename) {
+                            // Legacy format or backward compatibility
+                            bannerImageName = result.filename;
+                        } else {
+                            throw new Error('Invalid response format from upload endpoint');
+                        }
                     } catch (uploadError) {
                         showToast('error', 'Failed to upload banner image: ' + (uploadError.message || 'Unknown error'));
                         return;

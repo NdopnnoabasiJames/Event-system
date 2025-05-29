@@ -57,27 +57,10 @@ export async function loadMarketerPerformance() {
  * Load marketer's events that they are volunteering for
  */
 export async function loadMarketerEvents() {
-    try {
-        const responseData = await apiCall('/marketers/events/my', 'GET', null, auth.getToken());
+    try {        const responseData = await apiCall('/marketers/events/my', 'GET', null, auth.getToken());
         
-        // Extract events array handling different response formats
-        // First check if response is an array directly
-        let eventsArray = Array.isArray(responseData) ? responseData : null;
-        
-        // If not an array directly, check for data property that might be an array
-        if (!eventsArray && responseData && responseData.data) {
-            eventsArray = Array.isArray(responseData.data) ? responseData.data : null;
-        }
-        
-        // If we still don't have an array, check for events property
-        if (!eventsArray && responseData && responseData.events) {
-            eventsArray = Array.isArray(responseData.events) ? responseData.events : null;
-        }
-        
-        // Final fallback - if we still don't have an array, create an empty one
-        if (!eventsArray) {
-            eventsArray = [];
-        }
+        // Handle the TransformInterceptor format: { data: [...], timestamp: ..., path: ... }
+        const eventsArray = responseData.data || responseData || [];
         
         const tableBody = document.getElementById('events-table-body');
         const noEventsMessage = document.getElementById('no-events');
@@ -245,28 +228,11 @@ export async function loadAvailableEvents() {
         // Get both available events and events the marketer has already volunteered for        
         const [availableEventsResponse, myEventsResponse] = await Promise.all([
             marketersApi.getAvailableEvents(),
-            marketersApi.getMyEvents()
-        ]);
+            marketersApi.getMyEvents()        ]);
         
-        // Extract events array handling different response formats
-        let eventsArray = Array.isArray(availableEventsResponse) ? availableEventsResponse : null;
-        
-        if (!eventsArray && availableEventsResponse && availableEventsResponse.data) {
-            eventsArray = Array.isArray(availableEventsResponse.data) ? availableEventsResponse.data : null;
-        }
-        
-        if (!eventsArray) {
-            eventsArray = [];
-        }
-        
-        // Extract my events array for comparison
-        let myEventsArray = Array.isArray(myEventsResponse) ? myEventsResponse : null;
-        if (!myEventsArray && myEventsResponse && myEventsResponse.data) {
-            myEventsArray = Array.isArray(myEventsResponse.data) ? myEventsResponse.data : null;
-        }
-        if (!myEventsArray) {
-            myEventsArray = [];
-        }
+        // Handle the TransformInterceptor format: { data: [...], timestamp: ..., path: ... }
+        const eventsArray = availableEventsResponse.data || availableEventsResponse || [];
+        const myEventsArray = myEventsResponse.data || myEventsResponse || [];
         
         // Create a set of event IDs that the marketer has already volunteered for
         const myEventIds = new Set(myEventsArray.map(event => event._id || event.id));
@@ -492,12 +458,15 @@ export async function openRegisterAttendeeModal(eventId, eventName) {
             branchSelect.disabled = true;
             
             // Populate with event-specific states only
-            if (eventData.states && Array.isArray(eventData.states)) {
-                try {
+            if (eventData.states && Array.isArray(eventData.states)) {                try {
                     // Get state details for each state ID in the event
-                    for (const stateId of eventData.states) {
-                        const state = await statesApi.getState(stateId);
-                        if (state) {
+                    for (const stateId of eventData.states) {                        const response = await statesApi.getState(stateId);
+                        console.log(`State API response for ${stateId}:`, response);
+                        
+                        // Handle the TransformInterceptor format: { data: {...}, timestamp: ..., path: ... }
+                        const state = response.data || response;
+                        
+                        if (state && state.name) {
                             const option = document.createElement('option');
                             option.value = stateId;
                             option.textContent = state.name;

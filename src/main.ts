@@ -14,18 +14,11 @@ async function bootstrap() {
   // Increase payload size limits for file uploads
   app.use(bodyParser.json({ limit: '10mb' }));
   app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
-    
-  // Set up static file serving
+      // Set up static file serving
   app.useStaticAssets(join(__dirname, '..', 'public'));
   logger.log(`Static files will be served from: ${join(__dirname, '..', 'public')}`);
   
-  // Ensure Images directory exists
-  const imagesDir = join(__dirname, '..', 'public', 'Images', 'events');
-  const fs = require('fs');
-  if (!fs.existsSync(imagesDir)) {
-    fs.mkdirSync(imagesDir, { recursive: true });
-    logger.log(`Created directory: ${imagesDir}`);
-  }
+  // Note: Image storage is now handled by Cloudinary
   
   // Enable CORS with credentials
   app.enableCors({

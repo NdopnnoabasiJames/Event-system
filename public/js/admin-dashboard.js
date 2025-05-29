@@ -3,9 +3,6 @@
 // Import marketer management functions
 import { loadTopMarketers, showMarketerDetails, setupMarketerFilter } from './modules/marketer-manager.js';
 
-// Import states and branches data
-import { statesAndBranches } from './modules/states-branches.js';
-
 // Import events management functions
 import { loadEventsData, setupEventFilter, setupEventCreationHandlers, formatEventData } from './modules/events-manager.js';
 
@@ -87,11 +84,10 @@ async function loadAttendeesData() {
         }
         
         if (queryParams.length > 0) {
-            endpoint += '?' + queryParams.join('&');
-        }
+            endpoint += '?' + queryParams.join('&');        }
         
         const response = await apiCall(endpoint, 'GET', null, auth.getToken());
-        const attendees = Array.isArray(response) ? response : (response.data || []);
+        const attendees = response.data || response || [];
         
         const tableBody = document.getElementById('attendees-table-body');
         
@@ -166,10 +162,9 @@ async function loadAttendeesData() {
     }
 }
 
-async function loadConciergeRequests() {
-    try {
+async function loadConciergeRequests() {    try {
         const response = await apiCall('/events/concierge-requests/pending', 'GET', null, auth.getToken());
-        const requests = Array.isArray(response) ? response : (response.data || []);
+        const requests = response.data || response || [];
         const tableBody = document.getElementById('concierge-requests-table-body');
         tableBody.innerHTML = '';        if (!requests.length) {
             tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No pending requests.</td></tr>';
@@ -214,9 +209,8 @@ async function reviewConciergeRequest(btn, approve) {
 
 // New function to load approved concierges
 async function loadApprovedConcierges() {
-    try {
-        const response = await apiCall('/events/concierge-requests/approved', 'GET', null, auth.getToken());
-        const approved = Array.isArray(response) ? response : (response.data || []);
+    try {        const response = await apiCall('/events/concierge-requests/approved', 'GET', null, auth.getToken());
+        const approved = response.data || response || [];
         const tableBody = document.getElementById('approved-concierges-table-body');
         tableBody.innerHTML = '';        if (!approved.length) {
             tableBody.innerHTML = '<tr><td colspan="5" class="text-center">No approved concierges.</td></tr>';

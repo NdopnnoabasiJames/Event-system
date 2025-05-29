@@ -93,6 +93,11 @@ SMTP_PORT=587
 EMAIL_USER=your_email@gmail.com
 EMAIL_PASSWORD=your_app_specific_password
 
+# Cloudinary (for image uploads)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+
 # Rate Limiting
 THROTTLE_TTL=60
 THROTTLE_LIMIT=10
@@ -108,6 +113,21 @@ npm run start:dev
 npm run build
 npm run start:prod
 ```
+
+## Image Storage
+
+This application uses **Cloudinary** for image storage and management. All event banner images are automatically:
+- Uploaded to Cloudinary cloud storage
+- Optimized for web delivery (WebP format when supported)
+- Automatically resized and cropped to standard dimensions (1200x600 for banners)
+- Served through Cloudinary's global CDN
+- Backed up with automatic transformations for different screen sizes
+
+### Image Upload Endpoints
+- `POST /api/upload/event-image` - Upload event images
+- `POST /api/upload/event-banner` - Upload event banner images
+
+Both endpoints require admin authentication and return Cloudinary public IDs that can be used to generate optimized URLs.
 
 ## API Documentation
 

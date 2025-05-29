@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadEvents() {
     try {
         const response = await apiCall('/events', 'GET', null, auth.getToken());
-        allEvents = Array.isArray(response) ? response : (response.data || []);
+        allEvents = response.data || response || [];
         populateEventFilter();
     } catch (error) {
         console.error('Error loading events:', error);

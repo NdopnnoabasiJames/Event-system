@@ -13,42 +13,21 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
 import { UploadService } from './upload.service';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
-import { v4 as uuid } from 'uuid';
-
-import * as fs from 'fs';
-import * as path from 'path';
-
-// Ensure upload directories exist
-const ensureDirectoryExists = (dirPath: string) => {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
-  }
-};
+import { CloudinaryService } from '../common/services/cloudinary.service';
 
 @Controller('upload')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UploadController {
-  constructor(private readonly uploadService: UploadService) {}
-
+  constructor(
+    private readonly uploadService: UploadService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
   @Post('event-image')
   @Roles(Role.ADMIN)
   @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: (req, file, cb) => {
-          const uploadPath = './public/Images/events';
-          ensureDirectoryExists(uploadPath);
-          cb(null, uploadPath);
-        },
-        filename: (req, file, cb) => {
-          const uniqueId = uuid();
-          cb(null, `${uniqueId}${extname(file.originalname)}`);
-        },
-      }),
+    FileInterceptor('image', {
       fileFilter: (req, file, cb) => {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
+        if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
           return cb(
             new BadRequestException('Only image files are allowed!'),
             false,
@@ -57,7 +36,7 @@ export class UploadController {
         cb(null, true);
       },
       limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
+        fileSize: 10 * 1024 * 1024, // 10MB - Cloudinary can handle larger files
       },
     }),
   )
@@ -66,16 +45,89 @@ export class UploadController {
       throw new BadRequestException('No file uploaded');
     }
 
-    // Get the uploads path from the service
-    const uploadsPath = this.uploadService.getUploadsPath('events');
+    try {
+      // Upload to Cloudinary
+      const result = await this.cloudinaryService.uploadImage(file, {
+        folder: 'events',
+        transformation: {
+          width: 1200,
+          height: 600,
+          crop: 'fill',
+          quality: 'auto',
+          fetch_format: 'auto'
+        }
+      });
 
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'File uploaded successfully',
-      data: {
-        filename: file.filename,
-        path: file.path.replace('public/', ''),
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'File uploaded successfully to Cloudinary',
+        data: {
+          publicId: result.public_id,
+          url: result.secure_url,
+          width: result.width,
+          height: result.height,
+          format: result.format,
+          // For backward compatibility, include filename
+          filename: result.public_id,
+        },
+      };
+    } catch (error) {
+      throw new BadRequestException(`Failed to upload image: ${error.message}`);
+    }
+  }
+
+  // Keep the old endpoint for backward compatibility (event-banner)
+  @Post('event-banner')
+  @Roles(Role.ADMIN)
+  @UseInterceptors(
+    FileInterceptor('image', {
+      fileFilter: (req, file, cb) => {
+        if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+          return cb(
+            new BadRequestException('Only image files are allowed!'),
+            false,
+          );
+        }
+        cb(null, true);
       },
-    };
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB
+      },
+    }),
+  )
+  async uploadEventBanner(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    try {
+      // Upload to Cloudinary with event banner specific transformations
+      const result = await this.cloudinaryService.uploadImage(file, {
+        folder: 'events',
+        transformation: {
+          width: 1200,
+          height: 600,
+          crop: 'fill',
+          quality: 'auto',
+          fetch_format: 'auto'
+        }
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Banner uploaded successfully to Cloudinary',
+        // For backward compatibility with existing frontend code
+        filename: result.public_id,
+        data: {
+          publicId: result.public_id,
+          url: result.secure_url,
+          width: result.width,
+          height: result.height,
+          format: result.format,
+        },
+      };
+    } catch (error) {
+      throw new BadRequestException(`Failed to upload banner: ${error.message}`);
+    }
   }
 }
