@@ -19,6 +19,18 @@ export class User {
   @Prop({ required: true, enum: Role, default: Role.ATTENDEE, index: true })
   role: Role;
 
+  // Admin hierarchy fields
+  @Prop({ required: false })
+  state?: string;
+
+  @Prop({ required: false })
+  branch?: string;
+
+  @Prop({ default: false })
+  isApproved: boolean;
+
+  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
+  approvedBy?: Types.ObjectId;
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Event' }], default: [] })
   eventParticipation: Types.ObjectId[];
 }
@@ -28,6 +40,9 @@ export const UserSchema = SchemaFactory.createForClass(User);
 // Add compound indexes
 UserSchema.index({ email: 1, role: 1 });
 UserSchema.index({ role: 1, eventParticipation: 1 });
+UserSchema.index({ role: 1, state: 1 });
+UserSchema.index({ role: 1, branch: 1 });
+UserSchema.index({ isApproved: 1, role: 1 });
 
 // Add text index for search
 UserSchema.index({ name: 'text', email: 'text' });

@@ -65,7 +65,7 @@ export class EventsController {
     @Param('id') id: string,
     @Body() busPickupData: BusPickupRequest,
   ) {
-    return this.eventsService.addPickupStation(
+    return this.eventsService.addBusPickup(
       id,
       busPickupData.location,
       busPickupData.departureTime,

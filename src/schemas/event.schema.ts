@@ -20,6 +20,18 @@ export class Event {
   @Prop({ required: true })
   date: string;
 
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  createdBy: Types.ObjectId;
+
+  @Prop({ required: true, enum: ['super_admin', 'state_admin', 'branch_admin'] })
+  creatorLevel: string;
+
+  @Prop({ type: [String], default: [] })
+  selectedStates: string[];
+
+  @Prop({ type: [String], default: [] })
+  selectedBranches: string[];
+
   @Prop({ type: [{ type: Types.ObjectId, ref: 'State' }], required: true })
   states: Types.ObjectId[];
 
@@ -43,12 +55,29 @@ export class Event {
   marketers: Types.ObjectId[];
   @Prop({ default: false })
   isActive: boolean;
-  
-  @Prop()
+    @Prop()
   bannerImage: string;
   
   @Prop()
   description: string;
+
+  @Prop({ 
+    type: [{ 
+      location: { type: String, required: true },
+      departureTime: { type: String, required: true },
+      maxCapacity: { type: Number, default: 50 },
+      currentCount: { type: Number, default: 0 },
+      notes: { type: String }
+    }],
+    default: []
+  })
+  busPickups: {
+    location: string;
+    departureTime: string;
+    maxCapacity?: number;
+    currentCount?: number;
+    notes?: string;
+  }[];
 
   @Prop({
     type: [
@@ -81,3 +110,7 @@ EventSchema.index({ date: 1 });
 EventSchema.index({ state: 1 });
 EventSchema.index({ isActive: 1 });
 EventSchema.index({ 'marketers': 1 });
+EventSchema.index({ createdBy: 1 });
+EventSchema.index({ creatorLevel: 1 });
+EventSchema.index({ selectedStates: 1 });
+EventSchema.index({ selectedBranches: 1 });

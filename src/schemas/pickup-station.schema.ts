@@ -11,6 +11,12 @@ export class PickupStation {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Branch', required: true, index: true })
   branchId: MongooseSchema.Types.ObjectId;
 
+  @Prop({ required: true, index: true })
+  zone: string;
+
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
+  createdBy: MongooseSchema.Types.ObjectId;
+
   @Prop({ default: true, index: true })
   isActive: boolean;
 }
@@ -23,3 +29,5 @@ PickupStationSchema.index({ location: 1, branchId: 1 }, { unique: true });
 // Add indexes for common queries
 PickupStationSchema.index({ branchId: 1, isActive: 1 });
 PickupStationSchema.index({ isActive: 1, location: 1 });
+PickupStationSchema.index({ zone: 1, branchId: 1 });
+PickupStationSchema.index({ createdBy: 1 });

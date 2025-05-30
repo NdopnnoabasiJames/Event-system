@@ -28,7 +28,7 @@ export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Post()
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   create(@Body() createEventDto: CreateEventDto) {
     return this.eventsService.create(createEventDto);
   }
@@ -60,12 +60,12 @@ export class EventsController {
   }
 
   @Post(':id/bus-pickup')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   addBusPickup(
     @Param('id') id: string,
     @Body() busPickupData: BusPickupRequest,
   ) {
-    return this.eventsService.addPickupStation(
+    return this.eventsService.addBusPickup(
       id,
       busPickupData.location,
       busPickupData.departureTime,
@@ -85,7 +85,7 @@ export class EventsController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   remove(@Param('id') id: string) {
     return this.eventsService.remove(id);
   }
@@ -97,13 +97,13 @@ export class EventsController {
   }
 
   @Get('concierge-requests/pending')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   async getAllPendingConciergeRequests() {
     return this.eventsService.getAllPendingConciergeRequests();
   }
 
   @Post(':eventId/concierge-requests/:requestId/review')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   async reviewConciergeRequest(
     @Param('eventId') eventId: string,
     @Param('requestId') requestId: string,
@@ -114,7 +114,7 @@ export class EventsController {
   }
 
   @Get('concierge-requests/approved')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   async getAllApprovedConcierges() {
     return this.eventsService.getAllApprovedConcierges();
   }
