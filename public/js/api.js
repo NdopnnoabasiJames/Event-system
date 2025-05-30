@@ -381,6 +381,60 @@ const marketersApi = {
     }
 };
 
+// Admin approval API functions
+const adminApproval = {
+    async getPendingAdmins() {
+        const response = await fetch('/api/users/pending-admins', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${getToken()}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to fetch pending admins');
+        }
+
+        return response.json();
+    },
+
+    async approveAdmin(adminId) {
+        const response = await fetch(`/api/users/approve-admin/${adminId}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${getToken()}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to approve admin');
+        }
+
+        return response.json();
+    },
+
+    async rejectAdmin(adminId) {
+        const response = await fetch(`/api/users/reject-admin/${adminId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${getToken()}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to reject admin');
+        }
+
+        return response.json();
+    }
+};
+
 // UI Utility functions
 function showToast(type, message) {
     const toastContainer = document.getElementById('toast-container') || createToastContainer();
@@ -474,3 +528,4 @@ window.auth = auth;
 window.showToast = showToast;
 window.updateAuthState = updateAuthState;
 window.getFormData = getFormData;
+window.adminApproval = adminApproval;

@@ -50,4 +50,24 @@ export class UsersController {
   remove(@Param('id') id: string, @Request() req) {
     return this.usersService.delete(id, req.user);
   }
+
+  // Admin approval endpoints
+  @Get('pending-admins')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN)
+  getPendingAdmins(@Request() req) {
+    const { role, state } = req.user;
+    return this.usersService.getPendingAdmins(role, state);
+  }
+
+  @Post('approve-admin/:id')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN)
+  approveAdmin(@Param('id') adminId: string, @Request() req) {
+    return this.usersService.approveAdmin(adminId, req.user.userId);
+  }
+
+  @Delete('reject-admin/:id')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN)
+  rejectAdmin(@Param('id') adminId: string) {
+    return this.usersService.rejectAdmin(adminId);
+  }
 }

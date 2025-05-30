@@ -52,10 +52,14 @@
                         <button class="nav-link" id="attendees-tab" data-bs-toggle="tab" data-bs-target="#attendees" type="button">
                             Attendees
                         </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
+                    </li>                    <li class="nav-item" role="presentation">
                         <button class="nav-link" id="concierge-requests-tab" data-bs-toggle="tab" data-bs-target="#concierge-requests" type="button">
                             Concierges
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="admin-approvals-tab" data-bs-toggle="tab" data-bs-target="#admin-approvals" type="button">
+                            Admin Approvals
                         </button>
                     </li>
                 </ul>
@@ -198,12 +202,38 @@
                                 <tbody id="approved-concierges-table-body">
                                     <!-- Will be filled by JavaScript -->
                                 </tbody>
+                            </table>                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Approvals Tab -->
+            <div class="tab-pane fade" id="admin-approvals" role="tabpanel">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h2 class="card-title">Pending Admin Approvals</h2>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>State</th>
+                                        <th>Branch</th>
+                                        <th>Registered</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pending-admins-table-body">
+                                    <!-- Will be filled by JavaScript -->
+                                </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
     </div>
 
     <!-- Marketer Detail Modal -->

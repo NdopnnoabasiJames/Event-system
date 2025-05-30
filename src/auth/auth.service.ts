@@ -18,6 +18,12 @@ export class AuthService {
         console.log('User not found:', email);
         throw new UnauthorizedException('User not found');
       }
+
+      // Check if admin user is approved
+      if ((user.role === 'state_admin' || user.role === 'branch_admin') && !user.isApproved) {
+        console.log('Admin user not approved:', email);
+        throw new UnauthorizedException('Your account is pending approval from the administrator');
+      }
       
       console.log('User found, validating password');
       const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -41,6 +47,8 @@ export class AuthService {
         sub: user._id ? user._id.toString() : user.id,
         role: user.role,
         name: user.name,
+        state: user.state,
+        branch: user.branch,
       };
       console.log('JWT Payload:', payload);
       
@@ -55,13 +63,15 @@ export class AuthService {
           email: payload.email,
           role: payload.role,
           name: payload.name,
+          state: payload.state,
+          branch: payload.branch,
         }
       };
     } catch (error) {
       console.error('Error generating JWT token:', error);
       throw new Error('Failed to generate authentication token: ' + error.message);
     }
-  }  async register(userData: RegisterDto) {
+  }async register(userData: RegisterDto) {
     // Check if user with this email already exists
     const existingUser = await this.usersService.findByEmail(userData.email);
     if (existingUser) {

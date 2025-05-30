@@ -131,4 +131,42 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
     );
     return user.save();
   }
+
+  // Admin approval methods
+  async getPendingAdmins(approverRole: string, approverState?: string): Promise<UserDocument[]> {
+    const query: any = { isApproved: false };
+    
+    if (approverRole === 'super_admin') {
+      // Super admin can see all pending state admins
+      query.role = 'state_admin';
+    } else if (approverRole === 'state_admin' && approverState) {
+      // State admin can see pending branch admins in their state
+      query.role = 'branch_admin';
+      query.state = approverState;
+    }
+    
+    return this.userModel.find(query).exec();
+  }
+
+  async approveAdmin(adminId: string, approverId: string): Promise<UserDocument> {
+    const admin = await this.userModel.findById(adminId).exec();
+    if (!admin) {
+      throw new NotFoundException('Admin not found');
+    }
+
+    if (admin.isApproved) {
+      throw new HttpException('Admin is already approved', HttpStatus.BAD_REQUEST);
+    }
+
+    admin.isApproved = true;
+    admin.approvedBy = new Types.ObjectId(approverId);
+    return admin.save();
+  }
+
+  async rejectAdmin(adminId: string): Promise<void> {
+    const result = await this.userModel.findByIdAndDelete(adminId).exec();
+    if (!result) {
+      throw new NotFoundException('Admin not found');
+    }
+  }
 }

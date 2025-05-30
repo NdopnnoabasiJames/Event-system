@@ -12,11 +12,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         showToast('error', 'Please login to access the admin dashboard');
         window.location.href = 'login.html';
         return;
-    }
-
-    // Check if user is an admin
+    }    // Check if user is an admin
     const user = auth.getUser();
-      if (user.role !== 'admin') {
+    if (!['super_admin', 'state_admin', 'branch_admin'].includes(user.role)) {
         showToast('error', 'Only administrators can access this page');
         
         // Redirect to appropriate dashboard based on role
@@ -26,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.location.href = '../index.html';
         }
         return;
-    }    try {
+    }try {
         // Update auth state
         updateAuthState();
         
@@ -45,6 +43,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Load concierge data
         await loadConciergeRequests();
         await loadApprovedConcierges();
+
+        // Load pending admin approvals
+        await loadPendingAdmins();
           
         // Add event listener for event filter
         const eventFilter = document.getElementById('event-filter');
@@ -352,3 +353,85 @@ function toISODateString(val) {
     const d = new Date(val);
     if (isNaN(d.getTime())) return undefined;    return d.toISOString().split('T')[0];
 }
+
+function formatDateForInput(val) {
+    if (!val) return undefined;
+    
+    // If it's already in the correct format, return it
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+        return val;
+    }
+    // Fallback: try to parse and format as yyyy-mm-dd
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return undefined;
+    return d.toISOString().split('T')[0];
+}
+
+// Admin approval functions
+async function loadPendingAdmins() {
+    try {
+        const pendingAdmins = await adminApproval.getPendingAdmins();
+        const tableBody = document.getElementById('pending-admins-table-body');
+        
+        if (!pendingAdmins || pendingAdmins.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No pending admin approvals</td></tr>';
+            return;
+        }
+
+        tableBody.innerHTML = pendingAdmins.map(admin => `
+            <tr>
+                <td>${admin.name || 'N/A'}</td>
+                <td>${admin.email}</td>
+                <td><span class="badge bg-info">${admin.role === 'state_admin' ? 'State Admin' : 'Branch Admin'}</span></td>
+                <td>${admin.state || 'N/A'}</td>
+                <td>${admin.branch || 'N/A'}</td>
+                <td>${new Date(admin.createdAt).toLocaleDateString()}</td>
+                <td>
+                    <button class="btn btn-success btn-sm me-2" onclick="approveAdmin('${admin._id}')">
+                        <i class="bi bi-check-circle"></i> Approve
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="rejectAdmin('${admin._id}')">
+                        <i class="bi bi-x-circle"></i> Reject
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading pending admins:', error);
+        showToast('error', 'Failed to load pending admin approvals');
+    }
+}
+
+async function approveAdmin(adminId) {
+    if (!confirm('Are you sure you want to approve this admin?')) {
+        return;
+    }
+
+    try {
+        await adminApproval.approveAdmin(adminId);
+        showToast('success', 'Admin approved successfully');
+        await loadPendingAdmins(); // Reload the list
+    } catch (error) {
+        console.error('Error approving admin:', error);
+        showToast('error', 'Failed to approve admin');
+    }
+}
+
+async function rejectAdmin(adminId) {
+    if (!confirm('Are you sure you want to reject this admin? This will permanently delete their account.')) {
+        return;
+    }
+
+    try {
+        await adminApproval.rejectAdmin(adminId);
+        showToast('success', 'Admin rejected successfully');
+        await loadPendingAdmins(); // Reload the list
+    } catch (error) {
+        console.error('Error rejecting admin:', error);
+        showToast('error', 'Failed to reject admin');
+    }
+}
+
+// Make functions globally available
+window.approveAdmin = approveAdmin;
+window.rejectAdmin = rejectAdmin;
