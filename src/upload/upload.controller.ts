@@ -21,9 +21,8 @@ export class UploadController {
   constructor(
     private readonly uploadService: UploadService,
     private readonly cloudinaryService: CloudinaryService,
-  ) {}
-  @Post('event-image')
-  @Roles(Role.ADMIN)
+  ) {}  @Post('event-image')
+  @Roles(Role.SUPER_ADMIN)
   @UseInterceptors(
     FileInterceptor('image', {
       fileFilter: (req, file, cb) => {
@@ -76,9 +75,8 @@ export class UploadController {
     }
   }
 
-  // Keep the old endpoint for backward compatibility (event-banner)
-  @Post('event-banner')
-  @Roles(Role.ADMIN)
+  // Keep the old endpoint for backward compatibility (event-banner)  @Post('event-banner')
+  @Roles(Role.SUPER_ADMIN)
   @UseInterceptors(
     FileInterceptor('image', {
       fileFilter: (req, file, cb) => {

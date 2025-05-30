@@ -26,15 +26,13 @@ export class UsersController {
   getProfile(@Request() req) {
     return this.usersService.findById(req.user.userId);
   }
-
   @Get('marketers')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   findAllMarketers() {
     return this.usersService.findAllMarketers();
   }
-
   @Get(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   findOne(@Param('id') id: string) {
     return this.usersService.findById(id);
   }
@@ -47,9 +45,8 @@ export class UsersController {
   ) {
     return this.usersService.update(id, updateUserDto, req.user);
   }
-
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   remove(@Param('id') id: string, @Request() req) {
     return this.usersService.delete(id, req.user);
   }

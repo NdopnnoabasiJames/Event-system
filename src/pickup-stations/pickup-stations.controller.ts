@@ -22,9 +22,8 @@ import { Role } from '../common/enums/role.enum';
 @Controller('pickup-stations')
 export class PickupStationsController {
   constructor(private readonly pickupStationsService: PickupStationsService) {}
-
   @Post()
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   create(@Body() createPickupStationDto: CreatePickupStationDto) {
     return this.pickupStationsService.create(createPickupStationDto);
   }
@@ -54,27 +53,23 @@ export class PickupStationsController {
   findOne(@Param('id') id: string) {
     return this.pickupStationsService.findOne(id);
   }
-
   @Patch(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   update(@Param('id') id: string, @Body() updatePickupStationDto: UpdatePickupStationDto) {
     return this.pickupStationsService.update(id, updatePickupStationDto);
   }
-
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   remove(@Param('id') id: string) {
     return this.pickupStationsService.remove(id);
   }
-
   @Patch(':id/deactivate')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   deactivate(@Param('id') id: string) {
     return this.pickupStationsService.deactivate(id);
   }
-
   @Patch(':id/activate')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   activate(@Param('id') id: string) {
     return this.pickupStationsService.activate(id);
   }

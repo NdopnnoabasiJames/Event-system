@@ -27,12 +27,11 @@ export class SeedService implements OnModuleInit {
       
       // Admin user does not exist, create it
       const hashedPassword = await bcrypt.hash('Admin123!', 10);
-      
-      const adminUser = await this.usersService.create({
+        const adminUser = await this.usersService.create({
         name: 'System Admin',
         email: adminEmail,
         password: hashedPassword,
-        role: Role.ADMIN,
+        role: Role.SUPER_ADMIN,
       });
       
       this.logger.log(`Admin user created with ID: ${adminUser._id}`);

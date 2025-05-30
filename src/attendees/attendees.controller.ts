@@ -35,9 +35,8 @@ export class AttendeesController {
       registeredBy: req.user.userId,
     });
   }
-
   @Get()
-  @Roles(Role.ADMIN, Role.MARKETER, Role.CONCIERGE)
+  @Roles(Role.SUPER_ADMIN, Role.MARKETER, Role.CONCIERGE)
   findAll(@Query('eventId') eventId?: string, @Query('transport') transport?: 'bus' | 'private') {
     if (eventId && transport) {
       return this.attendeesService.getAttendeesByTransport(eventId, transport);
@@ -46,18 +45,16 @@ export class AttendeesController {
     }
     return this.attendeesService.findAll();
   }
-
   @Get('bus-pickups/:location')
-  @Roles(Role.ADMIN, Role.MARKETER)
+  @Roles(Role.SUPER_ADMIN, Role.MARKETER)
   findByBusPickup(
     @Param('location') location: string,
     @Query('eventId') eventId: string,
   ) {
     return this.attendeesService.getBusAttendeesByPickup(eventId, location);
   }
-
   @Get(':id')
-  @Roles(Role.ADMIN, Role.MARKETER)
+  @Roles(Role.SUPER_ADMIN, Role.MARKETER)
   findOne(@Param('id') id: string) {
     return this.attendeesService.findOne(id);
   }

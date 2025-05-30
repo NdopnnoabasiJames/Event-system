@@ -61,8 +61,7 @@ export class AuthService {
       console.error('Error generating JWT token:', error);
       throw new Error('Failed to generate authentication token: ' + error.message);
     }
-  }
-  async register(userData: RegisterDto) {
+  }  async register(userData: RegisterDto) {
     // Check if user with this email already exists
     const existingUser = await this.usersService.findByEmail(userData.email);
     if (existingUser) {
@@ -73,11 +72,20 @@ export class AuthService {
       // Hash the password
       const hashedPassword = await bcrypt.hash(userData.password, 10);
       
-      // Create user with hashed password and default role if not provided
+      // Determine approval status based on role
+      let isApproved = true; // Default for regular users
+      if (userData.role === 'state_admin' || userData.role === 'branch_admin') {
+        isApproved = false; // Admins need approval
+      }
+      
+      // Create user with hashed password and admin fields
       const newUser = await this.usersService.create({
         ...userData,
         password: hashedPassword,
-        role: userData.role
+        role: userData.role,
+        isApproved,
+        state: userData.state,
+        branch: userData.branch
       });
 
       const { password, ...result } = newUser.toJSON();

@@ -26,9 +26,8 @@ class BusPickupRequest {
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
-
   @Post()
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   create(@Body() createEventDto: CreateEventDto) {
     return this.eventsService.create(createEventDto);
   }
@@ -58,9 +57,8 @@ export class EventsController {
   findOne(@Param('id') id: string) {
     return this.eventsService.findOne(id);
   }
-
   @Post(':id/bus-pickup')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   addBusPickup(
     @Param('id') id: string,
     @Body() busPickupData: BusPickupRequest,
@@ -83,9 +81,8 @@ export class EventsController {
   leaveEvent(@Param('id') id: string, @Request() req) {
     return this.eventsService.removeMarketerFromEvent(id, req.user.userId);
   }
-
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   remove(@Param('id') id: string) {
     return this.eventsService.remove(id);
   }
@@ -95,15 +92,13 @@ export class EventsController {
   async requestConcierge(@Param('eventId') eventId: string, @Request() req) {
     return this.eventsService.requestConcierge(eventId, req.user.userId);
   }
-
   @Get('concierge-requests/pending')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   async getAllPendingConciergeRequests() {
     return this.eventsService.getAllPendingConciergeRequests();
   }
-
   @Post(':eventId/concierge-requests/:requestId/review')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   async reviewConciergeRequest(
     @Param('eventId') eventId: string,
     @Param('requestId') requestId: string,
@@ -112,9 +107,8 @@ export class EventsController {
   ) {
     return this.eventsService.reviewConciergeRequest(eventId, requestId, approve, req.user.userId);
   }
-
   @Get('concierge-requests/approved')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   async getAllApprovedConcierges() {
     return this.eventsService.getAllApprovedConcierges();
   }

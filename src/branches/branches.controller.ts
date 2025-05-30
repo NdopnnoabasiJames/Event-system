@@ -20,9 +20,8 @@ import { Role } from '../common/enums/role.enum';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('branches')
 export class BranchesController {
-  constructor(private readonly branchesService: BranchesService) {}
-  @Post()
-  @Roles(Role.ADMIN)
+  constructor(private readonly branchesService: BranchesService) {}  @Post()
+  @Roles(Role.SUPER_ADMIN)
   create(@Body() createBranchDto: CreateBranchDto) {
     return this.branchesService.create(createBranchDto);
   }
@@ -42,24 +41,20 @@ export class BranchesController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.branchesService.findOne(id);
-  }
-  @Patch(':id')
-  @Roles(Role.ADMIN)
+  }  @Patch(':id')
+  @Roles(Role.SUPER_ADMIN)
   update(@Param('id') id: string, @Body() updateBranchDto: UpdateBranchDto) {
     return this.branchesService.update(id, updateBranchDto);
-  }
-  @Delete(':id')
-  @Roles(Role.ADMIN)
+  }  @Delete(':id')
+  @Roles(Role.SUPER_ADMIN)
   remove(@Param('id') id: string) {
     return this.branchesService.remove(id);
-  }
-  @Patch(':id/deactivate')
-  @Roles(Role.ADMIN)
+  }  @Patch(':id/deactivate')
+  @Roles(Role.SUPER_ADMIN)
   deactivate(@Param('id') id: string) {
     return this.branchesService.deactivate(id);
-  }
-  @Patch(':id/activate')
-  @Roles(Role.ADMIN)
+  }  @Patch(':id/activate')
+  @Roles(Role.SUPER_ADMIN)
   activate(@Param('id') id: string) {
     return this.branchesService.activate(id);
   }

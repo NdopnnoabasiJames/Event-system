@@ -71,7 +71,7 @@ export class UsersService {
 
   async update(id: string, updateUserDto: UpdateUserDto, currentUser: any): Promise<UserDocument> {
     // Only admin can update other users, marketers can only update their own profile
-    if (currentUser.role !== Role.ADMIN && currentUser.userId !== id) {
+    if (currentUser.role !== Role.SUPER_ADMIN && currentUser.userId !== id) {
       throw new UnauthorizedException('You can only update your own profile');
     }
 
@@ -87,8 +87,8 @@ export class UsersService {
 
   async delete(id: string, currentUser: any): Promise<void> {
     // Only admin can delete users
-    if (currentUser.role !== Role.ADMIN) {
-      throw new UnauthorizedException('Only admins can delete users');
+    if (currentUser.role !== Role.SUPER_ADMIN) {
+      throw new UnauthorizedException('Only super admins can delete users');
     }
 
     const user = await this.userModel.findByIdAndDelete(id).exec();

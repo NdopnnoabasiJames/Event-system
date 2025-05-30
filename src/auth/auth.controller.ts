@@ -23,9 +23,8 @@ export class AuthController {
   async login(@Request() req) {
     return this.authService.login(req.user);
   }
-
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   @Post('register-marketer')
   async registerMarketer(@Body() registerDto: RegisterDto) {
     return this.authService.register({

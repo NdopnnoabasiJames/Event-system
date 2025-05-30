@@ -25,7 +25,6 @@ export class CreateUserDto {
     }
   )
   password: string;
-
   @IsString()
   @IsOptional()
   phone?: string;
@@ -37,4 +36,18 @@ export class CreateUserDto {
   @IsEnum(Role)
   @IsOptional()
   role?: Role;
+
+  @IsString()
+  @IsOptional()
+  state?: string;
+
+  @IsString()
+  @IsOptional()
+  branch?: string;
+
+  @IsOptional()
+  isApproved?: boolean;
+
+  @IsOptional()
+  approvedBy?: string;
 }

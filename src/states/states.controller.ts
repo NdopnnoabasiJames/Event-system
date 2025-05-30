@@ -22,9 +22,8 @@ import { Role } from '../common/enums/role.enum';
 @Controller('states')
 export class StatesController {
   constructor(private readonly statesService: StatesService) {}
-
   @Post()
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   create(@Body() createStateDto: CreateStateDto) {
     return this.statesService.create(createStateDto);
   }
@@ -38,27 +37,23 @@ export class StatesController {
   findOne(@Param('id') id: string) {
     return this.statesService.findOne(id);
   }
-
   @Patch(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   update(@Param('id') id: string, @Body() updateStateDto: UpdateStateDto) {
     return this.statesService.update(id, updateStateDto);
   }
-
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   remove(@Param('id') id: string) {
     return this.statesService.remove(id);
   }
-
   @Patch(':id/deactivate')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   deactivate(@Param('id') id: string) {
     return this.statesService.deactivate(id);
   }
-
   @Patch(':id/activate')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   activate(@Param('id') id: string) {
     return this.statesService.activate(id);
   }

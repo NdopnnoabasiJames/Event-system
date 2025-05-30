@@ -11,9 +11,8 @@ export class CloudinaryMigrationController {
   constructor(
     private readonly migrationService: CloudinaryMigrationService,
   ) {}
-
   @Get('cloudinary/status')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   async getMigrationStatus() {
     try {
       const status = await this.migrationService.getMigrationStatus();
@@ -30,9 +29,8 @@ export class CloudinaryMigrationController {
       };
     }
   }
-
   @Post('cloudinary/migrate')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   async migrateToCloudinary() {
     try {
       await this.migrationService.migrateLocalImagesToCloudinary();
@@ -48,9 +46,8 @@ export class CloudinaryMigrationController {
       };
     }
   }
-
   @Post('cloudinary/cleanup')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   async cleanupLocalImages() {
     try {
       await this.migrationService.cleanupLocalImages();

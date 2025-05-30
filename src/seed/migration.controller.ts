@@ -7,7 +7,7 @@ import { Role } from '../common/enums/role.enum';
 
 @Controller('migration')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.SUPER_ADMIN)
 export class MigrationController {
   constructor(private readonly migrationService: MigrationService) {}
 

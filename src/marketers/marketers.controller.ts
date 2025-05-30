@@ -24,7 +24,7 @@ import { UpdateAttendeeDto } from '../attendees/dto/update-attendee.dto';
 
 @Controller('marketers')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.MARKETER, Role.ADMIN)
+@Roles(Role.MARKETER, Role.SUPER_ADMIN)
 export class MarketersController {
   constructor(private readonly marketersService: MarketersService) {}
 
@@ -33,11 +33,10 @@ export class MarketersController {
     return this.marketersService.getAvailableEvents();
   }
 
-  @Get('events/my')
-  async getMyEvents(@Request() req, @Query('marketerId') marketerId?: string) {
+  @Get('events/my')  async getMyEvents(@Request() req, @Query('marketerId') marketerId?: string) {
     const userId = marketerId || req.user.userId;
     // If marketerId is provided and user is not admin, verify access
-    if (marketerId && req.user.role !== Role.ADMIN) {
+    if (marketerId && req.user.role !== Role.SUPER_ADMIN) {
       if (marketerId !== req.user.userId) {
         throw new ForbiddenException('Cannot access another marketer\'s events');
       }
@@ -108,10 +107,9 @@ export class MarketersController {
   }
 
   @Get('analytics/performance')
-  getMyPerformance(@Request() req, @Query('marketerId') marketerId?: string) {
-    const userId = marketerId || req.user.userId;
+  getMyPerformance(@Request() req, @Query('marketerId') marketerId?: string) {    const userId = marketerId || req.user.userId;
     // If marketerId is provided and user is not admin, verify access
-    if (marketerId && req.user.role !== Role.ADMIN) {
+    if (marketerId && req.user.role !== Role.SUPER_ADMIN) {
       if (marketerId !== req.user.userId) {
         throw new ForbiddenException('Cannot access another marketer\'s performance stats');
       }
@@ -124,19 +122,17 @@ export class MarketersController {
     @Param('eventId') eventId: string,
     @Request() req,
     @Query('marketerId') marketerId?: string,
-  ) {
-    const userId = marketerId || req.user.userId;
+  ) {    const userId = marketerId || req.user.userId;
     // If marketerId is provided and user is not admin, verify access
-    if (marketerId && req.user.role !== Role.ADMIN) {
+    if (marketerId && req.user.role !== Role.SUPER_ADMIN) {
       if (marketerId !== req.user.userId) {
         throw new ForbiddenException('Cannot access another marketer\'s event performance stats');
       }
     }
     return this.marketersService.getMarketerEventPerformance(userId, eventId);
   }
-
   @Get('analytics/top')
-  @Roles(Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   getTopMarketers() {
     return this.marketersService.getTopPerformingMarketers(10);
   }
