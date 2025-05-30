@@ -273,21 +273,27 @@ function setupEventListeners() {
             applyFilters();
             updatePageTitleAndDropdown(currentEvents);
         });
-    }
-
-    // Create Event button - only show for admins
+    }    // Create Event button - only show for admins
     const createEventBtn = document.querySelector('button.btn-primary.admin-only-element');
     if (createEventBtn) {
-        // Only show the button if the user is an admin
-        if (auth.isAuthenticated() && auth.getUser().role === 'admin') {
+        // Only show the button if the user is an admin (any admin type)
+        const user = auth.getUser();
+        if (auth.isAuthenticated() && (user.role === 'admin' || ['super_admin', 'state_admin', 'branch_admin'].includes(user.role))) {
             createEventBtn.classList.remove('d-none');
             
             createEventBtn.addEventListener('click', () => {
-                // Admin is authenticated, proceed to admin dashboard
-                showToast('success', 'Redirecting to admin dashboard...');
-                setTimeout(() => {
-                    window.location.href = 'admin-dashboard.html';
-                }, 1000);
+                // Redirect to appropriate admin dashboard
+                if (['super_admin', 'state_admin', 'branch_admin'].includes(user.role)) {
+                    showToast('success', 'Redirecting to hierarchical admin dashboard...');
+                    setTimeout(() => {
+                        window.location.href = 'hierarchical-admin-dashboard.html';
+                    }, 1000);
+                } else {
+                    showToast('success', 'Redirecting to admin dashboard...');
+                    setTimeout(() => {
+                        window.location.href = 'admin-dashboard.html';
+                    }, 1000);
+                }
             });
         }
     }

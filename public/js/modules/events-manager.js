@@ -10,7 +10,20 @@ import { getFormDataAsObject, toFullISOString } from '../utils/form-utils.js';
 export async function loadEventsData() {
     try {
         console.log('Fetching events from server...');
-        const response = await eventsApi.getAllEvents();
+        
+        // Get user role to determine which endpoint to use
+        const user = auth.getUser();
+        const userRole = user?.role;
+        
+        let response;
+        if (userRole === 'super_admin' || userRole === 'state_admin' || userRole === 'branch_admin') {
+            // Use hierarchical endpoint for role-based event fetching
+            response = await apiCall('/events/hierarchical/my-events', 'GET', null, auth.getToken());
+        } else {
+            // Fallback to regular events API for other roles
+            response = await eventsApi.getAllEvents();
+        }
+        
         console.log('Events response from server:', response);
         
         const events = Array.isArray(response) ? response : (response.data || []);
@@ -212,13 +225,26 @@ export async function setupEventCreationHandlers() {
                 eventBanner.value = '';
                 bannerPreviewContainer.classList.add('d-none');
             });
-        }        
-          // Setup state selection
+        }          // Setup state selection based on user role
         const stateSelectionContainer = document.getElementById('stateSelectionContainer');
         if (stateSelectionContainer) {
             // Clear existing content
             stateSelectionContainer.innerHTML = '';
-            
+
+            // Get current user info
+            const user = auth.getUser();
+            const userRole = user.role;
+
+            // Role-based state/branch selection setup
+            if (userRole === 'super_admin') {
+                await setupSuperAdminStateSelection(stateSelectionContainer);
+            } else if (userRole === 'state_admin') {
+                await setupStateAdminBranchSelection(stateSelectionContainer, user);
+            } else if (userRole === 'branch_admin') {
+                setupBranchAdminSelection(stateSelectionContainer, user);
+            }
+        }        // Helper function for Super Admin state selection
+        async function setupSuperAdminStateSelection(container) {
             try {
                 // Load states from API
                 const statesResponse = await apiCall('/states', 'GET', null, auth.getToken());
@@ -242,14 +268,14 @@ export async function setupEventCreationHandlers() {
                     `;
                     stateCheckboxesDiv.appendChild(checkboxDiv);
                 });
-                stateSelectionContainer.appendChild(stateCheckboxesDiv);
+                container.appendChild(stateCheckboxesDiv);
 
                 // Create branch selection container
                 const branchSelectionDiv = document.createElement('div');
                 branchSelectionDiv.id = 'branchSelectionContainer';
                 branchSelectionDiv.className = 'branch-selection mb-3';
                 branchSelectionDiv.innerHTML = '<label class="form-label fw-bold mb-2">Select Branches for Event*</label><div id="branchCheckboxes" class="branch-checkboxes"></div>';
-                stateSelectionContainer.appendChild(branchSelectionDiv);
+                container.appendChild(branchSelectionDiv);
                 
                 // Add event listener for state checkboxes
                 const stateCheckboxes = document.querySelectorAll('.state-checkbox');
@@ -260,7 +286,178 @@ export async function setupEventCreationHandlers() {
                 console.error('Failed to load states:', error);
                 showToast('error', 'Failed to load states');
             }
-        }        // Function to update branch selection based on selected states
+        }
+
+        // Helper function for State Admin branch selection
+        async function setupStateAdminBranchSelection(container, user) {
+            try {
+                // State Admin can only create events for their assigned state
+                const userState = user.state;
+                if (!userState) {
+                    container.innerHTML = '<div class="alert alert-warning">No state assigned to your account. Please contact administrator.</div>';
+                    return;
+                }
+
+                // Display state info
+                const stateInfoDiv = document.createElement('div');
+                stateInfoDiv.className = 'alert alert-info mb-3';
+                stateInfoDiv.innerHTML = `<strong>Creating event for state:</strong> ${userState.name}`;
+                container.appendChild(stateInfoDiv);
+
+                // Hidden input to store the state
+                const hiddenStateInput = document.createElement('input');
+                hiddenStateInput.type = 'hidden';
+                hiddenStateInput.name = 'selectedStates';
+                hiddenStateInput.value = userState._id;
+                hiddenStateInput.className = 'state-checkbox';
+                hiddenStateInput.checked = true;
+                container.appendChild(hiddenStateInput);
+
+                // Load branches for this state
+                const branchesResponse = await apiCall(`/branches/by-state/${userState._id}`, 'GET', null, auth.getToken());
+                const branches = Array.isArray(branchesResponse) ? branchesResponse : (branchesResponse.data || []);
+                
+                if (branches.length === 0) {
+                    container.innerHTML += '<div class="alert alert-warning">No branches found for your state. Please contact administrator.</div>';
+                    return;
+                }
+
+                // Create branch selection
+                const branchSelectionDiv = document.createElement('div');
+                branchSelectionDiv.className = 'branch-selection mb-3';
+                branchSelectionDiv.innerHTML = '<label class="form-label fw-bold mb-2">Select Branches for Event*</label>';
+                
+                const branchCheckboxesDiv = document.createElement('div');
+                branchCheckboxesDiv.className = 'branch-checkboxes';
+                
+                // Add branch checkboxes
+                branches.forEach((branch, branchIndex) => {
+                    const checkboxDiv = document.createElement('div');
+                    checkboxDiv.className = 'form-check mb-3';
+                    checkboxDiv.innerHTML = `
+                        <input class="form-check-input branch-checkbox" type="checkbox" value="${branch._id}" 
+                            id="branch-${branch._id}" name="branches" data-state="${userState._id}" data-branch-name="${branch.name}">
+                        <label class="form-check-label" for="branch-${branch._id}">
+                            ${branch.name}
+                        </label>
+                        <div class="pickup-stations-container mt-2 d-none" id="pickup-container-${branch._id}">
+                            <div class="card">
+                                <div class="card-header">
+                                    <small class="text-muted">Pickup Stations for ${branch.name}</small>
+                                </div>
+                                <div class="card-body">
+                                    <div id="pickup-stations-${branch._id}">
+                                        <!-- Pickup stations will be loaded here -->
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" 
+                                            onclick="handleCreateNewPickupStationForBranch(this.closest('.pickup-stations-container'), '${branch._id}', '${branchIndex}')">
+                                        <i class="bi bi-plus"></i> Add New Pickup Station
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    branchCheckboxesDiv.appendChild(checkboxDiv);
+                    
+                    // Add event listener to show/hide pickup stations when branch is selected
+                    const branchCheckbox = checkboxDiv.querySelector('.branch-checkbox');
+                    branchCheckbox.addEventListener('change', async function() {
+                        const pickupContainer = document.getElementById(`pickup-container-${branch._id}`);
+                        if (this.checked) {
+                            pickupContainer.classList.remove('d-none');
+                            await loadPickupStationsForBranch(pickupContainer, branch, branchIndex);
+                        } else {
+                            pickupContainer.classList.add('d-none');
+                        }
+                    });
+                });
+
+                branchSelectionDiv.appendChild(branchCheckboxesDiv);
+                container.appendChild(branchSelectionDiv);
+
+            } catch (error) {
+                console.error('Failed to load branches for state admin:', error);
+                showToast('error', 'Failed to load branches');
+                container.innerHTML = '<div class="alert alert-danger">Failed to load branches. Please try again.</div>';
+            }
+        }
+
+        // Helper function for Branch Admin selection
+        function setupBranchAdminSelection(container, user) {
+            try {
+                const userState = user.state;
+                const userBranch = user.branch;
+
+                if (!userState || !userBranch) {
+                    container.innerHTML = '<div class="alert alert-warning">No state or branch assigned to your account. Please contact administrator.</div>';
+                    return;
+                }
+
+                // Display state and branch info
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'alert alert-info mb-3';
+                infoDiv.innerHTML = `
+                    <strong>Creating event for:</strong><br>
+                    State: ${userState.name}<br>
+                    Branch: ${userBranch.name}
+                `;
+                container.appendChild(infoDiv);
+
+                // Hidden inputs to store the state and branch
+                const hiddenStateInput = document.createElement('input');
+                hiddenStateInput.type = 'hidden';
+                hiddenStateInput.name = 'selectedStates';
+                hiddenStateInput.value = userState._id;
+                hiddenStateInput.className = 'state-checkbox';
+                hiddenStateInput.checked = true;
+                container.appendChild(hiddenStateInput);
+
+                const hiddenBranchInput = document.createElement('input');
+                hiddenBranchInput.type = 'hidden';
+                hiddenBranchInput.name = 'branches';
+                hiddenBranchInput.value = userBranch._id;
+                hiddenBranchInput.className = 'branch-checkbox';
+                hiddenBranchInput.checked = true;
+                hiddenBranchInput.setAttribute('data-state', userState._id);
+                hiddenBranchInput.setAttribute('data-branch-name', userBranch.name);
+                container.appendChild(hiddenBranchInput);
+
+                // Create pickup stations section for the branch
+                const pickupStationsDiv = document.createElement('div');
+                pickupStationsDiv.className = 'pickup-stations-section mb-3';
+                pickupStationsDiv.innerHTML = `
+                    <label class="form-label fw-bold mb-2">Manage Pickup Stations</label>
+                    <div class="pickup-stations-container" id="pickup-container-${userBranch._id}">
+                        <div class="card">
+                            <div class="card-header">
+                                <small class="text-muted">Pickup Stations for ${userBranch.name}</small>
+                            </div>
+                            <div class="card-body">
+                                <div id="pickup-stations-${userBranch._id}">
+                                    <!-- Pickup stations will be loaded here -->
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" 
+                                        onclick="handleCreateNewPickupStationForBranch(this.closest('.pickup-stations-container'), '${userBranch._id}', '0')">
+                                    <i class="bi bi-plus"></i> Add New Pickup Station
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(pickupStationsDiv);
+
+                // Auto-load pickup stations for the branch
+                const pickupContainer = document.getElementById(`pickup-container-${userBranch._id}`);
+                if (pickupContainer) {
+                    loadPickupStationsForBranch(pickupContainer, userBranch, 0);
+                }
+
+            } catch (error) {
+                console.error('Failed to setup branch admin selection:', error);
+                showToast('error', 'Failed to setup branch admin selection');
+                container.innerHTML = '<div class="alert alert-danger">Failed to setup branch selection. Please try again.</div>';
+            }
+        }// Function to update branch selection based on selected states
         async function updateBranchSelection() {
             const selectedStates = [];
             const stateCheckboxes = document.querySelectorAll('.state-checkbox:checked');
@@ -538,8 +735,7 @@ export async function setupEventCreationHandlers() {
                 // Add selections to form data
                 formData.selectedStates = selectedStates;
                 formData.selectedBranches = selectedBranches;
-                
-                // Step 3: Validate everything and collect errors
+                  // Step 3: Validate everything and collect errors
                 let validationErrors = [];
                 
                 // Basic form validation
@@ -548,12 +744,26 @@ export async function setupEventCreationHandlers() {
                     return;  // Stop here if basic HTML validation fails
                 }
                 
-                // Validate states and branches
-                if (selectedStates.length === 0) {
-                    validationErrors.push('Please select at least one state for the event');
-                }
-                  if (selectedBranches.length === 0) {
-                    validationErrors.push('Please select at least one branch for the event');
+                // Role-based validation for states and branches
+                const user = auth.getUser();
+                const userRole = user.role;
+                
+                if (userRole === 'super_admin') {
+                    // Super Admin must select states and branches
+                    if (selectedStates.length === 0) {
+                        validationErrors.push('Please select at least one state for the event');
+                    }
+                    if (selectedBranches.length === 0) {
+                        validationErrors.push('Please select at least one branch for the event');
+                    }
+                } else if (userRole === 'state_admin') {
+                    // State Admin has predefined state, but must select branches
+                    if (selectedBranches.length === 0) {
+                        validationErrors.push('Please select at least one branch for the event');
+                    }
+                } else if (userRole === 'branch_admin') {
+                    // Branch Admin has predefined state and branch - no additional validation needed
+                    // The state and branch are automatically set from their user profile
                 }
                 
                 // Validate date fields
@@ -636,10 +846,22 @@ export async function setupEventCreationHandlers() {
                 }
                 
                 // Step 6: Format event data for API submission
-                const eventData = formatEventData(formData);
-                
-                // Step 7: Submit the event data to the server
-                const createdEvent = await eventsApi.createEvent(eventData);
+                const eventData = formatEventData(formData);                // Step 7: Submit the event data to the server using role-based endpoint
+                let createdEvent;
+
+                if (userRole === 'super_admin') {
+                    // Super Admin creates events with full hierarchy
+                    createdEvent = await apiCall('/events/hierarchical/super-admin', 'POST', eventData, auth.getToken());
+                } else if (userRole === 'state_admin') {
+                    // State Admin creates events for their state
+                    createdEvent = await apiCall('/events/hierarchical/state-admin', 'POST', eventData, auth.getToken());
+                } else if (userRole === 'branch_admin') {
+                    // Branch Admin creates events for their branch
+                    createdEvent = await apiCall('/events/hierarchical/branch-admin', 'POST', eventData, auth.getToken());
+                } else {
+                    // Fallback to regular event creation for other roles
+                    createdEvent = await eventsApi.createEvent(eventData);
+                }
                 
                 // Step 8: Handle successful creation
                 showToast('success', 'Event created successfully!');
@@ -698,6 +920,164 @@ export function formatEventData(formData) {
     }
 
     return eventData;
+}
+
+/**
+ * Load pickup stations management for Branch Admin events page
+ */
+export async function loadPickupStationsManagement() {
+    try {
+        const user = auth.getUser();
+        if (user.role !== 'branch_admin' || !user.branch) {
+            console.log('Not a branch admin or no branch assigned');
+            return;
+        }
+
+        const container = document.getElementById('pickupStationsManagement');
+        if (!container) return;
+
+        // Load existing pickup stations for the branch
+        const response = await apiCall(`/pickup-stations/by-branch/${user.branch._id}`, 'GET', null, auth.getToken());
+        const pickupStations = Array.isArray(response) ? response : (response.data || []);
+
+        // Display pickup stations
+        container.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>Pickup Stations Management</h5>
+                <button type="button" class="btn btn-primary" onclick="createNewPickupStation()">
+                    <i class="bi bi-plus"></i> Add New Station
+                </button>
+            </div>
+            <div id="pickupStationsList">
+                ${pickupStations.length === 0 ? 
+                    '<div class="alert alert-info">No pickup stations found. Create your first station!</div>' :
+                    pickupStations.map(station => `
+                        <div class="card mb-3" data-station-id="${station._id}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="card-title">${station.location || station.name}</h6>
+                                        <p class="card-text text-muted">
+                                            Status: <span class="badge ${station.isActive ? 'bg-success' : 'bg-secondary'}">${station.isActive ? 'Active' : 'Inactive'}</span>
+                                        </p>
+                                        ${station.zone ? `<p class="card-text"><small class="text-muted">Zone: ${station.zone}</small></p>` : ''}
+                                    </div>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="editPickupStation('${station._id}')">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deletePickupStation('${station._id}', '${station.location || station.name}')">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')
+                }
+            </div>
+        `;
+
+        // Make functions globally available
+        window.createNewPickupStation = createNewPickupStation;
+        window.editPickupStation = editPickupStation;
+        window.deletePickupStation = deletePickupStation;
+
+    } catch (error) {
+        console.error('Failed to load pickup stations:', error);
+        const container = document.getElementById('pickupStationsManagement');
+        if (container) {
+            container.innerHTML = '<div class="alert alert-danger">Failed to load pickup stations. Please try again.</div>';
+        }
+    }
+}
+
+/**
+ * Create a new pickup station
+ */
+async function createNewPickupStation() {
+    try {
+        const user = auth.getUser();
+        if (!user.branch) {
+            showToast('error', 'No branch assigned to your account');
+            return;
+        }
+
+        const location = prompt('Enter the location/address for the new pickup station:');
+        if (!location || location.trim() === '') {
+            return;
+        }
+
+        const zone = prompt('Enter the zone name (optional):');
+
+        const createData = {
+            location: location.trim(),
+            branchId: user.branch._id,
+            zone: zone ? zone.trim() : null,
+            isActive: true
+        };
+
+        await apiCall('/pickup-stations', 'POST', createData, auth.getToken());
+        showToast('success', `Pickup station "${location}" created successfully`);
+        
+        // Reload the pickup stations list
+        await loadPickupStationsManagement();
+
+    } catch (error) {
+        console.error('Failed to create pickup station:', error);
+        showToast('error', 'Failed to create pickup station: ' + (error.message || 'Unknown error'));
+    }
+}
+
+/**
+ * Edit an existing pickup station
+ */
+async function editPickupStation(stationId) {
+    try {
+        // Get current station data
+        const station = await apiCall(`/pickup-stations/${stationId}`, 'GET', null, auth.getToken());
+        
+        const newLocation = prompt('Enter the new location:', station.location || station.name);
+        if (newLocation === null) return; // User cancelled
+        
+        const newZone = prompt('Enter the zone name:', station.zone || '');
+        
+        const updateData = {
+            location: newLocation.trim(),
+            zone: newZone ? newZone.trim() : null
+        };
+
+        await apiCall(`/pickup-stations/${stationId}`, 'PATCH', updateData, auth.getToken());
+        showToast('success', 'Pickup station updated successfully');
+        
+        // Reload the pickup stations list
+        await loadPickupStationsManagement();
+
+    } catch (error) {
+        console.error('Failed to update pickup station:', error);
+        showToast('error', 'Failed to update pickup station: ' + (error.message || 'Unknown error'));
+    }
+}
+
+/**
+ * Delete a pickup station
+ */
+async function deletePickupStation(stationId, stationName) {
+    try {
+        if (!confirm(`Are you sure you want to delete the pickup station "${stationName}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        await apiCall(`/pickup-stations/${stationId}`, 'DELETE', null, auth.getToken());
+        showToast('success', `Pickup station "${stationName}" deleted successfully`);
+        
+        // Reload the pickup stations list
+        await loadPickupStationsManagement();
+
+    } catch (error) {
+        console.error('Failed to delete pickup station:', error);
+        showToast('error', 'Failed to delete pickup station: ' + (error.message || 'Unknown error'));
+    }
 }
 
 

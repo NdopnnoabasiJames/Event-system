@@ -8,8 +8,10 @@ import {
   UseGuards,
   Request,
   HttpStatus,
+  Patch,
 } from '@nestjs/common';
 import { EventsService } from './events.service';
+import { HierarchicalEventService } from './hierarchical-event.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -25,17 +27,40 @@ class BusPickupRequest {
 @Controller('events')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class EventsController {
-  constructor(private readonly eventsService: EventsService) {}
-
+  constructor(
+    private readonly eventsService: EventsService,
+    private readonly hierarchicalEventService: HierarchicalEventService,
+  ) {}
   @Post()
-  @Roles(Role.SUPER_ADMIN)
-  create(@Body() createEventDto: CreateEventDto) {
-    return this.eventsService.create(createEventDto);
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async create(@Body() createEventDto: CreateEventDto, @Request() req) {
+    const { userId, role, state, branch } = req.user;
+
+    // Route to appropriate creation method based on role
+    if (role === Role.SUPER_ADMIN) {
+      return this.hierarchicalEventService.createSuperAdminEvent(createEventDto, userId);
+    } else if (role === Role.STATE_ADMIN) {
+      return this.hierarchicalEventService.createStateAdminEvent(createEventDto, userId, state);
+    } else if (role === Role.BRANCH_ADMIN) {
+      return this.hierarchicalEventService.createBranchAdminEvent(createEventDto, userId, state, branch);
+    }
   }
 
   @Get()
-  findAll() {
-    return this.eventsService.findAll();
+  async findAll(@Request() req) {
+    const { userId, role, state, branch } = req.user;
+
+    // Route to appropriate fetch method based on role
+    if (role === Role.SUPER_ADMIN) {
+      return this.hierarchicalEventService.getSuperAdminEvents();
+    } else if (role === Role.STATE_ADMIN) {
+      return this.hierarchicalEventService.getStateAdminEvents(state);
+    } else if (role === Role.BRANCH_ADMIN) {
+      return this.hierarchicalEventService.getBranchAdminEvents(state, branch);
+    } else {
+      // For other roles (MARKETER, USER, etc.), return all events
+      return this.eventsService.findAll();
+    }
   }
 
   @Get('active')
@@ -83,11 +108,93 @@ export class EventsController {
   leaveEvent(@Param('id') id: string, @Request() req) {
     return this.eventsService.removeMarketerFromEvent(id, req.user.userId);
   }
-
   @Delete(':id')
   @Roles(Role.SUPER_ADMIN)
   remove(@Param('id') id: string) {
     return this.eventsService.remove(id);
+  }
+
+  // Hierarchical Event Management Endpoints
+
+  @Post(':eventId/select-branches')
+  @Roles(Role.STATE_ADMIN)
+  async selectBranchesForEvent(
+    @Param('eventId') eventId: string,
+    @Body('selectedBranches') selectedBranches: string[],
+    @Request() req
+  ) {
+    const { userId, state } = req.user;
+    return this.hierarchicalEventService.selectBranchesForEvent(eventId, selectedBranches, userId, state);
+  }
+
+  @Get('dashboard/super-admin')
+  @Roles(Role.SUPER_ADMIN)
+  async getSuperAdminDashboard() {
+    return this.hierarchicalEventService.getSuperAdminEvents();
+  }
+
+  @Get('dashboard/state-admin')
+  @Roles(Role.STATE_ADMIN)
+  async getStateAdminDashboard(@Request() req) {
+    const { state } = req.user;
+    return this.hierarchicalEventService.getStateAdminEvents(state);
+  }
+
+  @Get('dashboard/branch-admin')
+  @Roles(Role.BRANCH_ADMIN)
+  async getBranchAdminDashboard(@Request() req) {
+    const { state, branch } = req.user;
+    return this.hierarchicalEventService.getBranchAdminEvents(state, branch);
+  }
+  @Get('my-events')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async getMyEvents(@Request() req) {
+    const { userId, role, state, branch } = req.user;
+
+    if (role === Role.SUPER_ADMIN) {
+      return this.hierarchicalEventService.getSuperAdminEvents();
+    } else if (role === Role.STATE_ADMIN) {
+      return this.hierarchicalEventService.getStateAdminEvents(state);
+    } else if (role === Role.BRANCH_ADMIN) {
+      return this.hierarchicalEventService.getBranchAdminEvents(state, branch);
+    }
+  }
+
+  // Hierarchical Event Creation Endpoints
+
+  @Post('hierarchical/super-admin')
+  @Roles(Role.SUPER_ADMIN)
+  async createSuperAdminEvent(@Body() createEventDto: CreateEventDto, @Request() req) {
+    const { userId } = req.user;
+    return this.hierarchicalEventService.createSuperAdminEvent(createEventDto, userId);
+  }
+
+  @Post('hierarchical/state-admin')
+  @Roles(Role.STATE_ADMIN)
+  async createStateAdminEvent(@Body() createEventDto: CreateEventDto, @Request() req) {
+    const { userId, state } = req.user;
+    return this.hierarchicalEventService.createStateAdminEvent(createEventDto, userId, state);
+  }
+
+  @Post('hierarchical/branch-admin')
+  @Roles(Role.BRANCH_ADMIN)
+  async createBranchAdminEvent(@Body() createEventDto: CreateEventDto, @Request() req) {
+    const { userId, state, branch } = req.user;
+    return this.hierarchicalEventService.createBranchAdminEvent(createEventDto, userId, state, branch);
+  }
+
+  @Get('hierarchical/my-events')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async getHierarchicalMyEvents(@Request() req) {
+    const { userId, role, state, branch } = req.user;
+
+    if (role === Role.SUPER_ADMIN) {
+      return this.hierarchicalEventService.getSuperAdminEvents();
+    } else if (role === Role.STATE_ADMIN) {
+      return this.hierarchicalEventService.getStateAdminEvents(state);
+    } else if (role === Role.BRANCH_ADMIN) {
+      return this.hierarchicalEventService.getBranchAdminEvents(state, branch);
+    }
   }
 
   @Post(':eventId/concierge-requests')

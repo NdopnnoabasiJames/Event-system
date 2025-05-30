@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { EventsService } from './events.service';
+import { HierarchicalEventService } from './hierarchical-event.service';
 import { EventsController } from './events.controller';
 import { Event, EventSchema } from '../schemas/event.schema';
 import { UsersModule } from '../users/users.module';
@@ -19,7 +20,7 @@ import { PickupStationsModule } from '../pickup-stations/pickup-stations.module'
     PickupStationsModule,
   ],
   controllers: [EventsController],
-  providers: [EventsService],
-  exports: [EventsService],
+  providers: [EventsService, HierarchicalEventService],
+  exports: [EventsService, HierarchicalEventService],
 })
 export class EventsModule {}
