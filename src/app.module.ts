@@ -13,6 +13,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { SeedModule } from './seed/seed.module';
 import { StatesModule } from './states/states.module';
 import { BranchesModule } from './branches/branches.module';
+import { ZonesModule } from './zones/zones.module';
 import { PickupStationsModule } from './pickup-stations/pickup-stations.module';
 import { AdminHierarchyModule } from './admin-hierarchy/admin-hierarchy.module';
 import { databaseConfig, jwtConfig, emailConfig } from './config/configuration';
@@ -57,10 +58,10 @@ import { ConciergesModule } from './concierges/concierges.module';
       inject: [ConfigService],    }),    CommonModule,
     AuthModule,
     UsersModule,    
-    EventsModule,
-    AdminHierarchyModule,
+    EventsModule,    AdminHierarchyModule,
     StatesModule,
     BranchesModule,
+    ZonesModule,
     PickupStationsModule,
     MarketersModule,
     AttendeesModule,
