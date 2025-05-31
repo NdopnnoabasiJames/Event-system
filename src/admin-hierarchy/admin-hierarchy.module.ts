@@ -7,6 +7,7 @@ import { State, StateSchema } from '../schemas/state.schema';
 import { Branch, BranchSchema } from '../schemas/branch.schema';
 import { Zone, ZoneSchema } from '../schemas/zone.schema';
 import { Event, EventSchema } from '../schemas/event.schema';
+import { PickupStation, PickupStationSchema } from '../schemas/pickup-station.schema';
 import { HierarchicalEventCreationService } from '../events/hierarchical-event-creation.service';
 
 @Module({
@@ -17,6 +18,7 @@ import { HierarchicalEventCreationService } from '../events/hierarchical-event-c
       { name: Branch.name, schema: BranchSchema },
       { name: Zone.name, schema: ZoneSchema },
       { name: Event.name, schema: EventSchema },
+      { name: PickupStation.name, schema: PickupStationSchema },
     ]),
   ],
   controllers: [AdminHierarchyController],

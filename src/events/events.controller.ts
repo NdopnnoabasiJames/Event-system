@@ -17,6 +17,11 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { CreateHierarchicalEventDto } from './dto/create-hierarchical-event.dto';
 import { UpdateEventAvailabilityDto } from './dto/update-event-availability.dto';
 import { SelectBranchesDto, SelectZonesDto } from './dto/hierarchical-selection.dto';
+import { 
+  AssignPickupStationsDto, 
+  UpdatePickupStationAssignmentDto, 
+  RemovePickupStationAssignmentDto 
+} from './dto/assign-pickup-stations.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -197,11 +202,52 @@ export class EventsController {
     const { userId } = req.user;
     return this.hierarchicalEventCreationService.getEventsNeedingZoneSelection(userId);
   }
-
   @Put('availability')
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
   async updateEventAvailability(@Body() updateDto: UpdateEventAvailabilityDto, @Request() req) {
     const { userId } = req.user;
     return this.hierarchicalEventCreationService.updateEventAvailability(updateDto, userId);
+  }
+
+  // Phase 6: Pickup Station Assignment Endpoints for Zonal Admins
+
+  @Get('for-pickup-assignment')
+  @Roles(Role.ZONAL_ADMIN)
+  async getEventsForPickupAssignment(@Request() req) {
+    const { userId } = req.user;
+    return this.hierarchicalEventCreationService.getEventsForPickupAssignment(userId);
+  }
+
+  @Get('available-pickup-stations')
+  @Roles(Role.ZONAL_ADMIN)
+  async getAvailablePickupStations(@Request() req) {
+    const { userId } = req.user;
+    return this.hierarchicalEventCreationService.getAvailablePickupStations(userId);
+  }
+
+  @Get(':eventId/pickup-stations')
+  @Roles(Role.ZONAL_ADMIN)
+  async getEventPickupStations(@Param('eventId') eventId: string, @Request() req) {
+    const { userId } = req.user;
+    return this.hierarchicalEventCreationService.getEventPickupStations(eventId, userId);
+  }
+
+  @Post('assign-pickup-stations')
+  @Roles(Role.ZONAL_ADMIN)
+  async assignPickupStations(@Body() assignDto: AssignPickupStationsDto, @Request() req) {
+    const { userId } = req.user;
+    return this.hierarchicalEventCreationService.assignPickupStations(assignDto, userId);
+  }
+
+  @Put('update-pickup-station-assignment')
+  @Roles(Role.ZONAL_ADMIN)
+  async updatePickupStationAssignment(@Body() updateDto: UpdatePickupStationAssignmentDto, @Request() req) {
+    const { userId } = req.user;
+    return this.hierarchicalEventCreationService.updatePickupStationAssignment(updateDto, userId);
+  }  @Delete('remove-pickup-station-assignment')
+  @Roles(Role.ZONAL_ADMIN)
+  async removePickupStationAssignment(@Body() removeDto: RemovePickupStationAssignmentDto, @Request() req) {
+    const { userId } = req.user;
+    return this.hierarchicalEventCreationService.removePickupStationAssignment(removeDto, userId);
   }
 }

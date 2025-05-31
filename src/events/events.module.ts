@@ -5,6 +5,7 @@ import { HierarchicalEventService } from './hierarchical-event.service';
 import { HierarchicalEventCreationService } from './hierarchical-event-creation.service';
 import { EventsController } from './events.controller';
 import { Event, EventSchema } from '../schemas/event.schema';
+import { PickupStation, PickupStationSchema } from '../schemas/pickup-station.schema';
 import { UsersModule } from '../users/users.module';
 import { AttendeesModule } from '../attendees/attendees.module';
 import { StatesModule } from '../states/states.module';
@@ -14,16 +15,17 @@ import { AdminHierarchyModule } from '../admin-hierarchy/admin-hierarchy.module'
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Event.name, schema: EventSchema }]),
+    MongooseModule.forFeature([
+      { name: Event.name, schema: EventSchema },
+      { name: PickupStation.name, schema: PickupStationSchema },
+    ]),
     UsersModule,
     AttendeesModule,
     StatesModule,
     BranchesModule,
     PickupStationsModule,
     AdminHierarchyModule,
-  ],
-  controllers: [EventsController],
-  providers: [EventsService, HierarchicalEventService, HierarchicalEventCreationService],
+  ],  controllers: [EventsController],  providers: [EventsService, HierarchicalEventService, HierarchicalEventCreationService],
   exports: [EventsService, HierarchicalEventService, HierarchicalEventCreationService],
 })
 export class EventsModule {}
