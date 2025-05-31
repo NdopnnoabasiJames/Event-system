@@ -517,6 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Make API objects and functions globally available for modules
+window.apiCall = apiCall;
 window.eventsApi = eventsApi;
 window.attendeesApi = attendeesApi;
 window.statesApi = statesApi;

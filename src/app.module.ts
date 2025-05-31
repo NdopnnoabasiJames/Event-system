@@ -14,6 +14,7 @@ import { SeedModule } from './seed/seed.module';
 import { StatesModule } from './states/states.module';
 import { BranchesModule } from './branches/branches.module';
 import { PickupStationsModule } from './pickup-stations/pickup-stations.module';
+import { AdminHierarchyModule } from './admin-hierarchy/admin-hierarchy.module';
 import { databaseConfig, jwtConfig, emailConfig } from './config/configuration';
 import { configValidationSchema } from './config/validation.schema';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
@@ -53,11 +54,11 @@ import { ConciergesModule } from './concierges/concierges.module';
         },
 
       }),
-      inject: [ConfigService],
-    }),    CommonModule,
+      inject: [ConfigService],    }),    CommonModule,
     AuthModule,
     UsersModule,    
     EventsModule,
+    AdminHierarchyModule,
     StatesModule,
     BranchesModule,
     PickupStationsModule,

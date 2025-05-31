@@ -22,21 +22,15 @@ export class Event {
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   createdBy: Types.ObjectId;
-
   @Prop({ required: true, enum: ['super_admin', 'state_admin', 'branch_admin'] })
   creatorLevel: string;
 
-  @Prop({ type: [String], default: [] })
-  selectedStates: string[];
+  // Available states and branches (selected by higher level admins)
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'State' }], default: [] })
+  availableStates: Types.ObjectId[];
 
-  @Prop({ type: [String], default: [] })
-  selectedBranches: string[];
-
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'State' }], required: true })
-  states: Types.ObjectId[];
-
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'Branch' }], required: true })
-  branches: Types.ObjectId[];
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Branch' }], default: [] })
+  availableBranches: Types.ObjectId[];
 
   @Prop({ 
     type: [{ 

@@ -15,16 +15,15 @@ export class User {
   phone?: string;
 
   @Prop({ required: true })
-  password: string;
-  @Prop({ required: true, enum: Role, default: Role.ATTENDEE, index: true })
+  password: string;  @Prop({ required: true, enum: Role, default: Role.ATTENDEE, index: true })
   role: Role;
 
-  // Admin hierarchy fields
-  @Prop({ required: false })
-  state?: string;
+  // Admin hierarchy fields - ObjectId references
+  @Prop({ type: Types.ObjectId, ref: 'State', required: false, index: true })
+  state?: Types.ObjectId;
 
-  @Prop({ required: false })
-  branch?: string;
+  @Prop({ type: Types.ObjectId, ref: 'Branch', required: false, index: true })
+  branch?: Types.ObjectId;
 
   @Prop({ default: false })
   isApproved: boolean;

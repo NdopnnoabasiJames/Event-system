@@ -98,7 +98,6 @@ export class HierarchicalEventService {
       throw new HttpException(`Failed to get branch admin events: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-
   // State Admin selects branches for super admin created events
   async selectBranchesForEvent(eventId: string, selectedBranches: string[], stateAdminId: string, stateAdminState: string): Promise<EventDocument> {
     try {
@@ -108,11 +107,22 @@ export class HierarchicalEventService {
       }
 
       // Verify state admin can modify this event
-      if (event.creatorLevel !== 'super_admin' || !event.selectedStates.includes(stateAdminState)) {
+      if (event.creatorLevel !== 'super_admin') {
         throw new UnauthorizedException('You cannot modify this event');
       }
 
-      event.selectedBranches = [...new Set([...event.selectedBranches, ...selectedBranches])];
+      // Check if admin's state is in availableStates
+      const hasAccess = event.availableStates.some(stateId => stateId.toString() === stateAdminState);
+      if (!hasAccess) {
+        throw new UnauthorizedException('You cannot modify this event');
+      }
+
+      // Add branches to availableBranches (don't replace, add to existing)
+      const existingBranches = event.availableBranches.map(id => id.toString());
+      const newBranches = selectedBranches.filter(id => !existingBranches.includes(id));
+      const newBranchIds = newBranches.map(id => new Types.ObjectId(id));
+      
+      event.availableBranches.push(...newBranchIds);
       return await event.save();
     } catch (error) {
       throw new HttpException(`Failed to select branches: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);

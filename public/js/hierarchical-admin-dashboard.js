@@ -4,26 +4,33 @@
 // Import modules
 import { loadTopMarketers, showMarketerDetails, setupMarketerFilter } from './modules/marketer-manager.js';
 import { setupEventCreationHandlers, formatEventData } from './modules/events-manager.js';
+import { adminHierarchyAPI } from './modules/admin-hierarchy-api.js';
+import { HierarchicalEventCreator, BranchSelectionManager } from './modules/hierarchical-event-creator.js';
 
 // Global variables
+let currentAdmin = null;
+let allEvents = [];
+let allAttendees = [];
+let hierarchicalEventCreator = null;
+let branchSelectionManager = null;
+
+// Derived variables based on currentAdmin
 let currentUserRole = null;
 let currentUserState = null;
 let currentUserBranch = null;
-let allEvents = [];
-let allAttendees = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Check if user is authenticated
-    if (!auth.isAuthenticated()) {
-        showToast('error', 'Please login to access the admin dashboard');
+    if (!window.auth.isAuthenticated()) {
+        window.showToast('error', 'Please login to access the admin dashboard');
         window.location.href = 'login.html';
         return;
     }
 
     // Check if user is a hierarchical admin
-    const user = auth.getUser();
+    const user = window.auth.getUser();
     if (!['super_admin', 'state_admin', 'branch_admin'].includes(user.role)) {
-        showToast('error', 'Only hierarchical administrators can access this page');
+        window.showToast('error', 'Only hierarchical administrators can access this page');
         
         // Redirect to appropriate dashboard based on role
         if (user.role === 'admin') {
@@ -37,29 +44,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-        // Set global user info
-        currentUserRole = user.role;
-        currentUserState = user.state;
-        currentUserBranch = user.branch;
+        // Load admin profile from new API
+        currentAdmin = await adminHierarchyAPI.getProfile();
+
+        // Set derived variables
+        currentUserRole = currentAdmin.role;
+        currentUserState = currentAdmin.state?._id || currentAdmin.state;
+        currentUserBranch = currentAdmin.branch?._id || currentAdmin.branch;
 
         // Update auth state
-        updateAuthState();
+        window.updateAuthState();
+
+        // Initialize hierarchical event creator
+        hierarchicalEventCreator = new HierarchicalEventCreator();
+        await hierarchicalEventCreator.initialize(currentAdmin);
+
+        // Initialize branch selection manager for state admins
+        if (currentAdmin.role === 'state_admin') {
+            branchSelectionManager = new BranchSelectionManager();
+            await branchSelectionManager.initialize();
+            // Make it globally accessible for button clicks
+            window.branchSelector = branchSelectionManager;
+        }
 
         // Initialize role-based UI
         await initializeRoleBasedUI();
 
-        // Load initial data
+        // Load initial data using new API
         await loadInitialData();
 
         // Setup event handlers
         setupEventHandlers();
 
-        // Setup event creation
-        await setupEventCreationHandlers();
-
     } catch (error) {
         console.error('Error initializing dashboard:', error);
-        showToast('error', 'Failed to initialize dashboard');
+        window.showToast('error', 'Failed to initialize dashboard');
     }
 });
 
@@ -81,12 +100,10 @@ async function initializeRoleBasedUI() {
  * Update admin info section with role and territory information
  */
 function updateAdminInfoSection() {
-    const user = auth.getUser();
-    
     // Update admin name
     const adminNameElement = document.getElementById('admin-name');
     if (adminNameElement) {
-        adminNameElement.textContent = user.name || 'Admin User';
+        adminNameElement.textContent = currentAdmin.name || 'Admin User';
     }
 
     // Update role badge
@@ -97,7 +114,21 @@ function updateAdminInfoSection() {
             'state_admin': 'State Admin', 
             'branch_admin': 'Branch Admin'
         };
-        roleBadgeElement.textContent = roleDisplayNames[user.role] || user.role;
+        roleBadgeElement.textContent = roleDisplayNames[currentAdmin.role] || currentAdmin.role;
+    }
+
+    // Update territory information
+    const territoryElement = document.getElementById('admin-territory');
+    if (territoryElement) {
+        let territoryText = 'All Territories';
+        
+        if (currentAdmin.role === 'state_admin' && currentAdmin.state) {
+            territoryText = `State: ${currentAdmin.state.name}`;
+        } else if (currentAdmin.role === 'branch_admin' && currentAdmin.branch) {
+            territoryText = `Branch: ${currentAdmin.branch.name}`;
+        }
+        
+        territoryElement.textContent = territoryText;
     }
 
     // Update description
@@ -105,10 +136,10 @@ function updateAdminInfoSection() {
     if (descriptionElement) {
         const descriptions = {
             'super_admin': 'Managing all events and territories nationwide',
-            'state_admin': `Managing events and branches in ${user.stateName || user.state}`,
-            'branch_admin': `Managing zones and pickup stations in ${user.branchName || user.branch}`
+            'state_admin': `Managing events and branches in ${currentAdmin.state?.name || 'your state'}`,
+            'branch_admin': `Managing zones and pickup stations in ${currentAdmin.branch?.name || 'your branch'}`
         };
-        descriptionElement.textContent = descriptions[user.role] || 'Managing your events and territories';
+        descriptionElement.textContent = descriptions[currentAdmin.role] || 'Managing your events and territories';
     }
 
     // Update territory info
@@ -117,17 +148,17 @@ function updateAdminInfoSection() {
     const adminBranchElement = document.getElementById('admin-branch');
     const branchInfoContainer = document.getElementById('branch-info-container');
 
-    if (user.role !== 'super_admin' && territoryInfoElement) {
+    if (currentAdmin.role !== 'super_admin' && territoryInfoElement) {
         territoryInfoElement.style.display = 'block';
         
         if (adminStateElement) {
-            adminStateElement.textContent = user.stateName || user.state || '-';
+            adminStateElement.textContent = currentAdmin.state?.name || currentAdmin.state || '-';
         }
 
-        if (user.role === 'branch_admin' && branchInfoContainer) {
+        if (currentAdmin.role === 'branch_admin' && branchInfoContainer) {
             branchInfoContainer.style.display = 'block';
             if (adminBranchElement) {
-                adminBranchElement.textContent = user.branchName || user.branch || '-';
+                adminBranchElement.textContent = currentAdmin.branch?.name || currentAdmin.branch || '-';
             }
         }
     }
@@ -210,41 +241,44 @@ function updateRoleBasedNavigation() {
  */
 async function loadInitialData() {
     try {
-        // Load role-specific events
-        await loadMyEvents();
+        // Load role-specific events using new API
+        await loadEvents();
 
         // Load attendees
         await loadAttendeesData();
 
         // Load role-specific additional data
-        if (currentUserRole === 'super_admin') {
-            await loadAllEvents();
+        if (currentAdmin.role === 'super_admin') {
             await loadPendingAdmins();
-        } else if (currentUserRole === 'state_admin') {
-            await loadBranchSelectionEvents();
-        } else if (currentUserRole === 'branch_admin') {
+        } else if (currentAdmin.role === 'branch_admin') {
             await loadPickupStations();
         }
 
     } catch (error) {
         console.error('Error loading initial data:', error);
-        showToast('error', 'Failed to load dashboard data');
+        window.showToast('error', 'Failed to load dashboard data');
     }
 }
 
 /**
- * Load events specific to current user's role and permissions
+ * Load events specific to current admin's role and permissions using new API
  */
-async function loadMyEvents() {
+async function loadEvents() {
     try {
-        const response = await apiCall('/events/my-events', 'GET', null, auth.getToken());
+        const response = await adminHierarchyAPI.getEventsForAdmin();
+        
+        // Ensure we have an array - handle both direct array and wrapped responses
         const events = Array.isArray(response) ? response : (response.data || []);
+        console.log('Loaded events:', events);
         
         allEvents = events; // Store for filtering
         displayMyEvents(events);
         
+        // Make loadEvents globally accessible for refresh
+        window.loadEvents = loadEvents;
+        
     } catch (error) {
-        console.error('Error loading my events:', error);
+        console.error('Error loading events:', error);
         const tableBody = document.getElementById('my-events-table-body');
         if (tableBody) {
             tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Failed to load events</td></tr>';
@@ -261,7 +295,17 @@ function displayMyEvents(events) {
     
     if (!tableBody) return;
 
-    if (!events || events.length === 0) {
+    // Ensure events is an array
+    if (!events || !Array.isArray(events)) {
+        console.error('displayMyEvents: events is not an array:', events);
+        tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error: Invalid events data</td></tr>';
+        if (noEventsDiv) {
+            noEventsDiv.classList.remove('d-none');
+        }
+        return;
+    }
+
+    if (events.length === 0) {
         tableBody.innerHTML = '<tr><td colspan="8" class="text-center">No events found</td></tr>';
         if (noEventsDiv) {
             noEventsDiv.classList.remove('d-none');
@@ -291,12 +335,11 @@ function displayMyEvents(events) {
         
         // Get status badge
         const statusBadge = getEventStatusBadge(event);
-        
-        // Format states and branches
-        const statesDisplay = event.selectedStates?.length > 0 ? 
-            `${event.selectedStates.length} state(s)` : 'None';
-        const branchesDisplay = event.selectedBranches?.length > 0 ? 
-            `${event.selectedBranches.length} branch(es)` : 'None';
+          // Format states and branches using new structure
+        const statesDisplay = event.availableStates?.length > 0 ? 
+            event.availableStates.map(state => state.name).join(', ') : 'None';
+        const branchesDisplay = event.availableBranches?.length > 0 ? 
+            event.availableBranches.map(branch => branch.name).join(', ') : 'None';
 
         // Count attendees (if available)
         const attendeeCount = event.attendeeCount || 0;
@@ -340,7 +383,7 @@ async function loadAllEvents() {
     if (currentUserRole !== 'super_admin') return;
 
     try {
-        const response = await apiCall('/events/dashboard/super-admin', 'GET', null, auth.getToken());
+        const response = await window.apiCall('/events/dashboard/super-admin', 'GET', null, window.auth.getToken());
         const events = Array.isArray(response) ? response : (response.data || []);
         
         displayAllEvents(events);
@@ -428,7 +471,7 @@ async function loadBranchSelectionEvents() {
 
     try {
         // Load Super Admin created events that include this state
-        const response = await apiCall('/events', 'GET', null, auth.getToken());
+        const response = await window.apiCall('/events', 'GET', null, window.auth.getToken());
         const allEvents = Array.isArray(response) ? response : (response.data || []);
         
         // Filter for Super Admin events that include this state but don't have branches selected yet
@@ -512,7 +555,7 @@ async function openBranchSelectionModal(eventId, eventName) {
 
     try {
         // Load branches for current state
-        const response = await apiCall(`/branches/by-state/${currentUserState}`, 'GET', null, auth.getToken());
+        const response = await window.apiCall(`/branches/by-state/${currentUserState}`, 'GET', null, window.auth.getToken());
         const branches = Array.isArray(response) ? response : (response.data || []);
 
         const container = document.getElementById('branch-checkboxes-container');
@@ -543,7 +586,7 @@ async function openBranchSelectionModal(eventId, eventName) {
         
     } catch (error) {
         console.error('Error loading branches:', error);
-        showToast('error', 'Failed to load branches');
+        window.showToast('error', 'Failed to load branches');
     }
 }
 
@@ -559,16 +602,16 @@ async function confirmBranchSelection() {
     });
 
     if (selectedBranches.length === 0) {
-        showToast('error', 'Please select at least one branch');
+        window.showToast('error', 'Please select at least one branch');
         return;
     }
 
     try {
-        await apiCall(`/events/${eventId}/select-branches`, 'POST', {
+        await window.apiCall(`/events/${eventId}/select-branches`, 'POST', {
             selectedBranches: selectedBranches
-        }, auth.getToken());
+        }, window.auth.getToken());
 
-        showToast('success', 'Branches selected successfully');
+        window.showToast('success', 'Branches selected successfully');
         
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('branchSelectionModal'));
@@ -579,7 +622,7 @@ async function confirmBranchSelection() {
         
     } catch (error) {
         console.error('Error selecting branches:', error);
-        showToast('error', 'Failed to select branches: ' + (error.message || 'Unknown error'));
+        window.showToast('error', 'Failed to select branches: ' + (error.message || 'Unknown error'));
     }
 }
 
@@ -590,7 +633,7 @@ async function loadPickupStations() {
     if (currentUserRole !== 'branch_admin') return;
 
     try {
-        const response = await apiCall(`/pickup-stations/by-branch/${currentUserBranch}`, 'GET', null, auth.getToken());
+        const response = await window.apiCall(`/pickup-stations/by-branch/${currentUserBranch}`, 'GET', null, window.auth.getToken());
         const stations = Array.isArray(response) ? response : (response.data || []);
         
         displayPickupStations(stations);
@@ -658,7 +701,7 @@ function displayPickupStations(stations) {
  */
 async function loadAttendeesData() {
     try {
-        const response = await apiCall('/attendees', 'GET', null, auth.getToken());
+        const response = await window.apiCall('/attendees', 'GET', null, window.auth.getToken());
         const attendees = Array.isArray(response) ? response : (response.data || []);
         
         allAttendees = attendees;
@@ -756,7 +799,7 @@ async function loadPendingAdmins() {
     if (currentUserRole !== 'super_admin') return;
 
     try {
-        const response = await apiCall('/users/pending-admins', 'GET', null, auth.getToken());
+        const response = await window.apiCall('/users/pending-admins', 'GET', null, window.auth.getToken());
         const pendingAdmins = Array.isArray(response) ? response : (response.data || []);
         
         displayPendingAdmins(pendingAdmins);
@@ -920,7 +963,7 @@ function viewEventAttendees(eventId) {
  */
 async function deleteEvent(eventId) {
     if (currentUserRole !== 'super_admin') {
-        showToast('error', 'Only Super Admins can delete events');
+        window.showToast('error', 'Only Super Admins can delete events');
         return;
     }
 
@@ -929,8 +972,8 @@ async function deleteEvent(eventId) {
     }
 
     try {
-        await apiCall(`/events/${eventId}`, 'DELETE', null, auth.getToken());
-        showToast('success', 'Event deleted successfully');
+        await window.apiCall(`/events/${eventId}`, 'DELETE', null, window.auth.getToken());
+        window.showToast('success', 'Event deleted successfully');
         
         // Reload events
         await loadMyEvents();
@@ -940,7 +983,7 @@ async function deleteEvent(eventId) {
         
     } catch (error) {
         console.error('Error deleting event:', error);
-        showToast('error', 'Failed to delete event: ' + (error.message || 'Unknown error'));
+        window.showToast('error', 'Failed to delete event: ' + (error.message || 'Unknown error'));
     }
 }
 
@@ -951,13 +994,13 @@ async function approveAdmin(adminId) {
     if (currentUserRole !== 'super_admin') return;
 
     try {
-        await apiCall(`/users/${adminId}/approve`, 'PATCH', null, auth.getToken());
-        showToast('success', 'Admin approved successfully');
+        await window.apiCall(`/users/${adminId}/approve`, 'PATCH', null, window.auth.getToken());
+        window.showToast('success', 'Admin approved successfully');
         await loadPendingAdmins();
         
     } catch (error) {
         console.error('Error approving admin:', error);
-        showToast('error', 'Failed to approve admin: ' + (error.message || 'Unknown error'));
+        window.showToast('error', 'Failed to approve admin: ' + (error.message || 'Unknown error'));
     }
 }
 
@@ -972,13 +1015,13 @@ async function rejectAdmin(adminId) {
     }
 
     try {
-        await apiCall(`/users/${adminId}`, 'DELETE', null, auth.getToken());
-        showToast('success', 'Admin application rejected');
+        await window.apiCall(`/users/${adminId}`, 'DELETE', null, window.auth.getToken());
+        window.showToast('success', 'Admin application rejected');
         await loadPendingAdmins();
         
     } catch (error) {
         console.error('Error rejecting admin:', error);
-        showToast('error', 'Failed to reject admin: ' + (error.message || 'Unknown error'));
+        window.showToast('error', 'Failed to reject admin: ' + (error.message || 'Unknown error'));
     }
 }
 
@@ -1011,8 +1054,8 @@ async function handleCreatePickupStation(event) {
     };
 
     try {
-        await apiCall('/pickup-stations', 'POST', stationData, auth.getToken());
-        showToast('success', 'Pickup station created successfully');
+        await window.apiCall('/pickup-stations', 'POST', stationData, window.auth.getToken());
+        window.showToast('success', 'Pickup station created successfully');
         
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('addPickupStationModal'));
@@ -1026,7 +1069,7 @@ async function handleCreatePickupStation(event) {
         
     } catch (error) {
         console.error('Error creating pickup station:', error);
-        showToast('error', 'Failed to create pickup station: ' + (error.message || 'Unknown error'));
+        window.showToast('error', 'Failed to create pickup station: ' + (error.message || 'Unknown error'));
     }
 }
 
@@ -1036,7 +1079,7 @@ async function handleCreatePickupStation(event) {
 async function editPickupStation(stationId) {
     // Implementation for editing pickup station
     // This would open a modal with pre-filled data
-    showToast('info', 'Edit pickup station functionality coming soon');
+    window.showToast('info', 'Edit pickup station functionality coming soon');
 }
 
 /**
@@ -1050,13 +1093,13 @@ async function deletePickupStation(stationId) {
     }
 
     try {
-        await apiCall(`/pickup-stations/${stationId}`, 'DELETE', null, auth.getToken());
-        showToast('success', 'Pickup station deleted successfully');
+        await window.apiCall(`/pickup-stations/${stationId}`, 'DELETE', null, window.auth.getToken());
+        window.showToast('success', 'Pickup station deleted successfully');
         await loadPickupStations();
         
     } catch (error) {
         console.error('Error deleting pickup station:', error);
-        showToast('error', 'Failed to delete pickup station: ' + (error.message || 'Unknown error'));
+        window.showToast('error', 'Failed to delete pickup station: ' + (error.message || 'Unknown error'));
     }
 }
 

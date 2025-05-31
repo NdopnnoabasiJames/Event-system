@@ -205,10 +205,9 @@ export class NotificationsService implements OnModuleInit {
                 this.logger.warn(`Attendee ${attendee._id} has no email, skipping notification`);
                 continue;
               }
-              
-              // Find branch and state information
+                // Find branch and state information
               let eventLocation = 'TBD';
-              if (event.branches && event.branches.length > 0) {
+              if (event.availableBranches && event.availableBranches.length > 0) {
                 // We need to populate branch names
                 eventLocation = `Event Location`;
               }
