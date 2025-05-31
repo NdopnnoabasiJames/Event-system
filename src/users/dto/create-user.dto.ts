@@ -36,7 +36,6 @@ export class CreateUserDto {
   @IsEnum(Role)
   @IsOptional()
   role?: Role;
-
   @IsString()
   @IsOptional()
   state?: string;
@@ -44,6 +43,10 @@ export class CreateUserDto {
   @IsString()
   @IsOptional()
   branch?: string;
+
+  @IsString()
+  @IsOptional()
+  zone?: string;
 
   @IsOptional()
   isApproved?: boolean;

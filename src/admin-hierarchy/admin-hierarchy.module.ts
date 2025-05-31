@@ -5,6 +5,7 @@ import { AdminHierarchyController } from './admin-hierarchy.controller';
 import { User, UserSchema } from '../schemas/user.schema';
 import { State, StateSchema } from '../schemas/state.schema';
 import { Branch, BranchSchema } from '../schemas/branch.schema';
+import { Zone, ZoneSchema } from '../schemas/zone.schema';
 import { Event, EventSchema } from '../schemas/event.schema';
 import { HierarchicalEventCreationService } from '../events/hierarchical-event-creation.service';
 
@@ -14,6 +15,7 @@ import { HierarchicalEventCreationService } from '../events/hierarchical-event-c
       { name: User.name, schema: UserSchema },
       { name: State.name, schema: StateSchema },
       { name: Branch.name, schema: BranchSchema },
+      { name: Zone.name, schema: ZoneSchema },
       { name: Event.name, schema: EventSchema },
     ]),
   ],

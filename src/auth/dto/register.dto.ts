@@ -15,7 +15,6 @@ export class RegisterDto {
   @IsEnum(Role)
   @IsOptional()
   role?: Role;
-
   @IsString()
   @IsOptional()
   state?: string;
@@ -23,4 +22,8 @@ export class RegisterDto {
   @IsString()
   @IsOptional()
   branch?: string;
+
+  @IsString()
+  @IsOptional()
+  zone?: string;
 }

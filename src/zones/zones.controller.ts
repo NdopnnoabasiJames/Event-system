@@ -21,20 +21,20 @@ import { Role } from '../common/enums/role.enum';
 @Controller('zones')
 export class ZonesController {
   constructor(private readonly zonesService: ZonesService) {}
-
   @Post()
   @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   create(@Body() createZoneDto: CreateZoneDto) {
     return this.zonesService.create(createZoneDto);
   }
-
   @Get()
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
   findAll(@Query('includeInactive') includeInactive?: string) {
     const include = includeInactive === 'true';
     return this.zonesService.findAll(include);
   }
 
   @Get('by-branch/:branchId')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
   findByBranch(
     @Param('branchId') branchId: string,
     @Query('includeInactive') includeInactive?: string
@@ -44,6 +44,7 @@ export class ZonesController {
   }
 
   @Get('by-state/:stateId')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
   findByState(
     @Param('stateId') stateId: string,
     @Query('includeInactive') includeInactive?: string
@@ -51,8 +52,8 @@ export class ZonesController {
     const include = includeInactive === 'true';
     return this.zonesService.findByState(stateId, include);
   }
-
   @Get(':id')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
   findOne(@Param('id') id: string) {
     return this.zonesService.findOne(id);
   }
