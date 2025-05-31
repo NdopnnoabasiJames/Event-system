@@ -4,18 +4,9 @@ import { Model, Types } from 'mongoose';
 import { Event, EventDocument } from '../schemas/event.schema';
 import { AdminHierarchyService } from '../admin-hierarchy/admin-hierarchy.service';
 import { CreateEventDto } from './dto/create-event.dto';
+import { CreateHierarchicalEventDto } from './dto/create-hierarchical-event.dto';
+import { UpdateEventAvailabilityDto } from './dto/update-event-availability.dto';
 import { Role } from '../common/enums/role.enum';
-
-export interface CreateHierarchicalEventDto extends CreateEventDto {
-  selectedStates?: string[]; // For super admin
-  selectedBranches?: string[]; // For state admin
-}
-
-export interface UpdateEventAvailabilityDto {
-  eventId: string;
-  selectedStates?: string[];
-  selectedBranches?: string[];
-}
 
 @Injectable()
 export class HierarchicalEventCreationService {
@@ -42,9 +33,7 @@ export class HierarchicalEventCreationService {
       throw new BadRequestException('Super admin must select at least one state');
     }
 
-    const stateIds = createEventDto.selectedStates.map(id => new Types.ObjectId(id));
-
-    const eventData = {
+    const stateIds = createEventDto.selectedStates.map(id => new Types.ObjectId(id));    const eventData = {
       name: createEventDto.name,
       description: createEventDto.description,
       date: createEventDto.date,
@@ -53,6 +42,7 @@ export class HierarchicalEventCreationService {
       creatorLevel: 'super_admin',
       availableStates: stateIds,
       availableBranches: [], // Will be populated by state admins
+      availableZones: [], // Will be populated by branch admins
       pickupStations: [],
       marketers: [],
       isActive: true,
@@ -88,9 +78,7 @@ export class HierarchicalEventCreationService {
       if (!canAccess) {
         throw new ForbiddenException('Cannot select branches outside your state');
       }
-    }
-
-    const eventData = {
+    }    const eventData = {
       name: createEventDto.name,
       description: createEventDto.description,
       date: createEventDto.date,
@@ -99,6 +87,7 @@ export class HierarchicalEventCreationService {
       creatorLevel: 'state_admin',
       availableStates: [admin.state],
       availableBranches: branchIds,
+      availableZones: [], // Will be populated by branch admins
       pickupStations: [],
       marketers: [],
       isActive: true,
@@ -107,18 +96,32 @@ export class HierarchicalEventCreationService {
     const event = new this.eventModel(eventData);
     return await event.save();
   }
-
   /**
    * Create event by Branch Admin
    */
   async createBranchAdminEvent(
-    createEventDto: CreateEventDto,
+    createEventDto: CreateHierarchicalEventDto,
     creatorId: string
   ): Promise<EventDocument> {
     const admin = await this.adminHierarchyService.getAdminWithHierarchy(creatorId);
     
     if (admin.role !== Role.BRANCH_ADMIN) {
       throw new ForbiddenException('Only branch admins can create branch admin events');
+    }
+
+    // Validate selected zones are in admin's branch
+    if (!createEventDto.selectedZones?.length) {
+      throw new BadRequestException('Branch admin must select at least one zone');
+    }
+
+    const zoneIds = createEventDto.selectedZones.map(id => new Types.ObjectId(id));
+    
+    // Verify all zones belong to admin's branch
+    for (const zoneId of zoneIds) {
+      const canAccess = await this.adminHierarchyService.canAccessZone(creatorId, zoneId.toString());
+      if (!canAccess) {
+        throw new ForbiddenException('Cannot select zones outside your branch');
+      }
     }
 
     const eventData = {
@@ -130,6 +133,7 @@ export class HierarchicalEventCreationService {
       creatorLevel: 'branch_admin',
       availableStates: [], // Will be populated based on branch's state
       availableBranches: [admin.branch],
+      availableZones: zoneIds,
       pickupStations: [],
       marketers: [],
       isActive: true,
@@ -188,6 +192,91 @@ export class HierarchicalEventCreationService {
     
     return await event.save();
   }
+  /**
+   * Create event by Zonal Admin
+   */
+  async createZonalAdminEvent(
+    createEventDto: CreateEventDto,
+    creatorId: string
+  ): Promise<EventDocument> {
+    const admin = await this.adminHierarchyService.getAdminWithHierarchy(creatorId);
+    
+    if (admin.role !== Role.ZONAL_ADMIN) {
+      throw new ForbiddenException('Only zonal admins can create zonal admin events');
+    }
+
+    if (!admin.zone) {
+      throw new BadRequestException('Zonal admin must be assigned to a zone');
+    }
+
+    const eventData = {
+      name: createEventDto.name,
+      description: createEventDto.description,
+      date: createEventDto.date,
+      bannerImage: createEventDto.bannerImage,
+      createdBy: new Types.ObjectId(creatorId),
+      creatorLevel: 'zonal_admin',
+      availableStates: [], // Will be populated based on zone's hierarchy
+      availableBranches: [], // Will be populated based on zone's branch
+      availableZones: [admin.zone],
+      pickupStations: [],
+      marketers: [],
+      isActive: true,
+    };
+
+    const event = new this.eventModel(eventData);
+    return await event.save();
+  }
+
+  /**
+   * Branch admin selects zones for state/super admin event
+   */
+  async selectZonesForEvent(
+    eventId: string,
+    selectedZones: string[],
+    branchAdminId: string
+  ): Promise<EventDocument> {
+    const admin = await this.adminHierarchyService.getAdminWithHierarchy(branchAdminId);
+    
+    if (admin.role !== Role.BRANCH_ADMIN) {
+      throw new ForbiddenException('Only branch admins can select zones');
+    }
+
+    const event = await this.eventModel.findById(eventId);
+    if (!event) {
+      throw new BadRequestException('Event not found');
+    }
+
+    if (!['super_admin', 'state_admin'].includes(event.creatorLevel)) {
+      throw new BadRequestException('Can only select zones for super admin or state admin events');
+    }
+
+    // Check if admin's branch is in the event's available branches
+    const adminBranchInEvent = event.availableBranches.some(
+      branchId => branchId.toString() === admin.branch.toString()
+    );
+
+    if (!adminBranchInEvent) {
+      throw new ForbiddenException('Event is not available in your branch');
+    }
+
+    // Validate all selected zones belong to admin's branch
+    const zoneIds = selectedZones.map(id => new Types.ObjectId(id));
+    for (const zoneId of zoneIds) {
+      const canAccess = await this.adminHierarchyService.canAccessZone(branchAdminId, zoneId.toString());
+      if (!canAccess) {
+        throw new ForbiddenException('Cannot select zones outside your branch');
+      }
+    }
+
+    // Add zones to event (don't replace, add to existing)
+    const existingZones = event.availableZones.map(id => id.toString());
+    const newZones = zoneIds.filter(id => !existingZones.includes(id.toString()));
+    
+    event.availableZones.push(...newZones);
+    
+    return await event.save();
+  }
 
   /**
    * Get events that need branch selection by state admin
@@ -209,5 +298,169 @@ export class HierarchicalEventCreationService {
       .populate('availableBranches', 'name location')
       .sort({ createdAt: -1 })
       .exec();
+  }
+
+  /**
+   * Get events that need zone selection by branch admin
+   */
+  async getEventsNeedingZoneSelection(branchAdminId: string): Promise<EventDocument[]> {
+    const admin = await this.adminHierarchyService.getAdminWithHierarchy(branchAdminId);
+    
+    if (admin.role !== Role.BRANCH_ADMIN) {
+      throw new ForbiddenException('Only branch admins can access this');
+    }
+
+    return this.eventModel
+      .find({
+        creatorLevel: { $in: ['super_admin', 'state_admin'] },
+        availableBranches: admin.branch,
+      })
+      .populate('createdBy', 'name email')
+      .populate('availableStates', 'name')
+      .populate('availableBranches', 'name location')
+      .populate('availableZones', 'name')
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
+  /**
+   * Get accessible events for an admin based on their role and hierarchy
+   */
+  async getAccessibleEvents(adminId: string): Promise<EventDocument[]> {
+    const admin = await this.adminHierarchyService.getAdminWithHierarchy(adminId);
+
+    let query: any = {};
+
+    switch (admin.role) {
+      case Role.SUPER_ADMIN:
+        // Super admins can see all events
+        query = {};
+        break;
+
+      case Role.STATE_ADMIN:
+        // State admins can see events in their state
+        query = {
+          $or: [
+            { creatorLevel: 'super_admin', availableStates: admin.state },
+            { creatorLevel: 'state_admin', availableStates: admin.state },
+            { createdBy: new Types.ObjectId(adminId) }
+          ]
+        };
+        break;
+
+      case Role.BRANCH_ADMIN:
+        // Branch admins can see events in their branch
+        query = {
+          $or: [
+            { creatorLevel: 'super_admin', availableBranches: admin.branch },
+            { creatorLevel: 'state_admin', availableBranches: admin.branch },
+            { creatorLevel: 'branch_admin', availableBranches: admin.branch },
+            { createdBy: new Types.ObjectId(adminId) }
+          ]
+        };
+        break;
+
+      case Role.ZONAL_ADMIN:
+        // Zonal admins can see events in their zone
+        if (!admin.zone) {
+          throw new BadRequestException('Zonal admin must be assigned to a zone');
+        }
+        query = {
+          $or: [
+            { creatorLevel: 'super_admin', availableZones: admin.zone },
+            { creatorLevel: 'state_admin', availableZones: admin.zone },
+            { creatorLevel: 'branch_admin', availableZones: admin.zone },
+            { creatorLevel: 'zonal_admin', availableZones: admin.zone },
+            { createdBy: new Types.ObjectId(adminId) }
+          ]
+        };
+        break;
+
+      default:
+        throw new ForbiddenException('Invalid admin role');
+    }
+
+    return this.eventModel
+      .find(query)
+      .populate('createdBy', 'name email')
+      .populate('availableStates', 'name')
+      .populate('availableBranches', 'name location')
+      .populate('availableZones', 'name')
+      .populate('pickupStations', 'name location')
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
+  /**
+   * Update event availability (for admin modifications)
+   */
+  async updateEventAvailability(
+    updateDto: UpdateEventAvailabilityDto,
+    adminId: string
+  ): Promise<EventDocument> {
+    const admin = await this.adminHierarchyService.getAdminWithHierarchy(adminId);
+    const event = await this.eventModel.findById(updateDto.eventId);
+
+    if (!event) {
+      throw new BadRequestException('Event not found');
+    }
+
+    // Only creator or higher level admin can update availability
+    const canUpdate = event.createdBy.toString() === adminId || 
+                     this.canAdminUpdateEvent(admin.role, event.creatorLevel);
+
+    if (!canUpdate) {
+      throw new ForbiddenException('Not authorized to update this event');
+    }
+
+    // Update based on provided fields
+    if (updateDto.selectedStates && admin.role === Role.SUPER_ADMIN) {
+      event.availableStates = updateDto.selectedStates.map(id => new Types.ObjectId(id));
+    }
+
+    if (updateDto.selectedBranches && [Role.SUPER_ADMIN, Role.STATE_ADMIN].includes(admin.role)) {
+      // Validate branches are accessible to admin
+      for (const branchId of updateDto.selectedBranches) {
+        const canAccess = await this.adminHierarchyService.canAccessBranch(adminId, branchId);
+        if (!canAccess) {
+          throw new ForbiddenException('Cannot assign branches outside your access');
+        }
+      }
+      event.availableBranches = updateDto.selectedBranches.map(id => new Types.ObjectId(id));
+    }
+
+    if (updateDto.selectedZones && [Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN].includes(admin.role)) {
+      // Validate zones are accessible to admin
+      for (const zoneId of updateDto.selectedZones) {
+        const canAccess = await this.adminHierarchyService.canAccessZone(adminId, zoneId);
+        if (!canAccess) {
+          throw new ForbiddenException('Cannot assign zones outside your access');
+        }
+      }
+      event.availableZones = updateDto.selectedZones.map(id => new Types.ObjectId(id));
+    }
+
+    return await event.save();
+  }
+
+  /**
+   * Helper method to check if admin can update event based on hierarchy
+   */
+  private canAdminUpdateEvent(adminRole: Role, eventCreatorLevel: string): boolean {
+    const hierarchy = {
+      'super_admin': 4,
+      'state_admin': 3,
+      'branch_admin': 2,
+      'zonal_admin': 1
+    };
+
+    const roleHierarchy = {
+      [Role.SUPER_ADMIN]: 4,
+      [Role.STATE_ADMIN]: 3,
+      [Role.BRANCH_ADMIN]: 2,
+      [Role.ZONAL_ADMIN]: 1
+    };
+
+    return roleHierarchy[adminRole] > hierarchy[eventCreatorLevel];
   }
 }

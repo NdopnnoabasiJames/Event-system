@@ -21,16 +21,17 @@ export class Event {
   date: string;
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  createdBy: Types.ObjectId;
-  @Prop({ required: true, enum: ['super_admin', 'state_admin', 'branch_admin'] })
+  createdBy: Types.ObjectId;  @Prop({ required: true, enum: ['super_admin', 'state_admin', 'branch_admin', 'zonal_admin'] })
   creatorLevel: string;
-
   // Available states and branches (selected by higher level admins)
   @Prop({ type: [{ type: Types.ObjectId, ref: 'State' }], default: [] })
   availableStates: Types.ObjectId[];
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Branch' }], default: [] })
   availableBranches: Types.ObjectId[];
+
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Zone' }], default: [] })
+  availableZones: Types.ObjectId[];
 
   @Prop({ 
     type: [{ 
@@ -108,3 +109,4 @@ EventSchema.index({ createdBy: 1 });
 EventSchema.index({ creatorLevel: 1 });
 EventSchema.index({ selectedStates: 1 });
 EventSchema.index({ selectedBranches: 1 });
+EventSchema.index({ availableZones: 1 });

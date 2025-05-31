@@ -15,7 +15,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
 import { AdminHierarchyService } from '../admin-hierarchy/admin-hierarchy.service';
-import { HierarchicalEventCreationService, CreateHierarchicalEventDto } from '../events/hierarchical-event-creation.service';
+import { HierarchicalEventCreationService } from '../events/hierarchical-event-creation.service';
+import { CreateHierarchicalEventDto } from '../events/dto/create-hierarchical-event.dto';
 
 @Controller('admin-hierarchy')
 @UseGuards(JwtAuthGuard, RolesGuard)
