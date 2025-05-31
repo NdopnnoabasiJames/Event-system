@@ -28,5 +28,5 @@ PickupStationSchema.index({ location: 1, branchId: 1 }, { unique: true });
 // Add indexes for common queries
 PickupStationSchema.index({ branchId: 1, isActive: 1 });
 PickupStationSchema.index({ isActive: 1, location: 1 });
-PickupStationSchema.index({ zone: 1, branchId: 1 });
+PickupStationSchema.index({ zoneId: 1, branchId: 1 });
 PickupStationSchema.index({ createdBy: 1 });

@@ -73,4 +73,38 @@ export class PickupStationsController {
   activate(@Param('id') id: string) {
     return this.pickupStationsService.activate(id);
   }
+
+  // Zone-based endpoints for Phase 5
+  @Get('by-zone/:zoneId')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  findByZone(
+    @Param('zoneId') zoneId: string,
+    @Query('includeInactive') includeInactive?: string,
+  ) {
+    return this.pickupStationsService.findByZone(zoneId, includeInactive === 'true');
+  }
+
+  @Get('by-zone/:zoneId/active')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  findActiveByZone(@Param('zoneId') zoneId: string) {
+    return this.pickupStationsService.findActiveByZone(zoneId);
+  }
+
+  @Get('by-zone/:zoneId/stats')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  getZoneStats(@Param('zoneId') zoneId: string) {
+    return this.pickupStationsService.getZoneStats(zoneId);
+  }
+
+  @Patch('by-zone/:zoneId/activate')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  activateByZone(@Param('zoneId') zoneId: string) {
+    return this.pickupStationsService.activateByZone(zoneId);
+  }
+
+  @Patch('by-zone/:zoneId/deactivate')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  deactivateByZone(@Param('zoneId') zoneId: string) {
+    return this.pickupStationsService.deactivateByZone(zoneId);
+  }
 }

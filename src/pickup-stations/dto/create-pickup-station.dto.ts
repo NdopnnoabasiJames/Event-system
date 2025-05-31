@@ -9,6 +9,14 @@ export class CreatePickupStationDto {
   @IsNotEmpty()
   branchId: string;
 
+  @IsMongoId()
+  @IsNotEmpty()
+  zoneId: string;
+
+  @IsMongoId()
+  @IsNotEmpty()
+  createdBy: string;
+
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;

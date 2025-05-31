@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { PickupStation, PickupStationDocument } from '../schemas/pickup-station.schema';
 import { Branch, BranchDocument } from '../schemas/branch.schema';
+import { Zone, ZoneDocument } from '../schemas/zone.schema';
 import { CreatePickupStationDto } from './dto/create-pickup-station.dto';
 import { UpdatePickupStationDto } from './dto/update-pickup-station.dto';
 
@@ -11,8 +12,8 @@ export class PickupStationsService {
   constructor(
     @InjectModel(PickupStation.name) private pickupStationModel: Model<PickupStationDocument>,
     @InjectModel(Branch.name) private branchModel: Model<BranchDocument>,
+    @InjectModel(Zone.name) private zoneModel: Model<ZoneDocument>,
   ) {}
-
   async create(createPickupStationDto: CreatePickupStationDto): Promise<PickupStationDocument> {
     // Validate that the branch exists and is active
     const branch = await this.branchModel.findOne({ 
@@ -22,6 +23,17 @@ export class PickupStationsService {
     
     if (!branch) {
       throw new BadRequestException('Invalid or inactive branch');
+    }
+
+    // Validate that the zone exists, is active, and belongs to the specified branch
+    const zone = await this.zoneModel.findOne({
+      _id: createPickupStationDto.zoneId,
+      branchId: createPickupStationDto.branchId,
+      isActive: true
+    });
+
+    if (!zone) {
+      throw new BadRequestException('Invalid or inactive zone, or zone does not belong to the specified branch');
     }
 
     try {
@@ -140,10 +152,14 @@ export class PickupStationsService {
     
     return pickupStation;
   }
-
   async update(id: string, updatePickupStationDto: UpdatePickupStationDto): Promise<PickupStationDocument> {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid pickup station ID');
+    }
+
+    const currentPickupStation = await this.pickupStationModel.findById(id);
+    if (!currentPickupStation) {
+      throw new NotFoundException('Pickup station not found');
     }
 
     // If branchId is being updated, validate the new branch
@@ -158,13 +174,23 @@ export class PickupStationsService {
       }
     }
 
+    // If zoneId is being updated, validate the zone belongs to the branch
+    if (updatePickupStationDto.zoneId) {
+      const branchIdToCheck = updatePickupStationDto.branchId || currentPickupStation.branchId;
+      
+      const zone = await this.zoneModel.findOne({
+        _id: updatePickupStationDto.zoneId,
+        branchId: branchIdToCheck,
+        isActive: true
+      });
+
+      if (!zone) {
+        throw new BadRequestException('Invalid or inactive zone, or zone does not belong to the specified branch');
+      }
+    }
+
     // Check if location already exists in the same branch (excluding current pickup station)
     if (updatePickupStationDto.location) {
-      const currentPickupStation = await this.pickupStationModel.findById(id);
-      if (!currentPickupStation) {
-        throw new NotFoundException('Pickup station not found');
-      }
-
       const branchIdToCheck = updatePickupStationDto.branchId || currentPickupStation.branchId;
       
       const existingPickupStation = await this.pickupStationModel.findOne({
@@ -214,5 +240,96 @@ export class PickupStationsService {
 
   async activate(id: string): Promise<PickupStationDocument> {
     return await this.update(id, { isActive: true });
+  }
+
+  // Zone-based methods for Phase 5
+  async findByZone(zoneId: string, includeInactive = false): Promise<PickupStationDocument[]> {
+    if (!Types.ObjectId.isValid(zoneId)) {
+      throw new BadRequestException('Invalid zone ID');
+    }
+
+    const filter: any = { zoneId };
+    if (!includeInactive) {
+      filter.isActive = true;
+    }
+
+    return await this.pickupStationModel
+      .find(filter)
+      .populate({
+        path: 'branchId',
+        select: 'name location manager contact isActive',
+        populate: {
+          path: 'stateId',
+          select: 'name code country isActive'
+        }
+      })
+      .populate({
+        path: 'zoneId',
+        select: 'name isActive'
+      })
+      .sort({ location: 1 })
+      .exec();
+  }
+
+  async findActiveByZone(zoneId: string): Promise<PickupStationDocument[]> {
+    return this.findByZone(zoneId, false);
+  }
+
+  async activateByZone(zoneId: string): Promise<{ modified: number; stations: PickupStationDocument[] }> {
+    if (!Types.ObjectId.isValid(zoneId)) {
+      throw new BadRequestException('Invalid zone ID');
+    }
+
+    const result = await this.pickupStationModel.updateMany(
+      { zoneId, isActive: false },
+      { isActive: true }
+    );
+
+    const updatedStations = await this.findByZone(zoneId, false);
+
+    return {
+      modified: result.modifiedCount,
+      stations: updatedStations
+    };
+  }
+
+  async deactivateByZone(zoneId: string): Promise<{ modified: number; stations: PickupStationDocument[] }> {
+    if (!Types.ObjectId.isValid(zoneId)) {
+      throw new BadRequestException('Invalid zone ID');
+    }
+
+    const result = await this.pickupStationModel.updateMany(
+      { zoneId, isActive: true },
+      { isActive: false }
+    );
+
+    const updatedStations = await this.findByZone(zoneId, true);
+
+    return {
+      modified: result.modifiedCount,
+      stations: updatedStations
+    };
+  }
+
+  async getZoneStats(zoneId: string): Promise<{
+    total: number;
+    active: number;
+    inactive: number;
+    stations: PickupStationDocument[];
+  }> {
+    if (!Types.ObjectId.isValid(zoneId)) {
+      throw new BadRequestException('Invalid zone ID');
+    }
+
+    const allStations = await this.findByZone(zoneId, true);
+    const activeStations = allStations.filter(station => station.isActive);
+    const inactiveStations = allStations.filter(station => !station.isActive);
+
+    return {
+      total: allStations.length,
+      active: activeStations.length,
+      inactive: inactiveStations.length,
+      stations: allStations
+    };
   }
 }

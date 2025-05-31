@@ -5,11 +5,13 @@ export class UpdatePickupStationDto {
   @IsOptional()
   location?: string;
 
-
   @IsMongoId()
   @IsOptional()
   branchId?: string;
 
+  @IsMongoId()
+  @IsOptional()
+  zoneId?: string;
 
   @IsBoolean()
   @IsOptional()
