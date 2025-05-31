@@ -7,12 +7,11 @@ export type PickupStationDocument = PickupStation & Document;
 export class PickupStation {
   @Prop({ required: true, index: true })
   location: string;
-
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Branch', required: true, index: true })
   branchId: MongooseSchema.Types.ObjectId;
 
-  @Prop({ required: true, index: true })
-  zone: string;
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Zone', required: true, index: true })
+  zoneId: MongooseSchema.Types.ObjectId;
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   createdBy: MongooseSchema.Types.ObjectId;
