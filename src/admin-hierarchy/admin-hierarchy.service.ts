@@ -8,6 +8,12 @@ import { Zone, ZoneDocument } from '../schemas/zone.schema';
 import { Event, EventDocument } from '../schemas/event.schema';
 import { Attendee, AttendeeDocument } from '../schemas/attendee.schema';
 import { Role } from '../common/enums/role.enum';
+import { 
+  AdminReplacementDto, 
+  JurisdictionTransferDto, 
+  AdminReplacementResponseDto, 
+  JurisdictionTransferResponseDto 
+} from './dto/admin-jurisdiction.dto';
 
 @Injectable()
 export class AdminHierarchyService {
@@ -489,5 +495,244 @@ export class AdminHierarchyService {
       .select('name email role state branch zone disabledBy disabledAt disableReason')
       .sort({ disabledAt: -1 })
       .exec();
+  }
+
+  /**
+   * Phase 5.3: Admin Replacement functionality
+   */
+  async replaceAdmin(replacementDto: AdminReplacementDto, requestingAdminId: string): Promise<AdminReplacementResponseDto> {
+    const requestingAdmin = await this.getAdminWithHierarchy(requestingAdminId);
+    const currentAdmin = await this.userModel.findById(replacementDto.currentAdminId).exec();
+    const newAdmin = await this.userModel.findById(replacementDto.newAdminId).exec();
+
+    if (!currentAdmin) {
+      throw new NotFoundException('Current admin not found');
+    }
+
+    if (!newAdmin) {
+      throw new NotFoundException('New admin not found');
+    }
+
+    // Validate hierarchy permissions
+    if (!this.canManageAdmin(requestingAdmin.role, currentAdmin.role)) {
+      throw new ForbiddenException('Insufficient permissions to replace this admin');
+    }
+
+    // Validate new admin role compatibility
+    if (newAdmin.role !== currentAdmin.role) {
+      throw new BadRequestException('New admin must have the same role as current admin');
+    }
+
+    // Validate new admin is not already assigned to a jurisdiction
+    const newAdminHasAssignment = await this.checkAdminJurisdictionAssignment(newAdmin);
+    if (newAdminHasAssignment) {
+      throw new BadRequestException('New admin is already assigned to a jurisdiction');
+    }
+
+    // Transfer jurisdiction assignments
+    newAdmin.state = currentAdmin.state;
+    newAdmin.branch = currentAdmin.branch;
+    newAdmin.zone = currentAdmin.zone;
+    newAdmin.isActive = true;
+
+    // Disable current admin
+    currentAdmin.isActive = false;
+    currentAdmin.disabledBy = new Types.ObjectId(requestingAdminId);
+    currentAdmin.disabledAt = new Date();
+    currentAdmin.disableReason = replacementDto.reason || 'Admin replacement';
+    currentAdmin.replacedBy = new Types.ObjectId(replacementDto.newAdminId);
+    currentAdmin.replacementDate = new Date();
+
+    // Clear current admin's jurisdiction
+    currentAdmin.state = undefined;
+    currentAdmin.branch = undefined;
+    currentAdmin.zone = undefined;
+
+    // Save changes
+    await Promise.all([
+      currentAdmin.save(),
+      newAdmin.save()
+    ]);
+
+    return {
+      success: true,
+      replacedAdmin: {
+        id: currentAdmin._id.toString(),
+        name: currentAdmin.name,
+        email: currentAdmin.email,
+        role: currentAdmin.role
+      },
+      newAdmin: {
+        id: newAdmin._id.toString(),
+        name: newAdmin.name,
+        email: newAdmin.email,
+        role: newAdmin.role
+      },
+      replacementDate: new Date(),
+      reason: replacementDto.reason,
+      notes: replacementDto.notes
+    };
+  }
+
+  /**
+   * Phase 5.3: Jurisdiction Transfer functionality
+   */
+  async transferJurisdiction(transferDto: JurisdictionTransferDto, requestingAdminId: string): Promise<JurisdictionTransferResponseDto> {
+    const requestingAdmin = await this.getAdminWithHierarchy(requestingAdminId);
+    const fromAdmin = await this.userModel.findById(transferDto.fromAdminId).exec();
+    const toAdmin = await this.userModel.findById(transferDto.toAdminId).exec();
+
+    if (!fromAdmin) {
+      throw new NotFoundException('Source admin not found');
+    }
+
+    if (!toAdmin) {
+      throw new NotFoundException('Target admin not found');
+    }
+
+    // Validate hierarchy permissions
+    if (!this.canManageAdmin(requestingAdmin.role, fromAdmin.role) || 
+        !this.canManageAdmin(requestingAdmin.role, toAdmin.role)) {
+      throw new ForbiddenException('Insufficient permissions to transfer jurisdiction');
+    }
+
+    // Validate admin roles match
+    if (fromAdmin.role !== toAdmin.role || fromAdmin.role !== transferDto.adminRole) {
+      throw new BadRequestException('Admin roles must match for jurisdiction transfer');
+    }
+
+    // Validate target admin doesn't already have jurisdiction
+    const toAdminHasAssignment = await this.checkAdminJurisdictionAssignment(toAdmin);
+    if (toAdminHasAssignment) {
+      throw new BadRequestException('Target admin already has jurisdiction assignment');
+    }
+
+    // Perform jurisdiction transfer based on admin role
+    const transferredJurisdiction: any = {};
+
+    switch (transferDto.adminRole) {
+      case Role.STATE_ADMIN:
+        if (!transferDto.stateId) {
+          throw new BadRequestException('State ID required for state admin jurisdiction transfer');
+        }
+        // Validate state exists and fromAdmin has access
+        const state = await this.stateModel.findById(transferDto.stateId).exec();
+        if (!state) {
+          throw new BadRequestException('State not found');
+        }
+        if (fromAdmin.state?.toString() !== transferDto.stateId) {
+          throw new BadRequestException('Source admin does not manage this state');
+        }
+        
+        toAdmin.state = new Types.ObjectId(transferDto.stateId);
+        fromAdmin.state = undefined;
+        transferredJurisdiction.stateId = transferDto.stateId;
+        transferredJurisdiction.stateName = state.name;
+        break;
+
+      case Role.BRANCH_ADMIN:
+        if (!transferDto.branchId) {
+          throw new BadRequestException('Branch ID required for branch admin jurisdiction transfer');
+        }
+        // Validate branch exists and fromAdmin has access
+        const branch = await this.branchModel.findById(transferDto.branchId).populate('stateId').exec();
+        if (!branch) {
+          throw new BadRequestException('Branch not found');
+        }
+        if (fromAdmin.branch?.toString() !== transferDto.branchId) {
+          throw new BadRequestException('Source admin does not manage this branch');
+        }        toAdmin.branch = new Types.ObjectId(transferDto.branchId);
+        toAdmin.state = new Types.ObjectId((branch.stateId as any)._id || branch.stateId);
+        fromAdmin.branch = undefined;
+        fromAdmin.state = undefined;
+        transferredJurisdiction.branchId = transferDto.branchId;
+        transferredJurisdiction.branchName = branch.name;
+        transferredJurisdiction.stateId = ((branch.stateId as any)._id || branch.stateId).toString();
+        transferredJurisdiction.stateName = (branch.stateId as any).name;
+        break;
+
+      case Role.ZONAL_ADMIN:
+        if (!transferDto.zoneId) {
+          throw new BadRequestException('Zone ID required for zonal admin jurisdiction transfer');
+        }
+        // Validate zone exists and fromAdmin has access
+        const zone = await this.zoneModel.findById(transferDto.zoneId)
+          .populate({
+            path: 'branchId',
+            populate: { path: 'stateId' }
+          }).exec();
+        if (!zone) {
+          throw new BadRequestException('Zone not found');
+        }
+        if (fromAdmin.zone?.toString() !== transferDto.zoneId) {
+          throw new BadRequestException('Source admin does not manage this zone');
+        }        toAdmin.zone = new Types.ObjectId(transferDto.zoneId);
+        toAdmin.branch = new Types.ObjectId((zone.branchId as any)._id || zone.branchId);
+        toAdmin.state = new Types.ObjectId((zone.branchId as any).stateId._id || (zone.branchId as any).stateId);
+        fromAdmin.zone = undefined;
+        fromAdmin.branch = undefined;
+        fromAdmin.state = undefined;
+        transferredJurisdiction.zoneId = transferDto.zoneId;
+        transferredJurisdiction.zoneName = zone.name;
+        transferredJurisdiction.branchId = (zone.branchId as any)._id.toString();
+        transferredJurisdiction.branchName = (zone.branchId as any).name;
+        transferredJurisdiction.stateId = (zone.branchId as any).stateId._id.toString();
+        transferredJurisdiction.stateName = (zone.branchId as any).stateId.name;
+        break;
+
+      default:
+        throw new BadRequestException('Invalid admin role for jurisdiction transfer');
+    }
+
+    // Disable source admin
+    fromAdmin.isActive = false;
+    fromAdmin.disabledBy = new Types.ObjectId(requestingAdminId);
+    fromAdmin.disabledAt = new Date();
+    fromAdmin.disableReason = transferDto.reason || 'Jurisdiction transfer';
+
+    // Activate target admin
+    toAdmin.isActive = true;
+
+    // Save changes
+    await Promise.all([
+      fromAdmin.save(),
+      toAdmin.save()
+    ]);
+
+    return {
+      success: true,
+      fromAdmin: {
+        id: fromAdmin._id.toString(),
+        name: fromAdmin.name,
+        email: fromAdmin.email,
+        role: fromAdmin.role
+      },
+      toAdmin: {
+        id: toAdmin._id.toString(),
+        name: toAdmin.name,
+        email: toAdmin.email,
+        role: toAdmin.role
+      },
+      transferredJurisdiction,
+      transferDate: new Date(),
+      reason: transferDto.reason,
+      notes: transferDto.notes
+    };
+  }
+
+  /**
+   * Helper method to check if admin has jurisdiction assignment
+   */
+  private async checkAdminJurisdictionAssignment(admin: UserDocument): Promise<boolean> {
+    switch (admin.role) {
+      case Role.STATE_ADMIN:
+        return !!admin.state;
+      case Role.BRANCH_ADMIN:
+        return !!admin.branch;
+      case Role.ZONAL_ADMIN:
+        return !!admin.zone;
+      default:
+        return false;
+    }
   }
 }

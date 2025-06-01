@@ -67,3 +67,93 @@ export function IsNotFutureDate(validationOptions?: ValidationOptions) {
     });
   };
 }
+
+export function MaxSelection(maxItems: number, validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'maxSelection',
+      target: object.constructor,
+      propertyName: propertyName,
+      constraints: [maxItems],
+      options: validationOptions,
+      validator: {
+        validate(value: any, args: ValidationArguments) {
+          if (!Array.isArray(value)) return false;
+          const [maxItems] = args.constraints;
+          return value.length <= maxItems;
+        },
+        defaultMessage(args: ValidationArguments) {
+          const [maxItems] = args.constraints;
+          return `${args.property} must not have more than ${maxItems} items`;
+        },
+      },
+    });
+  };
+}
+
+export function MinSelection(minItems: number, validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'minSelection',
+      target: object.constructor,
+      propertyName: propertyName,
+      constraints: [minItems],
+      options: validationOptions,
+      validator: {
+        validate(value: any, args: ValidationArguments) {
+          if (!Array.isArray(value)) return false;
+          const [minItems] = args.constraints;
+          return value.length >= minItems;
+        },
+        defaultMessage(args: ValidationArguments) {
+          const [minItems] = args.constraints;
+          return `${args.property} must have at least ${minItems} items`;
+        },
+      },
+    });
+  };
+}
+
+export function SelectionRange(minItems: number, maxItems: number, validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'selectionRange',
+      target: object.constructor,
+      propertyName: propertyName,
+      constraints: [minItems, maxItems],
+      options: validationOptions,
+      validator: {
+        validate(value: any, args: ValidationArguments) {
+          if (!Array.isArray(value)) return false;
+          const [minItems, maxItems] = args.constraints;
+          return value.length >= minItems && value.length <= maxItems;
+        },
+        defaultMessage(args: ValidationArguments) {
+          const [minItems, maxItems] = args.constraints;
+          return `${args.property} must have between ${minItems} and ${maxItems} items`;
+        },
+      },
+    });
+  };
+}
+
+export function UniqueSelection(validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'uniqueSelection',
+      target: object.constructor,
+      propertyName: propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: any) {
+          if (!Array.isArray(value)) return false;
+          const uniqueItems = [...new Set(value)];
+          return uniqueItems.length === value.length;
+        },
+        defaultMessage(args: ValidationArguments) {
+          return `${args.property} must contain unique items only`;
+        },
+      },
+    });
+  };
+}

@@ -21,8 +21,60 @@ export class Event {
   date: string;
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  createdBy: Types.ObjectId;  @Prop({ required: true, enum: ['super_admin', 'state_admin', 'branch_admin', 'zonal_admin'] })
+  createdBy: Types.ObjectId;
+
+  @Prop({ required: true, enum: ['super_admin', 'state_admin', 'branch_admin', 'zonal_admin'] })
   creatorLevel: string;
+
+  // Event scope and hierarchy properties
+  @Prop({ enum: ['national', 'state', 'branch', 'zonal'], default: 'branch' })
+  scope: string;
+
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Branch' }], default: [] })
+  selectedBranches: Types.ObjectId[];
+
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Zone' }], default: [] })
+  selectedZones: Types.ObjectId[];
+
+  @Prop({ type: Date })
+  registrationDeadline: Date;
+
+  @Prop({ enum: ['draft', 'published', 'cancelled', 'completed'], default: 'draft' })
+  status: string;
+
+  // Participation tracking
+  @Prop({
+    type: [{
+      userId: { type: Types.ObjectId, ref: 'User', required: true },
+      status: { type: String, enum: ['pending', 'confirmed', 'declined'], default: 'pending' },
+      updatedAt: { type: Date, default: Date.now },
+      confirmedBy: { type: Types.ObjectId, ref: 'User' }
+    }],
+    default: []
+  })
+  participationTracking: {
+    userId: Types.ObjectId;
+    status: string;
+    updatedAt: Date;
+    confirmedBy?: Types.ObjectId;
+  }[];
+
+  // Status timeline tracking
+  @Prop({
+    type: [{
+      timestamp: { type: Date, default: Date.now },
+      status: { type: String, required: true },
+      updatedBy: { type: Types.ObjectId, ref: 'User', required: true },
+      details: { type: Object, default: {} }
+    }],
+    default: []
+  })
+  statusTimeline: {
+    timestamp: Date;
+    status: string;
+    updatedBy: Types.ObjectId;
+    details: any;
+  }[];
   // Available states and branches (selected by higher level admins)
   @Prop({ type: [{ type: Types.ObjectId, ref: 'State' }], default: [] })
   availableStates: Types.ObjectId[];
@@ -102,11 +154,15 @@ export const EventSchema = SchemaFactory.createForClass(Event);
 
 // Add indexes
 EventSchema.index({ date: 1 });
-EventSchema.index({ state: 1 });
 EventSchema.index({ isActive: 1 });
 EventSchema.index({ 'marketers': 1 });
 EventSchema.index({ createdBy: 1 });
 EventSchema.index({ creatorLevel: 1 });
-EventSchema.index({ selectedStates: 1 });
 EventSchema.index({ selectedBranches: 1 });
+EventSchema.index({ selectedZones: 1 });
 EventSchema.index({ availableZones: 1 });
+EventSchema.index({ scope: 1 });
+EventSchema.index({ status: 1 });
+EventSchema.index({ registrationDeadline: 1 });
+EventSchema.index({ 'participationTracking.userId': 1 });
+EventSchema.index({ 'statusTimeline.status': 1 });

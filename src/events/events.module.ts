@@ -8,6 +8,7 @@ import { Event, EventSchema } from '../schemas/event.schema';
 import { PickupStation, PickupStationSchema } from '../schemas/pickup-station.schema';
 import { Branch, BranchSchema } from '../schemas/branch.schema';
 import { Zone, ZoneSchema } from '../schemas/zone.schema';
+import { User, UserSchema } from '../schemas/user.schema';
 import { UsersModule } from '../users/users.module';
 import { AttendeesModule } from '../attendees/attendees.module';
 import { StatesModule } from '../states/states.module';
@@ -21,14 +22,15 @@ import { HierarchicalEventSelectionService } from './services/hierarchical-event
 import { HierarchicalEventAccessService } from './services/hierarchical-event-access.service';
 import { HierarchicalEventAvailabilityService } from './services/hierarchical-event-availability.service';
 import { HierarchicalPickupStationAssignmentService } from './services/hierarchical-pickup-station-assignment.service';
+import { HierarchicalEventManagementService } from './services/hierarchical-event-management.service';
 
 @Module({
-  imports: [
-    MongooseModule.forFeature([
+  imports: [    MongooseModule.forFeature([
       { name: Event.name, schema: EventSchema },
       { name: PickupStation.name, schema: PickupStationSchema },
       { name: Branch.name, schema: BranchSchema },
       { name: Zone.name, schema: ZoneSchema },
+      { name: User.name, schema: UserSchema },
     ]),
     UsersModule,
     AttendeesModule,
@@ -37,8 +39,7 @@ import { HierarchicalPickupStationAssignmentService } from './services/hierarchi
     PickupStationsModule,
     forwardRef(() => AdminHierarchyModule),
   ],
-  controllers: [EventsController],
-  providers: [
+  controllers: [EventsController],  providers: [
     EventsService, 
     HierarchicalEventService, 
     HierarchicalEventCreationService,
@@ -48,8 +49,8 @@ import { HierarchicalPickupStationAssignmentService } from './services/hierarchi
     HierarchicalEventAccessService,
     HierarchicalEventAvailabilityService,
     HierarchicalPickupStationAssignmentService,
-  ],
-  exports: [
+    HierarchicalEventManagementService,
+  ],  exports: [
     EventsService, 
     HierarchicalEventService, 
     HierarchicalEventCreationService,
@@ -58,6 +59,7 @@ import { HierarchicalPickupStationAssignmentService } from './services/hierarchi
     HierarchicalEventAccessService,
     HierarchicalEventAvailabilityService,
     HierarchicalPickupStationAssignmentService,
+    HierarchicalEventManagementService,
   ],
 })
 export class EventsModule {}

@@ -9,10 +9,19 @@ import {
   Request,
   HttpStatus,
   Put,
+  Patch,
+  Query,
 } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { HierarchicalEventService } from './hierarchical-event.service';
 import { HierarchicalEventCreationService } from './hierarchical-event-creation.service';
+import { HierarchicalEventManagementService } from './services/hierarchical-event-management.service';
+import { 
+  CascadeStatus, 
+  ParticipationOptions, 
+  StatusTimelineEntry, 
+  EventCascadeFlow 
+} from './interfaces/event-management.interfaces';
 import { CreateEventDto } from './dto/create-event.dto';
 import { CreateHierarchicalEventDto } from './dto/create-hierarchical-event.dto';
 import { UpdateEventAvailabilityDto } from './dto/update-event-availability.dto';
@@ -35,11 +44,11 @@ class BusPickupRequest {
 
 @Controller('events')
 @UseGuards(JwtAuthGuard, RolesGuard)
-export class EventsController {
-  constructor(
+export class EventsController {  constructor(
     private readonly eventsService: EventsService,
     private readonly hierarchicalEventService: HierarchicalEventService,
     private readonly hierarchicalEventCreationService: HierarchicalEventCreationService,
+    private readonly hierarchicalEventManagementService: HierarchicalEventManagementService,
   ) {}
   @Post()
   @Roles(Role.SUPER_ADMIN)
@@ -249,5 +258,82 @@ export class EventsController {
   async removePickupStationAssignment(@Body() removeDto: RemovePickupStationAssignmentDto, @Request() req) {
     const { userId } = req.user;
     return this.hierarchicalEventCreationService.removePickupStationAssignment(removeDto, userId);
+  }
+
+  // Phase 3.2: Enhanced Event Management Endpoints
+  // Event cascade flow management
+  @Get(':eventId/cascade-status')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async getEventCascadeStatus(@Param('eventId') eventId: string, @Request() req): Promise<CascadeStatus> {
+    const { userId } = req.user;
+    return this.hierarchicalEventManagementService.getEventCascadeStatus(eventId, userId);
+  }
+
+  @Get(':eventId/participation-options')
+  @Roles(Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async getEventParticipationOptions(@Param('eventId') eventId: string, @Request() req): Promise<ParticipationOptions> {
+    const { userId } = req.user;
+    return this.hierarchicalEventManagementService.getEventParticipationOptions(eventId, userId);
+  }
+
+  @Patch(':eventId/participation-status')
+  @Roles(Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async updateParticipationStatus(
+    @Param('eventId') eventId: string,
+    @Body() body: { status: 'participating' | 'not_participating' | 'pending'; reason?: string },
+    @Request() req
+  ) {
+    const { userId } = req.user;
+    return this.hierarchicalEventManagementService.updateParticipationStatus(eventId, userId, body.status, body.reason);
+  }
+  // Event status tracking
+  @Get(':eventId/status-timeline')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async getEventStatusTimeline(@Param('eventId') eventId: string, @Request() req): Promise<StatusTimelineEntry[]> {
+    const { userId } = req.user;
+    return this.hierarchicalEventManagementService.getEventStatusTimeline(eventId, userId);
+  }
+
+  @Patch(':eventId/status')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async updateEventStatus(
+    @Param('eventId') eventId: string,
+    @Body() body: { 
+      status: 'draft' | 'published' | 'in_progress' | 'completed' | 'cancelled';
+      statusReason?: string;
+    },
+    @Request() req
+  ) {
+    const { userId } = req.user;
+    return this.hierarchicalEventManagementService.updateEventStatus(eventId, userId, body.status, body.statusReason);
+  }
+  // Enhanced event flow tracking
+  @Get('by-status/:status')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async getEventsByStatus(
+    @Param('status') status: string,
+    @Request() req,
+    @Query('includeSubordinateEvents') includeSubordinateEvents?: string
+  ) {
+    const { userId } = req.user;
+    return this.hierarchicalEventManagementService.getEventsByStatus(
+      userId, 
+      status,
+      includeSubordinateEvents === 'true'
+    );
+  }
+
+  @Get('pending-participation')
+  @Roles(Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async getEventsPendingParticipation(@Request() req) {
+    const { userId } = req.user;
+    return this.hierarchicalEventManagementService.getEventsPendingParticipation(userId);
+  }
+  // Cascade flow visibility
+  @Get(':eventId/cascade-flow')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async getEventCascadeFlow(@Param('eventId') eventId: string, @Request() req): Promise<EventCascadeFlow> {
+    const { userId } = req.user;
+    return this.hierarchicalEventManagementService.getEventCascadeFlow(eventId, userId);
   }
 }

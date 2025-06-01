@@ -59,9 +59,15 @@ export class User {
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: false })
   enabledBy?: Types.ObjectId;
-
   @Prop({ type: Date, required: false })
   enabledAt?: Date;
+
+  // Admin replacement tracking
+  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
+  replacedBy?: Types.ObjectId;
+
+  @Prop({ type: Date, required: false })
+  replacementDate?: Date;
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Event' }], default: [] })
   eventParticipation: Types.ObjectId[];

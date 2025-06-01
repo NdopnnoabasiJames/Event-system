@@ -9,7 +9,10 @@ import {
   Request,
   HttpException,
   HttpStatus,
+  Query,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -17,13 +20,18 @@ import { Role } from '../common/enums/role.enum';
 import { AdminHierarchyService } from '../admin-hierarchy/admin-hierarchy.service';
 import { HierarchicalEventCreationService } from '../events/hierarchical-event-creation.service';
 import { CreateHierarchicalEventDto } from '../events/dto/create-hierarchical-event.dto';
+import { HierarchicalEventSelectionService } from '../events/services/hierarchical-event-selection.service';
+import { 
+  AdminReplacementDto, 
+  JurisdictionTransferDto 
+} from './dto/admin-jurisdiction.dto';
 
 @Controller('admin-hierarchy')
 @UseGuards(JwtAuthGuard, RolesGuard)
-export class AdminHierarchyController {
-  constructor(
+export class AdminHierarchyController {  constructor(
     private adminHierarchyService: AdminHierarchyService,
     private hierarchicalEventService: HierarchicalEventCreationService,
+    private hierarchicalEventSelectionService: HierarchicalEventSelectionService,
   ) {}
 
   @Get('profile')
@@ -176,6 +184,165 @@ export class AdminHierarchyController {
   async getDisabledAdmins(@Request() req) {
     try {
       return await this.adminHierarchyService.getDisabledAdmins(req.user.userId);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  // Phase 3.1: Enhanced multi-selection endpoints for events
+  @Get('events/:eventId/available-options')
+  @Roles(Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async getAvailableOptionsForSelection(
+    @Param('eventId') eventId: string,
+    @Request() req
+  ) {
+    try {
+      return await this.hierarchicalEventSelectionService.getAvailableOptionsForSelection(
+        req.user.userId,
+        eventId
+      );
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Patch('events/:eventId/select-branches-enhanced')
+  @Roles(Role.STATE_ADMIN)
+  async selectBranchesForEventEnhanced(
+    @Param('eventId') eventId: string,
+    @Body() body: { 
+      selectedBranches: string[]; 
+      options?: { validateLimits?: boolean; replacePrevious?: boolean; dryRun?: boolean; }
+    },
+    @Request() req
+  ) {
+    try {
+      return await this.hierarchicalEventSelectionService.selectBranchesForEventEnhanced(
+        eventId,
+        body.selectedBranches,
+        req.user.userId,
+        body.options
+      );
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Patch('events/:eventId/select-zones-enhanced')
+  @Roles(Role.BRANCH_ADMIN)
+  async selectZonesForEventEnhanced(
+    @Param('eventId') eventId: string,
+    @Body() body: { 
+      selectedZones: string[]; 
+      options?: { validateLimits?: boolean; replacePrevious?: boolean; dryRun?: boolean; }
+    },
+    @Request() req
+  ) {
+    try {
+      return await this.hierarchicalEventSelectionService.selectZonesForEventEnhanced(
+        eventId,
+        body.selectedZones,
+        req.user.userId,
+        body.options
+      );
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  // Phase 3.1: Excel export endpoints (placeholders for Phase 6)
+  @Get('export/states')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN)
+  async exportStates(@Request() req, @Res() res: Response) {
+    try {
+      // This will be implemented when we create the Excel export service in Phase 6
+      return res.json({ 
+        message: 'Excel export for states - To be implemented in Phase 6',
+        adminId: req.user.userId 
+      });
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Get('export/branches')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async exportBranches(@Request() req, @Res() res: Response) {
+    try {
+      // This will be implemented when we create the Excel export service in Phase 6
+      return res.json({ 
+        message: 'Excel export for branches - To be implemented in Phase 6',
+        adminId: req.user.userId 
+      });
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Get('export/zones')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async exportZones(@Request() req, @Res() res: Response) {
+    try {
+      // This will be implemented when we create the Excel export service in Phase 6
+      return res.json({ 
+        message: 'Excel export for zones - To be implemented in Phase 6',
+        adminId: req.user.userId 
+      });
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Get('export/events')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async exportEvents(@Request() req, @Res() res: Response) {
+    try {
+      // This will be implemented when we create the Excel export service in Phase 6
+      return res.json({ 
+        message: 'Excel export for events - To be implemented in Phase 6',
+        adminId: req.user.userId 
+      });
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Get('export/admins')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async exportAdmins(@Request() req, @Res() res: Response) {
+    try {
+      // This will be implemented when we create the Excel export service in Phase 6
+      return res.json({ 
+        message: 'Excel export for admins - To be implemented in Phase 6',
+        adminId: req.user.userId 
+      });
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  // Phase 5.3: Admin Replacement and Jurisdiction Transfer endpoints
+  @Post('replace-admin')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async replaceAdmin(
+    @Body() replacementDto: AdminReplacementDto,
+    @Request() req
+  ) {
+    try {
+      return await this.adminHierarchyService.replaceAdmin(replacementDto, req.user.userId);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Post('transfer-jurisdiction')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async transferJurisdiction(
+    @Body() transferDto: JurisdictionTransferDto,
+    @Request() req
+  ) {
+    try {
+      return await this.adminHierarchyService.transferJurisdiction(transferDto, req.user.userId);
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }

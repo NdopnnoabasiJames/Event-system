@@ -8,20 +8,30 @@ import {
   Delete,
   UseGuards,
   Query,
+  Request,
 } from '@nestjs/common';
 
 import { PickupStationsService } from './pickup-stations.service';
+import { PickupStationManagementService } from './services/pickup-station-management.service';
 import { CreatePickupStationDto } from './dto/create-pickup-station.dto';
 import { UpdatePickupStationDto } from './dto/update-pickup-station.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
+import { 
+  ZoneSpecificCreateDto, 
+  CapacityAndTimeUpdate, 
+  FrequentlyUsedStation 
+} from './services/pickup-station-management.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('pickup-stations')
 export class PickupStationsController {
-  constructor(private readonly pickupStationsService: PickupStationsService) {}
+  constructor(
+    private readonly pickupStationsService: PickupStationsService,
+    private readonly pickupStationManagementService: PickupStationManagementService,
+  ) {}
   @Post()
   @Roles(Role.SUPER_ADMIN)
   create(@Body() createPickupStationDto: CreatePickupStationDto) {
@@ -106,5 +116,77 @@ export class PickupStationsController {
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
   deactivateByZone(@Param('zoneId') zoneId: string) {
     return this.pickupStationsService.deactivateByZone(zoneId);
+  }
+
+  // Phase 3.3: Enhanced Pickup Station Endpoints
+
+  // Zone-specific pickup station creation
+  @Post('zone/:zoneId/create')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async createZoneSpecificPickupStation(
+    @Param('zoneId') zoneId: string,
+    @Body() createDto: ZoneSpecificCreateDto,
+    @Request() req
+  ) {
+    const { userId } = req.user;
+    return this.pickupStationManagementService.createZoneSpecificPickupStation(zoneId, userId, createDto);
+  }
+  // Capacity and departure time management
+  @Patch(':stationId/capacity-and-time')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async updateCapacityAndDepartureTime(
+    @Param('stationId') stationId: string,
+    @Body() updateData: CapacityAndTimeUpdate,
+    @Request() req
+  ) {
+    const { userId } = req.user;
+    return this.pickupStationManagementService.updateCapacityAndDepartureTime(stationId, userId, updateData);
+  }
+
+  @Patch('bulk-update-capacity-time')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async bulkUpdateCapacityAndTime(
+    @Body() updates: Array<{ stationId: string } & CapacityAndTimeUpdate>,
+    @Request() req
+  ) {
+    const { userId } = req.user;
+    return this.pickupStationManagementService.bulkUpdateCapacityAndTime(userId, updates);
+  }
+
+  @Get('capacity-overview')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async getAvailableCapacityOverview(@Request() req) {
+    const { userId } = req.user;
+    return this.pickupStationManagementService.getAvailableCapacityOverview(userId);
+  }
+
+  // Frequently used stations management  @Get('frequently-used')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async getFrequentlyUsedStations(
+    @Request() req,
+    @Query('limit') limit?: string
+  ): Promise<FrequentlyUsedStation[]> {
+    const { userId } = req.user;
+    const limitNum = limit ? parseInt(limit, 10) : 10;
+    return this.pickupStationManagementService.getFrequentlyUsedStations(userId, limitNum);
+  }
+
+  @Patch(':stationId/mark-used')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async markStationAsUsed(@Param('stationId') stationId: string, @Request() req) {
+    const { userId } = req.user;
+    return this.pickupStationManagementService.markStationAsUsed(stationId, userId);
+  }
+  @Get('usage-stats')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async getPickupStationUsageStats(
+    @Request() req,
+    @Query('topLimit') topLimit?: string,
+    @Query('underutilizedLimit') underutilizedLimit?: string
+  ) {
+    const { userId } = req.user;
+    const topLimitNum = topLimit ? parseInt(topLimit, 10) : undefined;
+    const underutilizedLimitNum = underutilizedLimit ? parseInt(underutilizedLimit, 10) : undefined;
+    return this.pickupStationManagementService.getPickupStationUsageStats(userId, topLimitNum, underutilizedLimitNum);
   }
 }

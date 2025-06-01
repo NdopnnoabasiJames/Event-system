@@ -1,4 +1,5 @@
 import { IsArray, IsMongoId, IsString } from 'class-validator';
+import { MaxSelection, MinSelection, UniqueSelection } from '../../common/decorators/custom-validators.decorator';
 
 export class SelectBranchesDto {
   @IsString()
@@ -7,6 +8,9 @@ export class SelectBranchesDto {
 
   @IsArray()
   @IsMongoId({ each: true })
+  @MaxSelection(20)
+  @MinSelection(1)
+  @UniqueSelection()
   selectedBranches: string[];
 }
 
@@ -17,5 +21,8 @@ export class SelectZonesDto {
 
   @IsArray()
   @IsMongoId({ each: true })
+  @MaxSelection(10)
+  @MinSelection(1)
+  @UniqueSelection()
   selectedZones: string[];
 }

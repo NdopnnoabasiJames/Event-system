@@ -5,17 +5,19 @@ import { PickupStationsController } from './pickup-stations.controller';
 import { PickupStation, PickupStationSchema } from '../schemas/pickup-station.schema';
 import { Branch, BranchSchema } from '../schemas/branch.schema';
 import { Zone, ZoneSchema } from '../schemas/zone.schema';
+import { User, UserSchema } from '../schemas/user.schema';
+import { PickupStationManagementService } from './services/pickup-station-management.service';
 
-@Module({
-  imports: [
+@Module({  imports: [
     MongooseModule.forFeature([
       { name: PickupStation.name, schema: PickupStationSchema },
       { name: Branch.name, schema: BranchSchema },
       { name: Zone.name, schema: ZoneSchema },
+      { name: User.name, schema: UserSchema },
     ])
   ],
   controllers: [PickupStationsController],
-  providers: [PickupStationsService],
-  exports: [PickupStationsService],
+  providers: [PickupStationsService, PickupStationManagementService],
+  exports: [PickupStationsService, PickupStationManagementService],
 })
 export class PickupStationsModule {}

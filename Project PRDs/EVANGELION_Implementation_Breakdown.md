@@ -68,8 +68,6 @@ Implementing the hierarchical admin system for the EVANGELION Event Invitation a
 
 ### Phase 3: API Endpoints & Controllers
 
-**Duration: 2-3 hours**
-
 #### 3.1 Enhanced Admin Endpoints
 
 - Multi-selection endpoints for events (branches/zones)
@@ -93,8 +91,6 @@ Implementing the hierarchical admin system for the EVANGELION Event Invitation a
 
 ### Phase 4: Data Migration & Seeding
 
-**Duration: 1-2 hours**
-
 #### 4.1 Create Mock Data Migration
 
 - Comprehensive States/Branches/Zones data
@@ -108,8 +104,6 @@ Implementing the hierarchical admin system for the EVANGELION Event Invitation a
 - Create migration scripts for schema updates
 
 ### Phase 5: Enhanced DTOs & Validation
-
-**Duration: 1-2 hours**
 
 #### 5.1 Multi-Selection DTOs
 
@@ -131,8 +125,6 @@ Implementing the hierarchical admin system for the EVANGELION Event Invitation a
 
 ### Phase 6: Excel Export Functionality
 
-**Duration: 1-2 hours**
-
 #### 6.1 Export Service Creation
 
 - Generic Excel export service
@@ -148,8 +140,6 @@ Implementing the hierarchical admin system for the EVANGELION Event Invitation a
 
 ### Phase 7: Enhanced Authentication & Authorization
 
-**Duration: 1 hour**
-
 #### 7.1 Jurisdiction-Based Access Control
 
 - ✅ Basic role guards exist
@@ -162,8 +152,6 @@ Implementing the hierarchical admin system for the EVANGELION Event Invitation a
 - Handle disabled admin scenarios gracefully
 
 ### Phase 8: Testing & Validation
-
-**Duration: 2-3 hours**
 
 #### 8.1 Unit Tests
 
@@ -201,8 +189,6 @@ Implementing the hierarchical admin system for the EVANGELION Event Invitation a
 
 7. Phase 6: Excel Export (Can be added later)
 8. Phase 8: Comprehensive Testing (Ongoing)
-
-## Estimated Total Time: 10-15 hours
 
 ## Dependencies & Considerations
 
