@@ -735,4 +735,46 @@ export class AdminHierarchyService {
         return false;
     }
   }
+
+  /**
+   * Get admins accessible by requesting admin for export
+   */
+  async getAccessibleAdmins(adminId: string): Promise<UserDocument[]> {
+    const admin = await this.getAdminWithHierarchy(adminId);
+    let query: any = { 
+      role: { $in: [Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN, Role.MARKETER] }
+    };
+
+    // Filter based on requesting admin's jurisdiction
+    switch (admin.role) {
+      case Role.SUPER_ADMIN:
+        // Can see all admins
+        break;
+      case Role.STATE_ADMIN:
+        query.$or = [
+          { role: Role.BRANCH_ADMIN, state: admin.state },
+          { role: Role.ZONAL_ADMIN, state: admin.state },
+          { role: Role.MARKETER, state: admin.state }
+        ];
+        break;
+      case Role.BRANCH_ADMIN:
+        query.$or = [
+          { role: Role.ZONAL_ADMIN, branch: admin.branch },
+          { role: Role.MARKETER, branch: admin.branch }
+        ];
+        break;
+      default:
+        // Other roles can't export admin data
+        return [];
+    }
+
+    return await this.userModel
+      .find(query)
+      .populate('state', 'name')
+      .populate('branch', 'name location')
+      .populate('zone', 'name')
+      .select('name email role state branch zone isActive lastLogin createdAt')
+      .sort({ role: 1, name: 1 })
+      .exec();
+  }
 }

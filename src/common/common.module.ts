@@ -6,6 +6,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { createWinstonLogger } from './utils/logger.util';
 import { CustomThrottlerGuard } from './guards/throttler.guard';
 import { CloudinaryService } from './services/cloudinary.service';
+import { ExcelExportService } from './services/excel-export.service';
 
 @Global()
 @Module({
@@ -38,7 +39,8 @@ import { CloudinaryService } from './services/cloudinary.service';
       useClass: CustomThrottlerGuard,
     },
     CloudinaryService,
+    ExcelExportService,
   ],
-  exports: [WinstonModule, ThrottlerModule, CloudinaryService],
+  exports: [WinstonModule, ThrottlerModule, CloudinaryService, ExcelExportService],
 })
 export class CommonModule {}

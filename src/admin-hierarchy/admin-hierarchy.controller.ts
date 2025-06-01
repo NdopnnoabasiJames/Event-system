@@ -19,6 +19,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
 import { AdminHierarchyService } from '../admin-hierarchy/admin-hierarchy.service';
 import { HierarchicalEventCreationService } from '../events/hierarchical-event-creation.service';
+import { ExcelExportService } from '../common/services/excel-export.service';
 import { CreateHierarchicalEventDto } from '../events/dto/create-hierarchical-event.dto';
 import { HierarchicalEventSelectionService } from '../events/services/hierarchical-event-selection.service';
 import { 
@@ -32,6 +33,7 @@ export class AdminHierarchyController {  constructor(
     private adminHierarchyService: AdminHierarchyService,
     private hierarchicalEventService: HierarchicalEventCreationService,
     private hierarchicalEventSelectionService: HierarchicalEventSelectionService,
+    private excelExportService: ExcelExportService,
   ) {}
 
   @Get('profile')
@@ -249,73 +251,73 @@ export class AdminHierarchyController {  constructor(
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
-
-  // Phase 3.1: Excel export endpoints (placeholders for Phase 6)
+  // Phase 6: Excel export endpoints
   @Get('export/states')
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN)
   async exportStates(@Request() req, @Res() res: Response) {
     try {
-      // This will be implemented when we create the Excel export service in Phase 6
-      return res.json({ 
-        message: 'Excel export for states - To be implemented in Phase 6',
-        adminId: req.user.userId 
-      });
+      const states = await this.adminHierarchyService.getAccessibleStates(req.user.userId);
+      const excelBuffer = this.excelExportService.exportStates(states);
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=states_export.xlsx');
+      res.send(excelBuffer);
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
-
   @Get('export/branches')
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
   async exportBranches(@Request() req, @Res() res: Response) {
     try {
-      // This will be implemented when we create the Excel export service in Phase 6
-      return res.json({ 
-        message: 'Excel export for branches - To be implemented in Phase 6',
-        adminId: req.user.userId 
-      });
+      const branches = await this.adminHierarchyService.getAccessibleBranches(req.user.userId);
+      const excelBuffer = this.excelExportService.exportBranches(branches);
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=branches_export.xlsx');
+      res.send(excelBuffer);
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
-
   @Get('export/zones')
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
   async exportZones(@Request() req, @Res() res: Response) {
     try {
-      // This will be implemented when we create the Excel export service in Phase 6
-      return res.json({ 
-        message: 'Excel export for zones - To be implemented in Phase 6',
-        adminId: req.user.userId 
-      });
+      const zones = await this.adminHierarchyService.getAccessibleZones(req.user.userId);
+      const excelBuffer = this.excelExportService.exportZones(zones);
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=zones_export.xlsx');
+      res.send(excelBuffer);
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
-
   @Get('export/events')
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
   async exportEvents(@Request() req, @Res() res: Response) {
     try {
-      // This will be implemented when we create the Excel export service in Phase 6
-      return res.json({ 
-        message: 'Excel export for events - To be implemented in Phase 6',
-        adminId: req.user.userId 
-      });
+      const events = await this.adminHierarchyService.getEventsForAdmin(req.user.userId);
+      const excelBuffer = this.excelExportService.exportEvents(events);
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=events_export.xlsx');
+      res.send(excelBuffer);
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
-
   @Get('export/admins')
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
   async exportAdmins(@Request() req, @Res() res: Response) {
     try {
-      // This will be implemented when we create the Excel export service in Phase 6
-      return res.json({ 
-        message: 'Excel export for admins - To be implemented in Phase 6',
-        adminId: req.user.userId 
-      });
+      const admins = await this.adminHierarchyService.getAccessibleAdmins(req.user.userId);
+      const excelBuffer = this.excelExportService.exportAdmins(admins);
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=admins_export.xlsx');
+      res.send(excelBuffer);
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }

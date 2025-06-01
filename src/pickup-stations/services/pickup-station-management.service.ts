@@ -357,6 +357,61 @@ export class PickupStationManagementService {
     };
   }
 
+  /**
+   * Get pickup stations accessible by admin for export
+   */
+  async getAccessiblePickupStations(adminId: string): Promise<PickupStationDocument[]> {
+    const admin = await this.userModel.findById(adminId)
+      .populate('state')
+      .populate('branch')
+      .populate('zone')
+      .exec();
+
+    if (!admin) {
+      throw new NotFoundException('Admin not found');
+    }
+
+    let query: any = {};
+
+    // Filter based on admin's jurisdiction
+    switch (admin.role) {
+      case Role.SUPER_ADMIN:
+        // Can see all pickup stations
+        break;
+      case Role.STATE_ADMIN:
+        // Get all pickup stations in the state
+        query = {
+          $or: [
+            { 'stateId': admin.state },
+            { 'branchId.stateId': admin.state }
+          ]
+        };
+        break;
+      case Role.BRANCH_ADMIN:
+        // Get pickup stations in the branch
+        query = { branchId: admin.branch };
+        break;
+      case Role.ZONAL_ADMIN:
+        // Get pickup stations in the zone
+        query = { zoneId: admin.zone };
+        break;
+      default:
+        // Other roles can't access pickup stations
+        return [];
+    }
+
+    return await this.pickupStationModel
+      .find(query)
+      .populate('branchId', 'name location')
+      .populate('zoneId', 'name')
+      .populate({
+        path: 'branchId',
+        populate: { path: 'stateId', select: 'name' }
+      })
+      .sort({ location: 1 })
+      .exec();
+  }
+
   // Helper methods
   private async validateStationAccess(station: PickupStationDocument, admin: UserDocument): Promise<void> {
     if (admin.role === Role.SUPER_ADMIN) return;
@@ -372,9 +427,7 @@ export class PickupStationManagementService {
     } else if (admin.role === Role.ZONAL_ADMIN) {
       if (station.zoneId?.toString() !== admin.zone?.toString()) {
         throw new UnauthorizedException('Access denied to this pickup station');
-      }
-    }
-  }
+      }    }  }
 
 }
 

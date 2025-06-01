@@ -9,7 +9,9 @@ import {
   UseGuards,
   Query,
   Request,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 
 import { PickupStationsService } from './pickup-stations.service';
 import { PickupStationManagementService } from './services/pickup-station-management.service';
@@ -24,6 +26,7 @@ import {
   CapacityAndTimeUpdate, 
   FrequentlyUsedStation 
 } from './services/pickup-station-management.service';
+import { ExcelExportService } from '../common/services/excel-export.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('pickup-stations')
@@ -31,6 +34,7 @@ export class PickupStationsController {
   constructor(
     private readonly pickupStationsService: PickupStationsService,
     private readonly pickupStationManagementService: PickupStationManagementService,
+    private readonly excelExportService: ExcelExportService,
   ) {}
   @Post()
   @Roles(Role.SUPER_ADMIN)
@@ -176,8 +180,7 @@ export class PickupStationsController {
   async markStationAsUsed(@Param('stationId') stationId: string, @Request() req) {
     const { userId } = req.user;
     return this.pickupStationManagementService.markStationAsUsed(stationId, userId);
-  }
-  @Get('usage-stats')
+  }  @Get('usage-stats')
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
   async getPickupStationUsageStats(
     @Request() req,
@@ -188,5 +191,22 @@ export class PickupStationsController {
     const topLimitNum = topLimit ? parseInt(topLimit, 10) : undefined;
     const underutilizedLimitNum = underutilizedLimit ? parseInt(underutilizedLimit, 10) : undefined;
     return this.pickupStationManagementService.getPickupStationUsageStats(userId, topLimitNum, underutilizedLimitNum);
+  }
+
+  // Phase 6: Excel export endpoint
+  @Get('export')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async exportPickupStations(@Request() req, @Res() res: Response) {
+    try {
+      // Get pickup stations based on admin's jurisdiction
+      const stations = await this.pickupStationManagementService.getAccessiblePickupStations(req.user.userId);
+      const excelBuffer = this.excelExportService.exportPickupStations(stations);
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=pickup_stations_export.xlsx');
+      res.send(excelBuffer);
+    } catch (error) {
+      res.status(400).json({ message: error.message });
+    }
   }
 }
