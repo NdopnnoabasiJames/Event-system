@@ -12,9 +12,12 @@ export class PickupStation {
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Zone', required: true, index: true })
   zoneId: MongooseSchema.Types.ObjectId;
-
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   createdBy: MongooseSchema.Types.ObjectId;
+
+  // Default capacity for this pickup station (can be overridden in events)
+  @Prop({ type: Number, default: 50, min: 1 })
+  defaultCapacity: number;
 
   @Prop({ default: true, index: true })
   isActive: boolean;

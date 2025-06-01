@@ -29,9 +29,25 @@ export class User {
 
   @Prop({ default: false })
   isApproved: boolean;
-
   @Prop({ type: Types.ObjectId, ref: 'User', required: false })
   approvedBy?: Types.ObjectId;
+
+  // Performance rating for marketers (all-time rating based on attendee check-ins)
+  @Prop({ type: Number, min: 0, max: 5, default: 0 })
+  performanceRating: number;
+
+  // Total invited attendees who actually checked in (for rating calculation)
+  @Prop({ type: Number, default: 0 })
+  totalCheckedInAttendees: number;
+
+  // Total attendees invited across all events
+  @Prop({ type: Number, default: 0 })
+  totalInvitedAttendees: number;
+
+  // Admin status for disable/enable functionality
+  @Prop({ default: true })
+  isActive: boolean;
+
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Event' }], default: [] })
   eventParticipation: Types.ObjectId[];
 }
@@ -45,6 +61,8 @@ UserSchema.index({ role: 1, state: 1 });
 UserSchema.index({ role: 1, branch: 1 });
 UserSchema.index({ role: 1, zone: 1 });
 UserSchema.index({ isApproved: 1, role: 1 });
+UserSchema.index({ isActive: 1, role: 1 });
+UserSchema.index({ performanceRating: -1, role: 1 }); // For performance ranking
 
 // Add text index for search
 UserSchema.index({ name: 'text', email: 'text' });
