@@ -15,8 +15,13 @@ import {
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { JurisdictionGuard } from '../auth/guards/jurisdiction.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { RequireJurisdiction } from '../common/decorators/jurisdiction.decorator';
+import { RequirePermissions } from '../common/decorators/permissions.decorator';
 import { Role } from '../common/enums/role.enum';
+import { Permission } from '../common/enums/permission.enum';
 import { AdminHierarchyService } from '../admin-hierarchy/admin-hierarchy.service';
 import { HierarchicalEventCreationService } from '../events/hierarchical-event-creation.service';
 import { ExcelExportService } from '../common/services/excel-export.service';
@@ -28,7 +33,7 @@ import {
 } from './dto/admin-jurisdiction.dto';
 
 @Controller('admin-hierarchy')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, JurisdictionGuard, PermissionsGuard)
 export class AdminHierarchyController {  constructor(
     private adminHierarchyService: AdminHierarchyService,
     private hierarchicalEventService: HierarchicalEventCreationService,
@@ -55,9 +60,10 @@ export class AdminHierarchyController {  constructor(
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
-
   @Get('accessible-branches/:stateId?')
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  @RequireJurisdiction('state')
+  @RequirePermissions(Permission.READ_BRANCH)
   async getAccessibleBranches(@Request() req, @Param('stateId') stateId?: string) {
     try {
       return await this.adminHierarchyService.getAccessibleBranches(req.user.userId, stateId);
@@ -65,9 +71,9 @@ export class AdminHierarchyController {  constructor(
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
-
   @Get('events')
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  @RequirePermissions(Permission.READ_EVENT)
   async getEventsForAdmin(@Request() req) {
     try {
       return await this.adminHierarchyService.getEventsForAdmin(req.user.userId);

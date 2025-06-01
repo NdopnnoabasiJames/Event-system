@@ -7,6 +7,7 @@ import { createWinstonLogger } from './utils/logger.util';
 import { CustomThrottlerGuard } from './guards/throttler.guard';
 import { CloudinaryService } from './services/cloudinary.service';
 import { ExcelExportService } from './services/excel-export.service';
+import { PermissionService } from './services/permission.service';
 
 @Global()
 @Module({
@@ -40,7 +41,8 @@ import { ExcelExportService } from './services/excel-export.service';
     },
     CloudinaryService,
     ExcelExportService,
+    PermissionService,
   ],
-  exports: [WinstonModule, ThrottlerModule, CloudinaryService, ExcelExportService],
+  exports: [WinstonModule, ThrottlerModule, CloudinaryService, ExcelExportService, PermissionService],
 })
 export class CommonModule {}

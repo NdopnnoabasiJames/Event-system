@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
@@ -23,6 +23,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { CommonModule } from './common/common.module';
 import { ConciergesModule } from './concierges/concierges.module';
+import { ActiveAdminMiddleware } from './common/middleware/active-admin.middleware';
 
 @Module({
   imports: [ 
@@ -86,4 +87,11 @@ import { ConciergesModule } from './concierges/concierges.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(ActiveAdminMiddleware)
+      .exclude('/auth/login', '/auth/register', '/auth/forgot-password')
+      .forRoutes('*');
+  }
+}
