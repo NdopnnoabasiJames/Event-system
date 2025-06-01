@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { User, UserDocument } from '../schemas/user.schema';
@@ -6,6 +6,7 @@ import { State, StateDocument } from '../schemas/state.schema';
 import { Branch, BranchDocument } from '../schemas/branch.schema';
 import { Zone, ZoneDocument } from '../schemas/zone.schema';
 import { Event, EventDocument } from '../schemas/event.schema';
+import { Attendee, AttendeeDocument } from '../schemas/attendee.schema';
 import { Role } from '../common/enums/role.enum';
 
 @Injectable()
@@ -16,6 +17,7 @@ export class AdminHierarchyService {
     @InjectModel(Branch.name) private branchModel: Model<BranchDocument>,
     @InjectModel(Zone.name) private zoneModel: Model<ZoneDocument>,
     @InjectModel(Event.name) private eventModel: Model<EventDocument>,
+    @InjectModel(Attendee.name) private attendeeModel: Model<AttendeeDocument>,
   ) {}
   /**
    * Get admin user with hierarchy validation
@@ -66,20 +68,22 @@ export class AdminHierarchyService {
    */
   async canAccessBranch(adminId: string, branchId: string): Promise<boolean> {
     const admin = await this.getAdminWithHierarchy(adminId);
+    const branch = await this.branchModel.findById(branchId);
+    
+    if (!branch) {
+      return false;
+    }
 
     switch (admin.role) {
       case Role.SUPER_ADMIN:
         return true; // Super admin can access all branches
       case Role.STATE_ADMIN:
-        // State admin can access branches in their state
-        const branch = await this.branchModel.findById(branchId).exec();
-        return branch?.stateId.toString() === admin.state?.toString();
+        return admin.state.toString() === branch.stateId.toString();
       case Role.BRANCH_ADMIN:
-        return admin.branch?.toString() === branchId;
+        return admin.branch.toString() === branchId;
       case Role.ZONAL_ADMIN:
-        // Zonal admin can access their branch through their zone
-        const zone = await this.zoneModel.findById(admin.zone).exec();
-        return zone?.branchId.toString() === branchId;
+        // Zonal admin can access their branch
+        return admin.branch.toString() === branchId;
       default:
         return false;
     }
@@ -90,21 +94,23 @@ export class AdminHierarchyService {
    */
   async canAccessZone(adminId: string, zoneId: string): Promise<boolean> {
     const admin = await this.getAdminWithHierarchy(adminId);
+    const zone = await this.zoneModel.findById(zoneId);
+    
+    if (!zone) {
+      return false;
+    }
 
     switch (admin.role) {
       case Role.SUPER_ADMIN:
         return true; // Super admin can access all zones
       case Role.STATE_ADMIN:
         // State admin can access zones in their state
-        const zone = await this.zoneModel.findById(zoneId).populate('branchId').exec();
-        const zoneBranch = zone?.branchId as any;
-        return zoneBranch?.stateId?.toString() === admin.state?.toString();
+        const branch = await this.branchModel.findById(zone.branchId);
+        return branch && admin.state.toString() === branch.stateId.toString();
       case Role.BRANCH_ADMIN:
-        // Branch admin can access zones in their branch
-        const branchZone = await this.zoneModel.findById(zoneId).exec();
-        return branchZone?.branchId.toString() === admin.branch?.toString();
+        return admin.branch.toString() === zone.branchId.toString();
       case Role.ZONAL_ADMIN:
-        return admin.zone?.toString() === zoneId;
+        return admin.zone.toString() === zoneId;
       default:
         return false;
     }
@@ -243,5 +249,245 @@ export class AdminHierarchyService {
       .select('_id')
       .exec();
     return branches.map(branch => branch._id as Types.ObjectId);
+  }
+
+  /**
+   * Phase 2.1: Admin disable/enable functionality
+   */
+  async disableAdmin(adminId: string, disabledBy: string, reason?: string): Promise<UserDocument> {
+    const admin = await this.userModel.findById(adminId).exec();
+    if (!admin) {
+      throw new NotFoundException('Admin not found');
+    }
+
+    const disablingAdmin = await this.getAdminWithHierarchy(disabledBy);
+
+    // Validate hierarchy permissions
+    if (!this.canManageAdmin(disablingAdmin.role, admin.role)) {
+      throw new ForbiddenException('Insufficient permissions to disable this admin');
+    }
+
+    if (!admin.isActive) {
+      throw new BadRequestException('Admin is already disabled');
+    }
+
+    admin.isActive = false;
+    admin.disabledBy = new Types.ObjectId(disabledBy);
+    admin.disabledAt = new Date();
+    admin.disableReason = reason;
+
+    return await admin.save();
+  }
+
+  async enableAdmin(adminId: string, enabledBy: string): Promise<UserDocument> {
+    const admin = await this.userModel.findById(adminId).exec();
+    if (!admin) {
+      throw new NotFoundException('Admin not found');
+    }
+
+    const enablingAdmin = await this.getAdminWithHierarchy(enabledBy);
+
+    // Validate hierarchy permissions
+    if (!this.canManageAdmin(enablingAdmin.role, admin.role)) {
+      throw new ForbiddenException('Insufficient permissions to enable this admin');
+    }
+
+    if (admin.isActive) {
+      throw new BadRequestException('Admin is already active');
+    }
+
+    admin.isActive = true;
+    admin.disabledBy = undefined;
+    admin.disabledAt = undefined;
+    admin.disableReason = undefined;
+    admin.enabledBy = new Types.ObjectId(enabledBy);
+    admin.enabledAt = new Date();
+
+    return await admin.save();
+  }
+
+  /**
+   * Check if an admin can manage another admin based on hierarchy
+   */
+  private canManageAdmin(managerRole: Role, targetRole: Role): boolean {
+    const roleHierarchy = {
+      [Role.SUPER_ADMIN]: 4,
+      [Role.STATE_ADMIN]: 3,
+      [Role.BRANCH_ADMIN]: 2,
+      [Role.ZONAL_ADMIN]: 1
+    };
+
+    return roleHierarchy[managerRole] > roleHierarchy[targetRole];
+  }
+
+  /**
+   * Phase 2.1: Performance rating calculation for marketers
+   */
+  async calculateMarketerPerformanceRating(marketerId: string): Promise<{ rating: number; metrics: any }> {
+    const marketer = await this.userModel.findById(marketerId).exec();
+    if (!marketer || marketer.role !== Role.MARKETER) {
+      throw new NotFoundException('Marketer not found');
+    }
+
+    // Get all attendees registered by this marketer
+    const totalInvited = await this.attendeeModel.countDocuments({ registeredBy: marketerId });
+    const totalCheckedIn = await this.attendeeModel.countDocuments({ 
+      registeredBy: marketerId, 
+      checkedIn: true 
+    });
+
+    // Calculate check-in rate
+    const checkInRate = totalInvited > 0 ? (totalCheckedIn / totalInvited) : 0;
+
+    // Calculate rating based on check-in rate (0-5 stars)
+    let rating = 0;
+    if (checkInRate >= 0.9) rating = 5;      // 90%+ = 5 stars
+    else if (checkInRate >= 0.8) rating = 4; // 80-89% = 4 stars
+    else if (checkInRate >= 0.7) rating = 3; // 70-79% = 3 stars
+    else if (checkInRate >= 0.6) rating = 2; // 60-69% = 2 stars
+    else if (checkInRate >= 0.5) rating = 1; // 50-59% = 1 star
+    // Below 50% = 0 stars
+
+    // Update marketer's performance data
+    marketer.performanceRating = rating;
+    marketer.totalInvitedAttendees = totalInvited;
+    marketer.totalCheckedInAttendees = totalCheckedIn;
+    await marketer.save();
+
+    const metrics = {
+      totalInvited,
+      totalCheckedIn,
+      checkInRate: Math.round(checkInRate * 100) / 100,
+      rating,
+      ratingText: this.getRatingText(rating)
+    };
+
+    return { rating, metrics };
+  }
+
+  private getRatingText(rating: number): string {
+    switch (rating) {
+      case 5: return 'Gold';
+      case 4: return '4 Star';
+      case 3: return '3 Star';
+      case 2: return '2 Star';
+      case 1: return '1 Star';
+      default: return 'No Rating';
+    }
+  }
+
+  /**
+   * Get marketers performance summary for an admin's jurisdiction
+   */
+  async getMarketersPerformanceSummary(adminId: string): Promise<any[]> {
+    const admin = await this.getAdminWithHierarchy(adminId);
+    let query: any = { role: Role.MARKETER, isActive: true };
+
+    // Filter marketers based on admin's jurisdiction
+    switch (admin.role) {
+      case Role.SUPER_ADMIN:
+        // Can see all marketers
+        break;
+      case Role.STATE_ADMIN:
+        query.state = admin.state;
+        break;
+      case Role.BRANCH_ADMIN:
+        query.branch = admin.branch;
+        break;
+      case Role.ZONAL_ADMIN:
+        query.zone = admin.zone;
+        break;
+      default:
+        throw new ForbiddenException('Insufficient permissions');
+    }
+
+    const marketers = await this.userModel
+      .find(query)
+      .populate('state', 'name')
+      .populate('branch', 'name location')
+      .populate('zone', 'name')
+      .select('name email performanceRating totalInvitedAttendees totalCheckedInAttendees state branch zone')
+      .sort({ performanceRating: -1, totalCheckedInAttendees: -1 })
+      .exec();
+
+    return marketers.map(marketer => ({
+      id: marketer._id,
+      name: marketer.name,
+      email: marketer.email,
+      rating: marketer.performanceRating,
+      ratingText: this.getRatingText(marketer.performanceRating),
+      totalInvited: marketer.totalInvitedAttendees,
+      totalCheckedIn: marketer.totalCheckedInAttendees,
+      checkInRate: marketer.totalInvitedAttendees > 0 
+        ? Math.round((marketer.totalCheckedInAttendees / marketer.totalInvitedAttendees) * 100) / 100 
+        : 0,
+      location: {
+        state: marketer.state,
+        branch: marketer.branch,
+        zone: marketer.zone
+      }
+    }));
+  }
+
+  /**
+   * Enhanced jurisdiction-based access control with admin status checking
+   */
+  async validateAdminAccess(adminId: string, requiredRole?: Role): Promise<UserDocument> {
+    const admin = await this.getAdminWithHierarchy(adminId);
+
+    // Check if admin is active
+    if (!admin.isActive) {
+      throw new ForbiddenException('Admin account is disabled');
+    }
+
+    // Check role if specified
+    if (requiredRole && admin.role !== requiredRole) {
+      throw new ForbiddenException('Insufficient role permissions');
+    }
+
+    return admin;
+  }
+
+  /**
+   * Get disabled admins in jurisdiction
+   */
+  async getDisabledAdmins(adminId: string): Promise<UserDocument[]> {
+    const admin = await this.getAdminWithHierarchy(adminId);
+    let query: any = { 
+      role: { $in: [Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN] },
+      isActive: false 
+    };
+
+    // Filter based on jurisdiction
+    switch (admin.role) {
+      case Role.SUPER_ADMIN:
+        // Can see all disabled admins
+        break;
+      case Role.STATE_ADMIN:
+        query.$or = [
+          { role: Role.BRANCH_ADMIN, state: admin.state },
+          { role: Role.ZONAL_ADMIN, state: admin.state }
+        ];
+        break;
+      case Role.BRANCH_ADMIN:
+        query = { 
+          role: Role.ZONAL_ADMIN, 
+          branch: admin.branch,
+          isActive: false 
+        };
+        break;
+      default:
+        throw new ForbiddenException('Insufficient permissions to view disabled admins');
+    }
+
+    return await this.userModel
+      .find(query)
+      .populate('state', 'name')
+      .populate('branch', 'name location')
+      .populate('zone', 'name')
+      .populate('disabledBy', 'name email')
+      .select('name email role state branch zone disabledBy disabledAt disableReason')
+      .sort({ disabledAt: -1 })
+      .exec();
   }
 }

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AdminHierarchyService } from '../admin-hierarchy/admin-hierarchy.service';
 import { AdminHierarchyController } from './admin-hierarchy.controller';
@@ -8,7 +8,9 @@ import { Branch, BranchSchema } from '../schemas/branch.schema';
 import { Zone, ZoneSchema } from '../schemas/zone.schema';
 import { Event, EventSchema } from '../schemas/event.schema';
 import { PickupStation, PickupStationSchema } from '../schemas/pickup-station.schema';
+import { Attendee, AttendeeSchema } from '../schemas/attendee.schema';
 import { HierarchicalEventCreationService } from '../events/hierarchical-event-creation.service';
+import { EventsModule } from '../events/events.module';
 
 @Module({
   imports: [
@@ -19,10 +21,11 @@ import { HierarchicalEventCreationService } from '../events/hierarchical-event-c
       { name: Zone.name, schema: ZoneSchema },
       { name: Event.name, schema: EventSchema },
       { name: PickupStation.name, schema: PickupStationSchema },
+      { name: Attendee.name, schema: AttendeeSchema },
     ]),
-  ],
-  controllers: [AdminHierarchyController],
-  providers: [AdminHierarchyService, HierarchicalEventCreationService],
-  exports: [AdminHierarchyService, HierarchicalEventCreationService],
+    forwardRef(() => EventsModule),
+  ],  controllers: [AdminHierarchyController],
+  providers: [AdminHierarchyService],
+  exports: [AdminHierarchyService],
 })
 export class AdminHierarchyModule {}

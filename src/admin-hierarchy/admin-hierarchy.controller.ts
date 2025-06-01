@@ -123,4 +123,61 @@ export class AdminHierarchyController {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
+
+  // Phase 2.1: Admin disable/enable functionality
+  @Post('disable-admin/:adminId')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async disableAdmin(
+    @Param('adminId') adminId: string,
+    @Body() body: { reason?: string },
+    @Request() req
+  ) {
+    try {
+      return await this.adminHierarchyService.disableAdmin(adminId, req.user.userId, body.reason);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Post('enable-admin/:adminId')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async enableAdmin(@Param('adminId') adminId: string, @Request() req) {
+    try {
+      return await this.adminHierarchyService.enableAdmin(adminId, req.user.userId);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  // Phase 2.1: Performance rating calculation for marketers
+  @Get('marketer-performance/:marketerId')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async getMarketerPerformanceRating(@Param('marketerId') marketerId: string) {
+    try {
+      return await this.adminHierarchyService.calculateMarketerPerformanceRating(marketerId);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Get('marketers-performance-summary')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async getMarketersPerformanceSummary(@Request() req) {
+    try {
+      return await this.adminHierarchyService.getMarketersPerformanceSummary(req.user.userId);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  // Phase 2.1: Enhanced jurisdiction-based access control
+  @Get('disabled-admins')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async getDisabledAdmins(@Request() req) {
+    try {
+      return await this.adminHierarchyService.getDisabledAdmins(req.user.userId);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
 }

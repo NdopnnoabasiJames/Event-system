@@ -43,10 +43,25 @@ export class User {
   // Total attendees invited across all events
   @Prop({ type: Number, default: 0 })
   totalInvitedAttendees: number;
-
   // Admin status for disable/enable functionality
   @Prop({ default: true })
   isActive: boolean;
+
+  // Admin disable/enable tracking
+  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
+  disabledBy?: Types.ObjectId;
+
+  @Prop({ type: Date, required: false })
+  disabledAt?: Date;
+
+  @Prop({ type: String, required: false })
+  disableReason?: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
+  enabledBy?: Types.ObjectId;
+
+  @Prop({ type: Date, required: false })
+  enabledAt?: Date;
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Event' }], default: [] })
   eventParticipation: Types.ObjectId[];
