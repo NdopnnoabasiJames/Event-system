@@ -21,15 +21,57 @@ import { Role } from '../common/enums/role.enum';
 import { CreateEventDto } from '../events/dto/create-event.dto';
 import { CreateGuestDto } from '../guests/dto/create-guest.dto';
 import { UpdateGuestDto } from '../guests/dto/update-guest.dto';
+import { QuickGuestRegistrationDto } from '../guests/dto/quick-guest-registration.dto';
+import { RegisterDto } from '../auth/dto/register.dto';
 
 @Controller('workers')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.WORKER, Role.SUPER_ADMIN)
 export class WorkersController {
   constructor(private readonly workersService: WorkersService) {}
+
+  // Worker Registration
+  @Post('register')
+  async registerWorker(@Body() registerData: RegisterDto) {
+    return this.workersService.registerWorker(registerData);
+  }
+
+  // Get worker profile
+  @Get('profile')
+  @Roles(Role.WORKER)
+  async getWorkerProfile(@Request() req) {
+    return this.workersService.getWorkerProfile(req.user.userId);
+  }
+
+  // Update worker profile
+  @Patch('profile')
+  @Roles(Role.WORKER)
+  async updateWorkerProfile(@Request() req, @Body() updateData: any) {
+    return this.workersService.updateWorkerProfile(req.user.userId, updateData);
+  }
+
+  // Branch Admin endpoints for worker management
+  @Get('pending')
+  @Roles(Role.BRANCH_ADMIN)
+  async getPendingWorkers(@Request() req) {
+    return this.workersService.getPendingWorkers(req.user.userId);
+  }
+
+  @Post('approve/:workerId')
+  @Roles(Role.BRANCH_ADMIN)
+  async approveWorker(@Param('workerId') workerId: string, @Request() req) {
+    return this.workersService.approveWorker(workerId, req.user.userId);
+  }
+
+  @Delete('reject/:workerId')
+  @Roles(Role.BRANCH_ADMIN)
+  async rejectWorker(@Param('workerId') workerId: string, @Request() req) {
+    return this.workersService.rejectWorker(workerId, req.user.userId);
+  }
+
   @Get('events/available')
-  getAvailableEvents() {
-    return this.workersService.getAvailableEvents();
+  @Roles(Role.WORKER, Role.SUPER_ADMIN)
+  getAvailableEvents(@Request() req) {
+    return this.workersService.getAvailableEvents(req.user.userId);
   }
 
   @Get('events/my')
@@ -62,7 +104,23 @@ export class WorkersController {
     return this.workersService.leaveEvent(eventId, req.user.userId);
   }
 
+  // Phase 2.3: Quick Guest Registration (30-second target)
+  @Post('events/:eventId/guests/quick')
+  @Roles(Role.WORKER)
+  quickRegisterGuest(
+    @Param('eventId') eventId: string,
+    @Body() quickGuestData: QuickGuestRegistrationDto,
+    @Request() req,
+  ) {
+    return this.workersService.quickRegisterGuest(
+      req.user.userId,
+      eventId,
+      quickGuestData,
+    );
+  }
+
   @Post('events/:eventId/guests')
+  @Roles(Role.WORKER)
   registerGuest(
     @Param('eventId') eventId: string,
     @Body() guestData: CreateGuestDto,
@@ -75,12 +133,58 @@ export class WorkersController {
     );
   }
 
+  // Phase 2.4: Enhanced Worker's Guest Management
   @Get('guests')
-  getMyGuests(@Request() req) {
-    return this.workersService.getWorkerGuests(req.user.userId);
+  @Roles(Role.WORKER)
+  getMyGuestsWithFilters(
+    @Request() req,
+    @Query('eventId') eventId?: string,
+    @Query('transportPreference') transportPreference?: 'bus' | 'private',
+    @Query('checkedIn') checkedIn?: string,
+    @Query('search') search?: string,
+    @Query('sortBy') sortBy?: 'name' | 'registeredAt' | 'checkedInTime',
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const filters = {
+      eventId,
+      transportPreference,
+      checkedIn: checkedIn === 'true' ? true : checkedIn === 'false' ? false : undefined,
+      search,
+      sortBy,
+      sortOrder,
+      page: page ? parseInt(page) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+    };
+    
+    return this.workersService.getWorkerGuestsWithFilters(req.user.userId, filters);
+  }
+
+  @Patch('guests/bulk')
+  @Roles(Role.WORKER)
+  bulkUpdateGuests(
+    @Body() bulkUpdateData: { guestIds: string[]; updateData: any },
+    @Request() req,
+  ) {
+    return this.workersService.bulkUpdateGuests(
+      req.user.userId,
+      bulkUpdateData.guestIds,
+      bulkUpdateData.updateData
+    );
+  }
+
+  @Get('guests/stats')
+  @Roles(Role.WORKER)
+  getGuestRegistrationStats(
+    @Request() req,
+    @Query('eventId') eventId?: string,
+  ) {
+    return this.workersService.getGuestRegistrationStats(req.user.userId, eventId);
   }
 
   @Get('events/:eventId/guests')
+  @Roles(Role.WORKER)
   getEventGuests(
     @Param('eventId') eventId: string,
     @Request() req,

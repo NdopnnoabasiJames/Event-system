@@ -278,6 +278,22 @@ export class EventsService {  constructor(
     await event.save();
     return { message: 'Registrar request cancelled successfully' };
   }
+  async getEventsForWorkerBranch(branchId: string): Promise<EventDocument[]> {
+    try {
+      const events = await this.eventModel
+        .find({ 
+          branches: { $in: [branchId] },
+          isActive: true 
+        })
+        .populate('workers', '-password')
+        .exec();
+
+      return events || [];
+    } catch (error) {
+      throw new HttpException(`Failed to get events for branch: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   async checkInGuest(eventId: string, phone: string, registrarId: string): Promise<{ message: string }> {
     try {
       const event = await this.findOne(eventId);

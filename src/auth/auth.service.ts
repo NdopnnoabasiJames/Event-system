@@ -84,8 +84,8 @@ export class AuthService {
       
       // Determine approval status based on role
       let isApproved = true; // Default for regular users
-      if (userData.role === 'state_admin' || userData.role === 'branch_admin') {
-        isApproved = false; // Admins need approval
+      if (['state_admin', 'branch_admin', 'zonal_admin', 'worker', 'registrar'].includes(userData.role)) {
+        isApproved = false; // These roles need approval
       }
       
       // Create user with hashed password and admin fields
@@ -95,7 +95,8 @@ export class AuthService {
         role: userData.role,
         isApproved,
         state: userData.state,
-        branch: userData.branch
+        branch: userData.branch,
+        zone: userData.zone
       });
 
       const { password, ...result } = newUser.toJSON();

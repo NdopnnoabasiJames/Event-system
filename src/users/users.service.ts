@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, NotFoundException, UnauthorizedException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Schema as MongooseSchema, Types } from 'mongoose';
 import { User, UserDocument } from '../schemas/user.schema';
@@ -132,7 +132,7 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
   }
 
   // Admin approval methods
-  async getPendingAdmins(approverRole: string, approverState?: string): Promise<UserDocument[]> {
+  async getPendingAdmins(approverRole: string, approverState?: string, approverBranch?: string): Promise<UserDocument[]> {
     const query: any = { isApproved: false };
     
     if (approverRole === 'super_admin') {
@@ -142,15 +142,133 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
       // State admin can see pending branch admins in their state
       query.role = 'branch_admin';
       query.state = approverState;
+    } else if (approverRole === 'branch_admin' && approverBranch) {
+      // Branch admin can see pending zonal admins, workers, and registrars in their branch
+      query.role = { $in: ['zonal_admin', 'worker', 'registrar'] };
+      query.branch = approverBranch;
     }
     
-    return this.userModel.find(query).exec();
+    return this.userModel.find(query)
+      .populate('state', 'name')
+      .populate('branch', 'name')
+      .populate('zone', 'name')
+      .exec();
   }
 
+  // Get pending workers for branch admin approval
+  async getPendingWorkers(branchAdminId: string): Promise<UserDocument[]> {
+    const branchAdmin = await this.userModel.findById(branchAdminId).exec();
+    if (!branchAdmin || branchAdmin.role !== Role.BRANCH_ADMIN) {
+      throw new ForbiddenException('Only branch admins can view pending workers');
+    }
+
+    return this.userModel.find({
+      role: Role.WORKER,
+      isApproved: false,
+      branch: branchAdmin.branch
+    })
+    .populate('state', 'name')
+    .populate('branch', 'name')
+    .exec();
+  }
+
+  // Get pending registrars for branch admin approval
+  async getPendingRegistrars(branchAdminId: string): Promise<UserDocument[]> {
+    const branchAdmin = await this.userModel.findById(branchAdminId).exec();
+    if (!branchAdmin || branchAdmin.role !== Role.BRANCH_ADMIN) {
+      throw new ForbiddenException('Only branch admins can view pending registrars');
+    }
+
+    return this.userModel.find({
+      role: Role.REGISTRAR,
+      isApproved: false,
+      branch: branchAdmin.branch
+    })
+    .populate('state', 'name')
+    .populate('branch', 'name')
+    .exec();
+  }
+
+  // Approve worker by branch admin
+  async approveWorker(workerId: string, branchAdminId: string): Promise<UserDocument> {
+    const branchAdmin = await this.userModel.findById(branchAdminId).exec();
+    if (!branchAdmin || branchAdmin.role !== Role.BRANCH_ADMIN) {
+      throw new ForbiddenException('Only branch admins can approve workers');
+    }
+
+    const worker = await this.userModel.findById(workerId).exec();
+    if (!worker) {
+      throw new NotFoundException('Worker not found');
+    }
+
+    if (worker.role !== Role.WORKER) {
+      throw new BadRequestException('User is not a worker');
+    }
+
+    if (worker.branch?.toString() !== branchAdmin.branch?.toString()) {
+      throw new ForbiddenException('Can only approve workers in your branch');
+    }
+
+    if (worker.isApproved) {
+      throw new HttpException('Worker is already approved', HttpStatus.BAD_REQUEST);
+    }
+
+    worker.isApproved = true;
+    worker.approvedBy = new Types.ObjectId(branchAdminId);
+    return worker.save();
+  }
+
+  // Approve registrar by branch admin
+  async approveRegistrar(registrarId: string, branchAdminId: string): Promise<UserDocument> {
+    const branchAdmin = await this.userModel.findById(branchAdminId).exec();
+    if (!branchAdmin || branchAdmin.role !== Role.BRANCH_ADMIN) {
+      throw new ForbiddenException('Only branch admins can approve registrars');
+    }
+
+    const registrar = await this.userModel.findById(registrarId).exec();
+    if (!registrar) {
+      throw new NotFoundException('Registrar not found');
+    }
+
+    if (registrar.role !== Role.REGISTRAR) {
+      throw new BadRequestException('User is not a registrar');
+    }
+
+    if (registrar.branch?.toString() !== branchAdmin.branch?.toString()) {
+      throw new ForbiddenException('Can only approve registrars in your branch');
+    }
+
+    if (registrar.isApproved) {
+      throw new HttpException('Registrar is already approved', HttpStatus.BAD_REQUEST);
+    }
+
+    registrar.isApproved = true;
+    registrar.approvedBy = new Types.ObjectId(branchAdminId);
+    return registrar.save();
+  }
+
+  // Approve admin (State Admin approves Branch Admin, Super Admin approves State Admin)
   async approveAdmin(adminId: string, approverId: string): Promise<UserDocument> {
+    const approver = await this.userModel.findById(approverId).exec();
+    if (!approver) {
+      throw new NotFoundException('Approver not found');
+    }
+
     const admin = await this.userModel.findById(adminId).exec();
     if (!admin) {
       throw new NotFoundException('Admin not found');
+    }
+
+    // Validation logic based on hierarchy
+    if (approver.role === Role.SUPER_ADMIN && admin.role === Role.STATE_ADMIN) {
+      // Super admin can approve state admins
+    } else if (approver.role === Role.STATE_ADMIN && admin.role === Role.BRANCH_ADMIN) {
+      // State admin can approve branch admins in their state
+      if (admin.state?.toString() !== approver.state?.toString()) {
+        throw new ForbiddenException('Can only approve admins in your state');
+      }
+    } else {
+      throw new ForbiddenException('Invalid approval hierarchy');
     }
 
     if (admin.isApproved) {
@@ -162,10 +280,21 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
     return admin.save();
   }
 
-  async rejectAdmin(adminId: string): Promise<void> {
-    const result = await this.userModel.findByIdAndDelete(adminId).exec();
-    if (!result) {
+  // Reject admin (remove from system)
+  async rejectAdmin(adminId: string): Promise<{ message: string }> {
+    const admin = await this.userModel.findById(adminId).exec();
+    if (!admin) {
       throw new NotFoundException('Admin not found');
     }
+
+    if (admin.isApproved) {
+      throw new BadRequestException('Cannot reject an already approved admin');
+    }
+
+    await this.userModel.findByIdAndDelete(adminId).exec();
+    
+    return {
+      message: 'Admin registration rejected and removed'
+    };
   }
 }
