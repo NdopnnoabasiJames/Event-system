@@ -96,10 +96,8 @@ export class Event {
     default: []
   })
   pickupStations: EventPickupStation[];
-
   @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }] })
-  
-  marketers: Types.ObjectId[];
+  workers: Types.ObjectId[];
   @Prop({ default: false })
   isActive: boolean;
     @Prop()
@@ -125,7 +123,6 @@ export class Event {
     currentCount?: number;
     notes?: string;
   }[];
-
   @Prop({
     type: [
       {
@@ -139,14 +136,14 @@ export class Event {
     ],
     default: [],
   })
-  conciergeRequests: {
+  registrarRequests: {
     _id?: MongooseSchema.Types.ObjectId;
     user: Types.ObjectId,
     status: string,
     requestedAt: Date,
     reviewedAt?: Date,
     reviewedBy?: Types.ObjectId,
-  }[];  // <-- Changed from tuple syntax to array syntax
+  }[];// <-- Changed from tuple syntax to array syntax
 }
 
 
@@ -155,7 +152,7 @@ export const EventSchema = SchemaFactory.createForClass(Event);
 // Add indexes
 EventSchema.index({ date: 1 });
 EventSchema.index({ isActive: 1 });
-EventSchema.index({ 'marketers': 1 });
+EventSchema.index({ 'workers': 1 });
 EventSchema.index({ createdBy: 1 });
 EventSchema.index({ creatorLevel: 1 });
 EventSchema.index({ selectedBranches: 1 });

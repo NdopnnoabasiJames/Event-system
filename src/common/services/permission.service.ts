@@ -84,7 +84,7 @@ export class PermissionService {
       Permission.EXPORT_PICKUP_STATION,
     ],
 
-    [Role.MARKETER]: [
+    [Role.WORKER]: [
       // Limited event permissions
       Permission.READ_EVENT,
 
@@ -92,7 +92,7 @@ export class PermissionService {
       Permission.READ_PICKUP_STATION,
     ],
 
-    [Role.CONCIERGE]: [
+    [Role.REGISTRAR]: [
       // Event check-in permissions
       Permission.READ_EVENT,
       Permission.UPDATE_EVENT, // For check-in operations
@@ -101,7 +101,7 @@ export class PermissionService {
       Permission.READ_PICKUP_STATION,
     ],
 
-    [Role.ATTENDEE]: [
+    [Role.GUEST]: [
       // Basic event access
       Permission.READ_EVENT,
     ],

@@ -5,15 +5,15 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
 
-@Controller('concierges')
+@Controller('registrars')
 @UseGuards(JwtAuthGuard, RolesGuard)
-export class ConciergesController {
+export class RegistrarsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Get('assignments')
-  @Roles(Role.CONCIERGE)
+  @Roles(Role.REGISTRAR)
   async getAssignments(@Request() req) {
     const userId = req.user.userId;
-    return this.eventsService.getConciergeAssignments(userId);
+    return this.eventsService.getRegistrarAssignments(userId);
   }
 }

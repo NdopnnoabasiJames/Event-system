@@ -8,7 +8,7 @@ import { Branch, BranchSchema } from '../schemas/branch.schema';
 import { Zone, ZoneSchema } from '../schemas/zone.schema';
 import { Event, EventSchema } from '../schemas/event.schema';
 import { PickupStation, PickupStationSchema } from '../schemas/pickup-station.schema';
-import { Attendee, AttendeeSchema } from '../schemas/attendee.schema';
+import { Guest, GuestSchema } from '../schemas/guest.schema';
 import { HierarchicalEventCreationService } from '../events/hierarchical-event-creation.service';
 import { EventsModule } from '../events/events.module';
 
@@ -21,10 +21,11 @@ import { EventsModule } from '../events/events.module';
       { name: Zone.name, schema: ZoneSchema },
       { name: Event.name, schema: EventSchema },
       { name: PickupStation.name, schema: PickupStationSchema },
-      { name: Attendee.name, schema: AttendeeSchema },
+      { name: Guest.name, schema: GuestSchema },
     ]),
     forwardRef(() => EventsModule),
-  ],  controllers: [AdminHierarchyController],
+  ],
+  controllers: [AdminHierarchyController],
   providers: [AdminHierarchyService],
   exports: [AdminHierarchyService],
 })

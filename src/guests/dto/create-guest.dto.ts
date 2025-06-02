@@ -10,7 +10,7 @@ import {
 import { IsPhoneNumber } from '../../common/decorators/custom-validators.decorator';
 import { IsFutureDate } from '../../common/decorators/date-validators.decorator';
 
-export class CreateAttendeeDto {
+export class CreateGuestDto {
   @IsString()
   name: string;
 

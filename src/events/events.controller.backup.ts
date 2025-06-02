@@ -71,15 +71,15 @@ export class EventsController {
   }
 
   @Post(':id/join')
-  @Roles(Role.MARKETER)
+  @Roles(Role.WORKER)
   joinEvent(@Param('id') id: string, @Request() req) {
-    return this.eventsService.addMarketerToEvent(id, req.user.userId);
+    return this.eventsService.addWorkerToEvent(id, req.user.userId);
   }
 
   @Delete(':id/leave')
-  @Roles(Role.MARKETER)
+  @Roles(Role.WORKER)
   leaveEvent(@Param('id') id: string, @Request() req) {
-    return this.eventsService.removeMarketerFromEvent(id, req.user.userId);
+    return this.eventsService.removeWorkerFromEvent(id, req.user.userId);
   }
   @Delete(':id')
   @Roles(Role.SUPER_ADMIN)
@@ -87,45 +87,45 @@ export class EventsController {
     return this.eventsService.remove(id);
   }
 
-  @Post(':eventId/concierge-requests')
-  @Roles(Role.CONCIERGE)
-  async requestConcierge(@Param('eventId') eventId: string, @Request() req) {
-    return this.eventsService.requestConcierge(eventId, req.user.userId);
+  @Post(':eventId/Registrar-requests')
+  @Roles(Role.REGISTRAR)
+  async requestRegistrar(@Param('eventId') eventId: string, @Request() req) {
+    return this.eventsService.requestRegistrar(eventId, req.user.userId);
   }
-  @Get('concierge-requests/pending')
+  @Get('Registrar-requests/pending')
   @Roles(Role.SUPER_ADMIN)
-  async getAllPendingConciergeRequests() {
-    return this.eventsService.getAllPendingConciergeRequests();
+  async getAllPendingRegistrarRequests() {
+    return this.eventsService.getAllPendingRegistrarRequests();
   }
-  @Post(':eventId/concierge-requests/:requestId/review')
+  @Post(':eventId/Registrar-requests/:requestId/review')
   @Roles(Role.SUPER_ADMIN)
-  async reviewConciergeRequest(
+  async reviewRegistrarRequest(
     @Param('eventId') eventId: string,
     @Param('requestId') requestId: string,
     @Body('approve') approve: boolean,
     @Request() req
   ) {
-    return this.eventsService.reviewConciergeRequest(eventId, requestId, approve, req.user.userId);
+    return this.eventsService.reviewRegistrarRequest(eventId, requestId, approve, req.user.userId);
   }
-  @Get('concierge-requests/approved')
+  @Get('Registrar-requests/approved')
   @Roles(Role.SUPER_ADMIN)
-  async getAllApprovedConcierges() {
-    return this.eventsService.getAllApprovedConcierges();
+  async getAllApprovedRegistrars() {
+    return this.eventsService.getAllApprovedRegistrars();
   }
 
-  @Delete(':eventId/concierge-requests')
-  @Roles(Role.CONCIERGE)
-  async cancelConciergeRequest(@Param('eventId') eventId: string, @Request() req) {
-    return this.eventsService.cancelConciergeRequest(eventId, req.user.userId);
+  @Delete(':eventId/Registrar-requests')
+  @Roles(Role.REGISTRAR)
+  async cancelRegistrarRequest(@Param('eventId') eventId: string, @Request() req) {
+    return this.eventsService.cancelRegistrarRequest(eventId, req.user.userId);
   }
 
   @Post(':eventId/check-in')
-  @Roles(Role.CONCIERGE)
+  @Roles(Role.REGISTRAR)
   async checkInAttendee(
     @Param('eventId') eventId: string, 
     @Body('phone') phone: string,
     @Request() req
   ) {
-    return this.eventsService.checkInAttendee(eventId, phone, req.user.userId);
+    return this.eventsService.checkInGuest(eventId, phone, req.user.userId);
   }
 }

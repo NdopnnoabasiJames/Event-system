@@ -10,7 +10,7 @@ import { Branch, BranchSchema } from '../schemas/branch.schema';
 import { Zone, ZoneSchema } from '../schemas/zone.schema';
 import { User, UserSchema } from '../schemas/user.schema';
 import { UsersModule } from '../users/users.module';
-import { AttendeesModule } from '../attendees/attendees.module';
+import { GuestsModule } from '../guests/guests.module';
 import { StatesModule } from '../states/states.module';
 import { BranchesModule } from '../branches/branches.module';
 import { PickupStationsModule } from '../pickup-stations/pickup-stations.module';
@@ -31,9 +31,8 @@ import { HierarchicalEventManagementService } from './services/hierarchical-even
       { name: Branch.name, schema: BranchSchema },
       { name: Zone.name, schema: ZoneSchema },
       { name: User.name, schema: UserSchema },
-    ]),
-    UsersModule,
-    AttendeesModule,
+    ]),    UsersModule,
+    GuestsModule,
     StatesModule,
     BranchesModule,
     PickupStationsModule,

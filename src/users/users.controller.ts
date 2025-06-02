@@ -25,11 +25,10 @@ export class UsersController {
   @Get('profile')
   getProfile(@Request() req) {
     return this.usersService.findById(req.user.userId);
-  }
-  @Get('marketers')
+  }  @Get('workers')
   @Roles(Role.SUPER_ADMIN)
-  findAllMarketers() {
-    return this.usersService.findAllMarketers();
+  findAllWorkers() {
+    return this.usersService.findAllWorkers();
   }
   @Get(':id')
   @Roles(Role.SUPER_ADMIN)

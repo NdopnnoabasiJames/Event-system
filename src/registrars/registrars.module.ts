@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { ConciergesController } from './concierges.controller';
+import { RegistrarsController } from './registrars.controller';
 import { EventsModule } from '../events/events.module';
 
 @Module({
   imports: [EventsModule],
-  controllers: [ConciergesController],
+  controllers: [RegistrarsController],
 })
-export class ConciergesModule {}
+export class RegistrarsModule {}

@@ -29,7 +29,7 @@ export class AuthController {
   async registerMarketer(@Body() registerDto: RegisterDto) {
     return this.authService.register({
       ...registerDto,
-      role: Role.MARKETER,
+      role: Role.WORKER,
     });
   }
 

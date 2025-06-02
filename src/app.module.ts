@@ -5,8 +5,8 @@ import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { EventsModule } from './events/events.module';
-import { MarketersModule } from './marketers/marketers.module';
-import { AttendeesModule } from './attendees/attendees.module';
+import { WorkersModule } from './workers/workers.module';
+import { GuestsModule } from './guests/guests.module';
 import { UploadModule } from './upload/upload.module';
 import { TestModule } from './test/test.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -22,7 +22,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { CommonModule } from './common/common.module';
-import { ConciergesModule } from './concierges/concierges.module';
+import { RegistrarsModule } from './registrars/registrars.module';
 import { ActiveAdminMiddleware } from './common/middleware/active-admin.middleware';
 
 @Module({
@@ -59,18 +59,19 @@ import { ActiveAdminMiddleware } from './common/middleware/active-admin.middlewa
       inject: [ConfigService],    }),    CommonModule,
     AuthModule,
     UsersModule,    
-    EventsModule,    AdminHierarchyModule,
+    EventsModule,
+    AdminHierarchyModule,
     StatesModule,
     BranchesModule,
     ZonesModule,
     PickupStationsModule,
-    MarketersModule,
-    AttendeesModule,
+    WorkersModule,
+    GuestsModule,
     NotificationsModule,
     SeedModule,
     UploadModule,
     TestModule,
-    ConciergesModule,
+    RegistrarsModule,
   ],
   providers: [
     {

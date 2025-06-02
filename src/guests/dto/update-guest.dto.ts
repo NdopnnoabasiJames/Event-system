@@ -1,8 +1,8 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { CreateAttendeeDto } from './create-attendee.dto';
+import { CreateGuestDto } from './create-guest.dto';
 import { IsBoolean, IsDate, IsOptional, IsString } from 'class-validator';
 
-export class UpdateAttendeeDto extends PartialType(CreateAttendeeDto) {
+export class UpdateGuestDto extends PartialType(CreateGuestDto) {
   @IsOptional()
   @IsBoolean()
   checkedIn?: boolean;

@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
-import { Attendee, AttendeeDocument } from '../schemas/attendee.schema';
+import { Guest, GuestDocument } from '../schemas/guest.schema';
 import { Event, EventDocument } from '../schemas/event.schema';
 import { EventReminderContext, EmailTemplate } from '../common/interfaces/notification.interface';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -13,10 +13,9 @@ export class NotificationsService implements OnModuleInit {
   private readonly logger = new Logger(NotificationsService.name);
   private transporter: nodemailer.Transporter | null = null;
   private isEmailConfigured: boolean = false;
-  
-  constructor(
+    constructor(
     @InjectModel(Event.name) private readonly eventModel: Model<EventDocument>,
-    @InjectModel(Attendee.name) private readonly attendeeModel: Model<AttendeeDocument>,
+    @InjectModel(Guest.name) private readonly guestModel: Model<GuestDocument>,
     private readonly configService: ConfigService,
   ) {}
 
@@ -188,21 +187,20 @@ export class NotificationsService implements OnModuleInit {
             continue;
           }
 
-          // Log the event structure to help debug any schema issues
-          this.logger.log(`Processing event: ${event.name}, ID: ${event._id}`);
+          // Log the event structure to help debug any schema issues          this.logger.log(`Processing event: ${event.name}, ID: ${event._id}`);
           
-          // Find attendees for this event
-          const attendees = await this.attendeeModel
+          // Find guests for this event
+          const guests = await this.guestModel
             .find({ event: event._id })
             .exec();
             
-          this.logger.log(`Processing ${attendees.length} attendees for event: ${event.name}`);
+          this.logger.log(`Processing ${guests.length} guests for event: ${event.name}`);
         
-          for (const attendee of attendees) {
+          for (const guest of guests) {
             try {
-              // Skip if the attendee doesn't have an email
-              if (!attendee.email) {
-                this.logger.warn(`Attendee ${attendee._id} has no email, skipping notification`);
+              // Skip if the guest doesn't have an email
+              if (!guest.email) {
+                this.logger.warn(`Guest ${guest._id} has no email, skipping notification`);
                 continue;
               }
                 // Find branch and state information
@@ -211,23 +209,22 @@ export class NotificationsService implements OnModuleInit {
                 // We need to populate branch names
                 eventLocation = `Event Location`;
               }
-              
-              // Handle transport details
+                // Handle transport details
               let transportDetails = null;
-              if (attendee.transportPreference === 'bus') {
+              if (guest.transportPreference === 'bus') {
                 transportDetails = {
                   type: 'bus' as const,
                   location: 'Pickup Station', // This should be retrieved from the pickup station
-                  departureTime: attendee.departureTime || null,
+                  departureTime: guest.departureTime || null,
                 };
-              } else if (attendee.transportPreference === 'private') {
+              } else if (guest.transportPreference === 'private') {
                 transportDetails = { 
                   type: 'private' as const
                 };
               }
               
               const reminderContext: EventReminderContext = {
-                attendeeName: attendee.name || 'Attendee',
+                attendeeName: guest.name || 'Guest',
                 eventName: event.name,
                 eventDate: event.date,
                 eventLocation: eventLocation,
@@ -235,10 +232,10 @@ export class NotificationsService implements OnModuleInit {
               };
 
               const template = this.generateEventReminderTemplate(reminderContext);
-              await this.sendEmail(attendee.email, template);
-            } catch (attendeeError) {
-              // Log but continue processing other attendees
-              this.logger.error(`Error processing attendee ${attendee._id}:`, attendeeError?.message || 'Unknown error');
+              await this.sendEmail(guest.email, template);
+            } catch (guestError) {
+              // Log but continue processing other guests
+              this.logger.error(`Error processing guest ${guest._id}:`, guestError?.message || 'Unknown error');
             }
           }
         } catch (eventError) {

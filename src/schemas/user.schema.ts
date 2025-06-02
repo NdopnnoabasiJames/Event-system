@@ -15,7 +15,7 @@ export class User {
   phone?: string;
 
   @Prop({ required: true })
-  password: string;  @Prop({ required: true, enum: Role, default: Role.ATTENDEE, index: true })
+  password: string;  @Prop({ required: true, enum: Role, default: Role.GUEST, index: true })
   role: Role;
   // Admin hierarchy fields - ObjectId references
   @Prop({ type: Types.ObjectId, ref: 'State', required: false, index: true })
@@ -31,18 +31,17 @@ export class User {
   isApproved: boolean;
   @Prop({ type: Types.ObjectId, ref: 'User', required: false })
   approvedBy?: Types.ObjectId;
-
-  // Performance rating for marketers (all-time rating based on attendee check-ins)
+  // Performance rating for workers (all-time rating based on guest check-ins)
   @Prop({ type: Number, min: 0, max: 5, default: 0 })
   performanceRating: number;
 
-  // Total invited attendees who actually checked in (for rating calculation)
+  // Total invited guests who actually checked in (for rating calculation)
   @Prop({ type: Number, default: 0 })
-  totalCheckedInAttendees: number;
+  totalCheckedInGuests: number;
 
-  // Total attendees invited across all events
+  // Total guests invited across all events
   @Prop({ type: Number, default: 0 })
-  totalInvitedAttendees: number;
+  totalInvitedGuests: number;
   // Admin status for disable/enable functionality
   @Prop({ default: true })
   isActive: boolean;

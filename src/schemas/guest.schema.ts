@@ -1,10 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema } from 'mongoose';
 
-export type AttendeeDocument = Attendee & Document;
+export type GuestDocument = Guest & Document;
 
 @Schema({ timestamps: true })
-export class Attendee {
+export class Guest {
   @Prop({ required: true, index: 'text' })
   name: string;
 
@@ -56,14 +56,14 @@ export class Attendee {
   departureTime?: string;
 }
 
-export const AttendeeSchema = SchemaFactory.createForClass(Attendee);
+export const GuestSchema = SchemaFactory.createForClass(Guest);
 
 // Add compound indexes for common queries
-AttendeeSchema.index({ event: 1, transportPreference: 1 });
-AttendeeSchema.index({ registeredBy: 1, event: 1 });
-AttendeeSchema.index({ pickupStation: 1, event: 1 });
-AttendeeSchema.index({ state: 1, branch: 1 });
-AttendeeSchema.index({ branch: 1, pickupStation: 1 });
+GuestSchema.index({ event: 1, transportPreference: 1 });
+GuestSchema.index({ registeredBy: 1, event: 1 });
+GuestSchema.index({ pickupStation: 1, event: 1 });
+GuestSchema.index({ state: 1, branch: 1 });
+GuestSchema.index({ branch: 1, pickupStation: 1 });
 
 // Add unique constraint for one registration per phone number per event
-AttendeeSchema.index({ phone: 1, event: 1 }, { unique: true });
+GuestSchema.index({ phone: 1, event: 1 }, { unique: true });

@@ -60,12 +60,11 @@ export class UsersService {
       throw new HttpException(`Failed to find users by role: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-
-  async findAllMarketers(): Promise<UserDocument[]> {
+  async findAllWorkers(): Promise<UserDocument[]> {
   try {
-    return await this.userModel.find({ role: Role.MARKETER }).exec();
+    return await this.userModel.find({ role: Role.WORKER }).exec();
   } catch (error) {
-    throw new HttpException(`Failed to retrieve marketers: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    throw new HttpException(`Failed to retrieve workers: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }
 

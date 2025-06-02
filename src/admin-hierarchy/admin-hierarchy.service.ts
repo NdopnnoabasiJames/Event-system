@@ -6,7 +6,7 @@ import { State, StateDocument } from '../schemas/state.schema';
 import { Branch, BranchDocument } from '../schemas/branch.schema';
 import { Zone, ZoneDocument } from '../schemas/zone.schema';
 import { Event, EventDocument } from '../schemas/event.schema';
-import { Attendee, AttendeeDocument } from '../schemas/attendee.schema';
+import { Guest, GuestDocument } from '../schemas/guest.schema';
 import { Role } from '../common/enums/role.enum';
 import { 
   AdminReplacementDto, 
@@ -23,7 +23,7 @@ export class AdminHierarchyService {
     @InjectModel(Branch.name) private branchModel: Model<BranchDocument>,
     @InjectModel(Zone.name) private zoneModel: Model<ZoneDocument>,
     @InjectModel(Event.name) private eventModel: Model<EventDocument>,
-    @InjectModel(Attendee.name) private attendeeModel: Model<AttendeeDocument>,
+    @InjectModel(Guest.name) private guestModel: Model<GuestDocument>,
   ) {}
   /**
    * Get admin user with hierarchy validation
@@ -331,13 +331,13 @@ export class AdminHierarchyService {
    */
   async calculateMarketerPerformanceRating(marketerId: string): Promise<{ rating: number; metrics: any }> {
     const marketer = await this.userModel.findById(marketerId).exec();
-    if (!marketer || marketer.role !== Role.MARKETER) {
+    if (!marketer || marketer.role !== Role.WORKER) {
       throw new NotFoundException('Marketer not found');
     }
 
     // Get all attendees registered by this marketer
-    const totalInvited = await this.attendeeModel.countDocuments({ registeredBy: marketerId });
-    const totalCheckedIn = await this.attendeeModel.countDocuments({ 
+    const totalInvited = await this.guestModel.countDocuments({ registeredBy: marketerId });
+    const totalCheckedIn = await this.guestModel.countDocuments({ 
       registeredBy: marketerId, 
       checkedIn: true 
     });
@@ -356,8 +356,8 @@ export class AdminHierarchyService {
 
     // Update marketer's performance data
     marketer.performanceRating = rating;
-    marketer.totalInvitedAttendees = totalInvited;
-    marketer.totalCheckedInAttendees = totalCheckedIn;
+    marketer.totalInvitedGuests = totalInvited;
+    marketer.totalCheckedInGuests = totalCheckedIn;
     await marketer.save();
 
     const metrics = {
@@ -387,7 +387,7 @@ export class AdminHierarchyService {
    */
   async getMarketersPerformanceSummary(adminId: string): Promise<any[]> {
     const admin = await this.getAdminWithHierarchy(adminId);
-    let query: any = { role: Role.MARKETER, isActive: true };
+    let query: any = { role: Role.WORKER, isActive: true };
 
     // Filter marketers based on admin's jurisdiction
     switch (admin.role) {
@@ -422,10 +422,10 @@ export class AdminHierarchyService {
       email: marketer.email,
       rating: marketer.performanceRating,
       ratingText: this.getRatingText(marketer.performanceRating),
-      totalInvited: marketer.totalInvitedAttendees,
-      totalCheckedIn: marketer.totalCheckedInAttendees,
-      checkInRate: marketer.totalInvitedAttendees > 0 
-        ? Math.round((marketer.totalCheckedInAttendees / marketer.totalInvitedAttendees) * 100) / 100 
+      totalInvited: marketer.totalInvitedGuests,
+      totalCheckedIn: marketer.totalCheckedInGuests,
+      checkInRate: marketer.totalInvitedGuests > 0 
+        ? Math.round((marketer.totalCheckedInGuests / marketer.totalInvitedGuests) * 100) / 100 
         : 0,
       location: {
         state: marketer.state,
@@ -742,7 +742,7 @@ export class AdminHierarchyService {
   async getAccessibleAdmins(adminId: string): Promise<UserDocument[]> {
     const admin = await this.getAdminWithHierarchy(adminId);
     let query: any = { 
-      role: { $in: [Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN, Role.MARKETER] }
+      role: { $in: [Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN, Role.WORKER] }
     };
 
     // Filter based on requesting admin's jurisdiction
@@ -754,13 +754,13 @@ export class AdminHierarchyService {
         query.$or = [
           { role: Role.BRANCH_ADMIN, state: admin.state },
           { role: Role.ZONAL_ADMIN, state: admin.state },
-          { role: Role.MARKETER, state: admin.state }
+          { role: Role.WORKER, state: admin.state }
         ];
         break;
       case Role.BRANCH_ADMIN:
         query.$or = [
           { role: Role.ZONAL_ADMIN, branch: admin.branch },
-          { role: Role.MARKETER, branch: admin.branch }
+          { role: Role.WORKER, branch: admin.branch }
         ];
         break;
       default:
