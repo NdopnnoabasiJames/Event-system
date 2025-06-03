@@ -28,9 +28,16 @@ export class Guest {
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: false })
   checkedInBy: MongooseSchema.Types.ObjectId;
-
   @Prop({ type: Date, required: false })
   checkedInTime: Date;
+
+  @Prop({ 
+    type: String, 
+    enum: ['invited', 'confirmed', 'checked_in', 'no_show', 'cancelled'],
+    default: 'invited',
+    index: true
+  })
+  status: string;
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'State', required: true, index: true })
   state: MongooseSchema.Types.ObjectId;
