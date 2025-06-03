@@ -22,15 +22,17 @@ export class Guest {
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true, index: true })
   registeredBy: MongooseSchema.Types.ObjectId;
-
   @Prop({ default: false })
   checkedIn: boolean;
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: false })
   checkedInBy: MongooseSchema.Types.ObjectId;
-  @Prop({ type: Date, required: false })
+    @Prop({ type: Date, required: false })
   checkedInTime: Date;
 
+  @Prop({ type: String, required: false })
+  checkInNotes: string;
+  
   @Prop({ 
     type: String, 
     enum: ['invited', 'confirmed', 'checked_in', 'no_show', 'cancelled'],
@@ -74,3 +76,6 @@ GuestSchema.index({ branch: 1, pickupStation: 1 });
 
 // Add unique constraint for one registration per phone number per event
 GuestSchema.index({ phone: 1, event: 1 }, { unique: true });
+
+// Add index for check-in related queries
+GuestSchema.index({ event: 1, checkedIn: 1, checkedInTime: -1 });

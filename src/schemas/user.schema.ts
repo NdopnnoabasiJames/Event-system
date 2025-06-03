@@ -67,9 +67,29 @@ export class User {
 
   @Prop({ type: Date, required: false })
   replacementDate?: Date;
-
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Event' }], default: [] })
   eventParticipation: Types.ObjectId[];
+
+  // Registrar-specific fields for Phase 4.1
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Zone' }], default: [] })
+  assignedZones?: Types.ObjectId[];
+
+  // Rejection tracking for registrars
+  @Prop({ type: String, required: false })
+  rejectionReason?: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
+  rejectedBy?: Types.ObjectId;
+
+  @Prop({ type: Date, required: false })
+  rejectedAt?: Date;
+
+  // Profile fields for registrars
+  @Prop({ type: String, required: false })
+  bio?: string;
+
+  @Prop({ type: String, required: false })
+  profileImage?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
@@ -83,6 +103,7 @@ UserSchema.index({ role: 1, zone: 1 });
 UserSchema.index({ isApproved: 1, role: 1 });
 UserSchema.index({ isActive: 1, role: 1 });
 UserSchema.index({ performanceRating: -1, role: 1 }); // For performance ranking
+UserSchema.index({ role: 1, assignedZones: 1 }); // For registrar zone assignments
 
 // Add text index for search
 UserSchema.index({ name: 'text', email: 'text' });
