@@ -22,39 +22,49 @@ export class NotificationsService implements OnModuleInit {
   async onModuleInit() {
     await this.initializeTransporter();
   }
-
   private async initializeTransporter() {
     const emailUser = this.configService.get<string>('email.auth.user');
     const emailPass = this.configService.get<string>('email.auth.pass');
 
     if (!emailUser || !emailPass) {
       this.logger.warn('Email configuration is missing. Email notifications will be disabled.');
+      this.logger.warn(`Email User: ${emailUser ? 'SET' : 'MISSING'}, Email Pass: ${emailPass ? 'SET' : 'MISSING'}`);
       this.isEmailConfigured = false;
       return;
     }
 
     try {
       this.transporter = nodemailer.createTransport({
-        host: this.configService.get('email.host', 'smtp.gmail.com'),
-        port: this.configService.get('email.port', 587),
-        secure: false,
+        service: 'gmail', // Use Gmail service instead of manual host/port
         auth: {
           user: emailUser,
           pass: emailPass,
         },
         tls: {
           rejectUnauthorized: false // Only for development
-        }
+        },
+        connectionTimeout: 60000, // 60 seconds
+        greetingTimeout: 30000,   // 30 seconds
+        socketTimeout: 60000,     // 60 seconds
       });
 
       // Verify connection configuration
+      this.logger.log('Attempting to verify email connection...');
       await this.transporter.verify();
       this.isEmailConfigured = true;
       this.logger.log('Email transporter initialized successfully');
     } catch (error) {
       this.isEmailConfigured = false;
       this.logger.error('Failed to initialize email transporter:', error?.message || 'Unknown error');
+      this.logger.error('Full error details:', error);
       this.logger.warn('Email notifications will be disabled');
+      
+      // Log configuration details for debugging (without exposing sensitive data)
+      this.logger.warn('Email configuration details:');
+      this.logger.warn(`- Host: ${this.configService.get('email.host', 'smtp.gmail.com')}`);
+      this.logger.warn(`- Port: ${this.configService.get('email.port', 587)}`);
+      this.logger.warn(`- User configured: ${emailUser ? 'YES' : 'NO'}`);
+      this.logger.warn(`- Password configured: ${emailPass ? 'YES' : 'NO'}`);
     }
   }
   private generateEventReminderTemplate(context: EventReminderContext): EmailTemplate {

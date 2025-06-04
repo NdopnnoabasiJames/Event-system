@@ -19,10 +19,16 @@ async function bootstrap() {
   logger.log(`Static files will be served from: ${join(__dirname, '..', 'public')}`);
   
   // Note: Image storage is now handled by Cloudinary
+    // Enable CORS with credentials
+  const allowedOrigins = ['http://localhost:5500', 'http://127.0.0.1:5500'];
   
-  // Enable CORS with credentials
+  // Add production frontend URL if in production
+  if (process.env.NODE_ENV === 'production' && process.env.FRONTEND_URL) {
+    allowedOrigins.push(process.env.FRONTEND_URL);
+  }
+  
   app.enableCors({
-    origin: ['http://localhost:5500', 'http://127.0.0.1:5500'],  // Allow both localhost and IP
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
