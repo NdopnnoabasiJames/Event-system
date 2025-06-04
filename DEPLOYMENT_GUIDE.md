@@ -1,4 +1,4 @@
-# Render Deployment Guide
+# Render Deployment Guide (Node.js)
 
 ## Prerequisites
 1. GitHub account with your code pushed to a repository
@@ -7,10 +7,9 @@
 
 ## Step 1: Prepare Your Repository
 Make sure your code is pushed to GitHub with all the necessary files:
-- ✅ Dockerfile
 - ✅ render.yaml
-- ✅ .dockerignore
-- ✅ package.json with start:prod script
+- ✅ package.json with engines specification
+- ✅ All source code in src/ directory
 
 ## Step 2: Deploy to Render
 
@@ -29,6 +28,7 @@ Make sure your code is pushed to GitHub with all the necessary files:
 4. Configure the service:
    - **Name**: event-system-backend
    - **Environment**: Node
+   - **Node Version**: 20.11.0 (or latest LTS)
    - **Build Command**: `npm install && npm run build`
    - **Start Command**: `npm run start:prod`
    - **Plan**: Free

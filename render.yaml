@@ -5,7 +5,8 @@ services:
     plan: free
     buildCommand: npm install && npm run build
     startCommand: npm run start:prod
-    healthCheckPath: /
+    healthCheckPath: /api
+    nodeVersion: 20.11.0
     envVars:
       - key: NODE_ENV
         value: production
