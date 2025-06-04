@@ -17,24 +17,22 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('zones')
 export class ZonesController {
   constructor(private readonly zonesService: ZonesService) {}
+  
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   create(@Body() createZoneDto: CreateZoneDto) {
     return this.zonesService.create(createZoneDto);
-  }
-  @Get()
-  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  }  @Get()
   findAll(@Query('includeInactive') includeInactive?: string) {
     const include = includeInactive === 'true';
     return this.zonesService.findAll(include);
   }
 
   @Get('by-branch/:branchId')
-  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
   findByBranch(
     @Param('branchId') branchId: string,
     @Query('includeInactive') includeInactive?: string
@@ -44,39 +42,40 @@ export class ZonesController {
   }
 
   @Get('by-state/:stateId')
-  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
   findByState(
     @Param('stateId') stateId: string,
     @Query('includeInactive') includeInactive?: string
   ) {
     const include = includeInactive === 'true';
     return this.zonesService.findByState(stateId, include);
-  }
-  @Get(':id')
-  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  }  @Get(':id')
   findOne(@Param('id') id: string) {
     return this.zonesService.findOne(id);
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   update(@Param('id') id: string, @Body() updateZoneDto: UpdateZoneDto) {
     return this.zonesService.update(id, updateZoneDto);
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
   remove(@Param('id') id: string) {
     return this.zonesService.remove(id);
   }
 
   @Patch(':id/deactivate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   deactivate(@Param('id') id: string) {
     return this.zonesService.deactivate(id);
   }
 
   @Patch(':id/activate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)
   activate(@Param('id') id: string) {
     return this.zonesService.activate(id);

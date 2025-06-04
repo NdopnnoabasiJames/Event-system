@@ -18,11 +18,12 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('states')
 export class StatesController {
   constructor(private readonly statesService: StatesService) {}
+
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
   create(@Body() createStateDto: CreateStateDto) {
     return this.statesService.create(createStateDto);
@@ -36,23 +37,29 @@ export class StatesController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.statesService.findOne(id);
-  }
-  @Patch(':id')
+  }  @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
   update(@Param('id') id: string, @Body() updateStateDto: UpdateStateDto) {
     return this.statesService.update(id, updateStateDto);
   }
+
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
   remove(@Param('id') id: string) {
     return this.statesService.remove(id);
   }
+
   @Patch(':id/deactivate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
   deactivate(@Param('id') id: string) {
     return this.statesService.deactivate(id);
   }
+
   @Patch(':id/activate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
   activate(@Param('id') id: string) {
     return this.statesService.activate(id);
