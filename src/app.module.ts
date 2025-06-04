@@ -24,6 +24,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { CommonModule } from './common/common.module';
 import { RegistrarsModule } from './registrars/registrars.module';
 import { ActiveAdminMiddleware } from './common/middleware/active-admin.middleware';
+import { HealthController } from './health/health.controller';
 
 @Module({
   imports: [ 
@@ -71,8 +72,8 @@ import { ActiveAdminMiddleware } from './common/middleware/active-admin.middlewa
     SeedModule,
     UploadModule,
     TestModule,
-    RegistrarsModule,
-  ],
+    RegistrarsModule,  ],
+  controllers: [HealthController],
   providers: [
     {
       provide: APP_FILTER,

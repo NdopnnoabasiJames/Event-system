@@ -2,10 +2,9 @@ services:
   - type: web
     name: event-system-backend
     env: node
-    plan: free
-    buildCommand: npm install && npm run build
+    plan: free    buildCommand: npm install && npm run build
     startCommand: npm run start:prod
-    healthCheckPath: /api
+    healthCheckPath: /health
     nodeVersion: 20.11.0
     envVars:
       - key: NODE_ENV

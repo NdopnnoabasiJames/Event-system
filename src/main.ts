@@ -18,9 +18,13 @@ async function bootstrap() {
   app.useStaticAssets(join(__dirname, '..', 'public'));
   logger.log(`Static files will be served from: ${join(__dirname, '..', 'public')}`);
   
-  // Note: Image storage is now handled by Cloudinary
-    // Enable CORS with credentials
-  const allowedOrigins = ['http://localhost:5500', 'http://127.0.0.1:5500'];
+  // Note: Image storage is now handled by Cloudinary    // Enable CORS with credentials
+  const allowedOrigins = [
+    'http://localhost:5173', // Vite dev server
+    'http://127.0.0.1:5173', // Vite dev server (alternative)
+    'http://localhost:5500', // Legacy port
+    'http://127.0.0.1:5500'  // Legacy port (alternative)
+  ];
   
   // Add production frontend URL if in production
   if (process.env.NODE_ENV === 'production' && process.env.FRONTEND_URL) {
