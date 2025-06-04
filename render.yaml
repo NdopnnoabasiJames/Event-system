@@ -16,11 +16,11 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: EMAIL_USER
-        sync: false
-      - key: EMAIL_PASSWORD
+        sync: false      - key: EMAIL_PASSWORD
         sync: false
       - key: SMTP_HOST
-        value: smtp.gmail.com      - key: SMTP_PORT
+        value: smtp.gmail.com
+      - key: SMTP_PORT
         value: 587
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
