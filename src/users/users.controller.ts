@@ -25,11 +25,58 @@ export class UsersController {
   @Get('profile')
   getProfile(@Request() req) {
     return this.usersService.findById(req.user.userId);
-  }  @Get('workers')
+  }
+
+  // Phase 2: Enhanced system metrics endpoints for Super Admin dashboard
+  @Get('system-metrics')
+  @Roles(Role.SUPER_ADMIN)
+  getSystemMetrics() {
+    return this.usersService.getSystemMetrics();
+  }
+
+  @Get('admin-hierarchy-stats')
+  @Roles(Role.SUPER_ADMIN)
+  getAdminHierarchyStats() {
+    return this.usersService.getAdminHierarchyStats();
+  }
+
+  @Get('user-role-breakdown')
+  @Roles(Role.SUPER_ADMIN)
+  getUserRoleBreakdown() {
+    return this.usersService.getUserRoleBreakdown();
+  }
+
+  @Get('system-health')
+  @Roles(Role.SUPER_ADMIN)
+  getSystemHealth() {
+    return this.usersService.getSystemHealth();
+  }
+
+  @Get('workers')
   @Roles(Role.SUPER_ADMIN)
   findAllWorkers() {
     return this.usersService.findAllWorkers();
   }
+  // Admin approval endpoints - placed before :id route
+  @Get('pending-admins')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  getPendingAdmins(@Request() req) {
+    const { role, state, branch } = req.user;
+    return this.usersService.getPendingAdmins(role, state, branch);
+  }
+
+  @Post('approve-admin/:id')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN)
+  approveAdmin(@Param('id') adminId: string, @Request() req) {
+    return this.usersService.approveAdmin(adminId, req.user.userId);
+  }
+
+  @Delete('reject-admin/:id')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN)
+  rejectAdmin(@Param('id') adminId: string) {
+    return this.usersService.rejectAdmin(adminId);
+  }
+
   @Get(':id')
   @Roles(Role.SUPER_ADMIN)
   findOne(@Param('id') id: string) {
@@ -43,30 +90,9 @@ export class UsersController {
     @Request() req,
   ) {
     return this.usersService.update(id, updateUserDto, req.user);
-  }
-  @Delete(':id')
+  }  @Delete(':id')
   @Roles(Role.SUPER_ADMIN)
   remove(@Param('id') id: string, @Request() req) {
     return this.usersService.delete(id, req.user);
-  }
-
-  // Admin approval endpoints
-  @Get('pending-admins')
-  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN)
-  getPendingAdmins(@Request() req) {
-    const { role, state } = req.user;
-    return this.usersService.getPendingAdmins(role, state);
-  }
-
-  @Post('approve-admin/:id')
-  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN)
-  approveAdmin(@Param('id') adminId: string, @Request() req) {
-    return this.usersService.approveAdmin(adminId, req.user.userId);
-  }
-
-  @Delete('reject-admin/:id')
-  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN)
-  rejectAdmin(@Param('id') adminId: string) {
-    return this.usersService.rejectAdmin(adminId);
   }
 }

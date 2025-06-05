@@ -297,4 +297,263 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
       message: 'Admin registration rejected and removed'
     };
   }
+
+  // System Metrics Methods for Super Admin Dashboard
+
+  /**
+   * Get comprehensive system metrics
+   */
+  async getSystemMetrics(): Promise<any> {
+    try {
+      const [
+        totalUsers,
+        totalStates,
+        totalBranches,
+        totalZones,
+        totalEvents,
+        totalGuests,
+        pendingAdmins,
+        activeAdmins
+      ] = await Promise.all([
+        this.userModel.countDocuments(),
+        this.userModel.countDocuments({ role: Role.STATE_ADMIN }),
+        this.userModel.countDocuments({ role: Role.BRANCH_ADMIN }),
+        this.userModel.countDocuments({ role: Role.ZONAL_ADMIN }),
+        // Note: We'll need to inject EventModel and GuestModel for these counts
+        // For now, returning 0 - will need to update when models are injected
+        Promise.resolve(0), // totalEvents
+        Promise.resolve(0), // totalGuests
+        this.userModel.countDocuments({ isApproved: false }),
+        this.userModel.countDocuments({ 
+          isApproved: true,
+          role: { $in: [Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN] }
+        })
+      ]);
+
+      return {
+        users: {
+          total: totalUsers,
+          active: activeAdmins,
+          pending: pendingAdmins
+        },
+        hierarchy: {
+          states: totalStates,
+          branches: totalBranches,
+          zones: totalZones
+        },
+        events: {
+          total: totalEvents,
+          active: 0 // Will implement when EventModel is injected
+        },
+        guests: {
+          total: totalGuests,
+          checkedIn: 0 // Will implement when GuestModel is injected
+        },
+        systemHealth: {
+          status: 'healthy',
+          uptime: process.uptime(),
+          lastUpdated: new Date()
+        }
+      };
+    } catch (error) {
+      throw new HttpException(`Failed to fetch system metrics: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Get admin hierarchy statistics
+   */
+  async getAdminHierarchyStats(): Promise<any> {
+    try {
+      const hierarchyStats = await Promise.all([
+        // Super Admins
+        this.userModel.countDocuments({ role: Role.SUPER_ADMIN }),
+        
+        // State Admins with breakdown
+        this.userModel.aggregate([
+          { $match: { role: Role.STATE_ADMIN } },
+          {
+            $group: {
+              _id: '$isApproved',
+              count: { $sum: 1 }
+            }
+          }
+        ]),
+        
+        // Branch Admins with breakdown
+        this.userModel.aggregate([
+          { $match: { role: Role.BRANCH_ADMIN } },
+          {
+            $group: {
+              _id: '$isApproved',
+              count: { $sum: 1 }
+            }
+          }
+        ]),
+        
+        // Zonal Admins with breakdown
+        this.userModel.aggregate([
+          { $match: { role: Role.ZONAL_ADMIN } },
+          {
+            $group: {
+              _id: '$isApproved',
+              count: { $sum: 1 }
+            }
+          }
+        ])
+      ]);
+
+      const [superAdminCount, stateAdminStats, branchAdminStats, zonalAdminStats] = hierarchyStats;
+
+      return {
+        superAdmins: {
+          total: superAdminCount,
+          active: superAdminCount
+        },
+        stateAdmins: {
+          total: stateAdminStats.reduce((acc, stat) => acc + stat.count, 0),
+          approved: stateAdminStats.find(s => s._id === true)?.count || 0,
+          pending: stateAdminStats.find(s => s._id === false)?.count || 0
+        },
+        branchAdmins: {
+          total: branchAdminStats.reduce((acc, stat) => acc + stat.count, 0),
+          approved: branchAdminStats.find(s => s._id === true)?.count || 0,
+          pending: branchAdminStats.find(s => s._id === false)?.count || 0
+        },
+        zonalAdmins: {
+          total: zonalAdminStats.reduce((acc, stat) => acc + stat.count, 0),
+          approved: zonalAdminStats.find(s => s._id === true)?.count || 0,
+          pending: zonalAdminStats.find(s => s._id === false)?.count || 0
+        }
+      };
+    } catch (error) {
+      throw new HttpException(`Failed to fetch admin hierarchy stats: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Get user role breakdown
+   */
+  async getUserRoleBreakdown(): Promise<any> {
+    try {
+      const roleBreakdown = await this.userModel.aggregate([
+        {
+          $group: {
+            _id: '$role',
+            count: { $sum: 1 },
+            approved: {
+              $sum: {
+                $cond: [{ $eq: ['$isApproved', true] }, 1, 0]
+              }
+            },
+            pending: {
+              $sum: {
+                $cond: [{ $eq: ['$isApproved', false] }, 1, 0]
+              }
+            }
+          }
+        }
+      ]);
+
+      const roles = {};
+      roleBreakdown.forEach(role => {
+        roles[role._id] = {
+          total: role.count,
+          approved: role.approved,
+          pending: role.pending
+        };
+      });
+
+      return {
+        breakdown: roles,
+        summary: {
+          totalUsers: roleBreakdown.reduce((acc, role) => acc + role.count, 0),
+          totalApproved: roleBreakdown.reduce((acc, role) => acc + role.approved, 0),
+          totalPending: roleBreakdown.reduce((acc, role) => acc + role.pending, 0)
+        }
+      };
+    } catch (error) {
+      throw new HttpException(`Failed to fetch user role breakdown: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+  /**
+   * Get system health indicators
+   */
+  async getSystemHealth(): Promise<any> {
+    try {
+      const [
+        totalUsers,
+        recentRegistrations,
+        pendingApprovals
+      ] = await Promise.all([
+        this.userModel.countDocuments(),
+        this.userModel.countDocuments({
+          createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Last 24 hours
+        }),
+        this.userModel.countDocuments({ isApproved: false })
+      ]);
+
+      const systemErrors = 0; // System errors - will implement proper error tracking later
+
+      const healthScore = this.calculateHealthScore(totalUsers, pendingApprovals, systemErrors);
+
+      return {
+        status: healthScore > 80 ? 'healthy' : healthScore > 60 ? 'warning' : 'critical',
+        score: healthScore,
+        metrics: {
+          totalUsers,
+          recentRegistrations,
+          pendingApprovals,
+          systemErrors,
+          uptime: process.uptime(),
+          memoryUsage: process.memoryUsage(),
+          lastChecked: new Date()
+        },
+        alerts: this.generateHealthAlerts(pendingApprovals, systemErrors)
+      };
+    } catch (error) {
+      throw new HttpException(`Failed to fetch system health: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Calculate system health score
+   */
+  private calculateHealthScore(totalUsers: number, pendingApprovals: number, systemErrors: number): number {
+    let score = 100;
+    
+    // Deduct points for pending approvals
+    const pendingRatio = totalUsers > 0 ? (pendingApprovals / totalUsers) * 100 : 0;
+    if (pendingRatio > 20) score -= 30; // More than 20% pending
+    else if (pendingRatio > 10) score -= 15; // More than 10% pending
+    else if (pendingRatio > 5) score -= 5; // More than 5% pending
+
+    // Deduct points for system errors
+    if (systemErrors > 10) score -= 40;
+    else if (systemErrors > 5) score -= 20;
+    else if (systemErrors > 0) score -= 10;
+
+    return Math.max(0, score);
+  }
+
+  /**
+   * Generate health alerts
+   */
+  private generateHealthAlerts(pendingApprovals: number, systemErrors: number): string[] {
+    const alerts = [];
+    
+    if (pendingApprovals > 10) {
+      alerts.push(`High number of pending approvals: ${pendingApprovals}`);
+    }
+    
+    if (systemErrors > 0) {
+      alerts.push(`System errors detected: ${systemErrors}`);
+    }
+    
+    if (process.memoryUsage().heapUsed / process.memoryUsage().heapTotal > 0.9) {
+      alerts.push('High memory usage detected');
+    }
+    
+    return alerts;
+  }
 }
