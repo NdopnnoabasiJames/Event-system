@@ -14,11 +14,16 @@ export class MigrationController {
     private readonly migrationService: MigrationService,
     private readonly nigeriaHierarchySeederService: NigeriaHierarchySeederService,
   ) {}
-
   @Post('/migrate')
   async migrateData() {
     await this.migrationService.migrateData();
     return { message: 'Data migration completed successfully' };
+  }
+
+  @Post('/force-migrate')
+  async forceMigrateData() {
+    await this.migrationService.forceMigrateData();
+    return { message: 'Force migration completed successfully - all data refreshed' };
   }
 
   @Get('status')
@@ -45,3 +50,22 @@ export class MigrationController {
     return await this.nigeriaHierarchySeederService.getHierarchyOverview();
   }
 }
+
+/*
+Available Migration Routes
+GET /migration/status - Check current database statistics
+
+Shows counts of states, branches, zones, and pickup stations
+POST /migration/migrate - Standard migration (won't run if data already exists)
+
+Uses the comprehensive Nigerian hierarchy data
+Skips if states already exist in database
+POST /migration/force-migrate - Force migration (the new route you requested)
+
+Resets all existing data and recreates everything
+Uses comprehensive Nigerian hierarchy data
+Perfect for when you update the data structure
+DELETE /migration/reset - Just reset/clear all location data
+
+Removes all states, branches, zones, and pickup stations
+*/

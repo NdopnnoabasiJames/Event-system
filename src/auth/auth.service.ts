@@ -17,12 +17,11 @@ export class AuthService {
       if (!user) {
         console.log('User not found:', email);
         throw new UnauthorizedException('User not found');
-      }
-
-      // Check if admin user is approved
-      if ((user.role === 'state_admin' || user.role === 'branch_admin') && !user.isApproved) {
-        console.log('Admin user not approved:', email);
-        throw new UnauthorizedException('Your account is pending approval from the administrator');
+      }      // Check if admin user is approved (super admins are always approved)
+      const rolesRequiringApproval = ['state_admin', 'branch_admin', 'zonal_admin', 'worker', 'registrar'];
+      if (rolesRequiringApproval.includes(user.role) && !user.isApproved) {
+        console.log('User not approved:', email);
+        throw new UnauthorizedException('Your account is pending approval');
       }
       
       console.log('User found, validating password');

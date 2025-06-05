@@ -19,19 +19,25 @@ export class SeedService implements OnModuleInit {
       // Check if admin already exists
       const adminEmail = 'admin@example.com';
       const existingAdmin = await this.usersService.findByEmail(adminEmail);
-      
-      if (existingAdmin) {
-        this.logger.log('Admin user already exists, skipping seed');
+        if (existingAdmin) {
+        // If admin exists but is not approved, approve them
+        if (!existingAdmin.isApproved && existingAdmin.role === Role.SUPER_ADMIN) {
+          existingAdmin.isApproved = true;
+          await existingAdmin.save();
+          this.logger.log('Existing super admin has been approved');
+        } else {
+          this.logger.log('Admin user already exists and is properly configured, skipping seed');
+        }
         return;
       }
-      
-      // Admin user does not exist, create it
+        // Admin user does not exist, create it
       const hashedPassword = await bcrypt.hash('Admin123!', 10);
         const adminUser = await this.usersService.create({
         name: 'System Admin',
         email: adminEmail,
         password: hashedPassword,
         role: Role.SUPER_ADMIN,
+        isApproved: true, // Super admin is auto-approved since there's no higher authority
       });
       
       this.logger.log(`Admin user created with ID: ${adminUser._id}`);
