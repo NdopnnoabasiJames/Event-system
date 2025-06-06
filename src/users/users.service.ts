@@ -165,6 +165,36 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
       .exec();
   }
 
+  // Get approved admins based on approval hierarchy
+  async getApprovedAdmins(approverRole: string, approverState?: string, approverBranch?: string): Promise<UserDocument[]> {
+    const query: any = { 
+      isApproved: true,
+      isActive: true // Only show active approved admins
+    };
+    
+    if (approverRole === 'super_admin') {
+      // Super admin can see all approved state admins
+      query.role = 'state_admin';
+    } else if (approverRole === 'state_admin' && approverState) {
+      // State admin can see approved branch admins in their state
+      query.role = 'branch_admin';
+      query.state = approverState;
+    } else if (approverRole === 'branch_admin' && approverBranch) {
+      // Branch admin can see approved zonal admins, workers, and registrars in their branch
+      query.role = { $in: ['zonal_admin', 'worker', 'registrar'] };
+      query.branch = approverBranch;
+    }
+    
+    return this.userModel.find(query)
+      .populate('state', 'name')
+      .populate('branch', 'name location')
+      .populate('zone', 'name')
+      .populate('approvedBy', 'name email')
+      .select('name email role state branch zone approvedBy isActive createdAt')
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
   // Get pending workers for branch admin approval
   async getPendingWorkers(branchAdminId: string): Promise<UserDocument[]> {
     const branchAdmin = await this.userModel.findById(branchAdminId).exec();

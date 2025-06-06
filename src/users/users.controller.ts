@@ -58,6 +58,13 @@ export class UsersController {
     return this.usersService.getPendingAdmins(role, state, branch);
   }
 
+  @Get('approved-admins')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  getApprovedAdmins(@Request() req) {
+    const { role, state, branch } = req.user;
+    return this.usersService.getApprovedAdmins(role, state, branch);
+  }
+
   @Post('approve-admin/:id')
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN)
   approveAdmin(@Param('id') adminId: string, @Request() req) {
