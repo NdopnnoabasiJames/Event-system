@@ -39,17 +39,10 @@ export class UsersController {
   getAdminHierarchyStats() {
     return this.usersService.getAdminHierarchyStats();
   }
-
   @Get('user-role-breakdown')
   @Roles(Role.SUPER_ADMIN)
   getUserRoleBreakdown() {
     return this.usersService.getUserRoleBreakdown();
-  }
-
-  @Get('system-health')
-  @Roles(Role.SUPER_ADMIN)
-  getSystemHealth() {
-    return this.usersService.getSystemHealth();
   }
 
   @Get('workers')

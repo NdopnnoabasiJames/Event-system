@@ -313,9 +313,8 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
         totalEvents,
         totalGuests,
         pendingAdmins,
-        activeAdmins
-      ] = await Promise.all([
-        this.userModel.countDocuments(),
+        activeAdmins      ] = await Promise.all([
+        this.userModel.countDocuments({ role: { $ne: Role.GUEST } }), // Exclude guests from total users
         this.userModel.countDocuments({ role: Role.STATE_ADMIN }),
         this.userModel.countDocuments({ role: Role.BRANCH_ADMIN }),
         this.userModel.countDocuments({ role: Role.ZONAL_ADMIN }),
@@ -328,32 +327,13 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
           isApproved: true,
           role: { $in: [Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN] }
         })
-      ]);
-
-      return {
-        users: {
-          total: totalUsers,
-          active: activeAdmins,
-          pending: pendingAdmins
-        },
-        hierarchy: {
-          states: totalStates,
-          branches: totalBranches,
-          zones: totalZones
-        },
-        events: {
-          total: totalEvents,
-          active: 0 // Will implement when EventModel is injected
-        },
-        guests: {
-          total: totalGuests,
-          checkedIn: 0 // Will implement when GuestModel is injected
-        },
-        systemHealth: {
-          status: 'healthy',
-          uptime: process.uptime(),
-          lastUpdated: new Date()
-        }
+      ]);      return {
+        totalUsers,
+        totalStates,
+        totalBranches, 
+        totalZones,
+        totalEvents,
+        totalGuests
       };
     } catch (error) {
       throw new HttpException(`Failed to fetch system metrics: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -362,13 +342,9 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
 
   /**
    * Get admin hierarchy statistics
-   */
-  async getAdminHierarchyStats(): Promise<any> {
+   */  async getAdminHierarchyStats(): Promise<any> {
     try {
       const hierarchyStats = await Promise.all([
-        // Super Admins
-        this.userModel.countDocuments({ role: Role.SUPER_ADMIN }),
-        
         // State Admins with breakdown
         this.userModel.aggregate([
           { $match: { role: Role.STATE_ADMIN } },
@@ -399,32 +375,27 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
               _id: '$isApproved',
               count: { $sum: 1 }
             }
+          }        ]),
+
+        // Workers with breakdown
+        this.userModel.aggregate([
+          { $match: { role: Role.WORKER } },
+          {
+            $group: {
+              _id: '$isApproved',
+              count: { $sum: 1 }
+            }
           }
         ])
       ]);
 
-      const [superAdminCount, stateAdminStats, branchAdminStats, zonalAdminStats] = hierarchyStats;
+      const [stateAdminStats, branchAdminStats, zonalAdminStats, workerStats] = hierarchyStats;
 
       return {
-        superAdmins: {
-          total: superAdminCount,
-          active: superAdminCount
-        },
-        stateAdmins: {
-          total: stateAdminStats.reduce((acc, stat) => acc + stat.count, 0),
-          approved: stateAdminStats.find(s => s._id === true)?.count || 0,
-          pending: stateAdminStats.find(s => s._id === false)?.count || 0
-        },
-        branchAdmins: {
-          total: branchAdminStats.reduce((acc, stat) => acc + stat.count, 0),
-          approved: branchAdminStats.find(s => s._id === true)?.count || 0,
-          pending: branchAdminStats.find(s => s._id === false)?.count || 0
-        },
-        zonalAdmins: {
-          total: zonalAdminStats.reduce((acc, stat) => acc + stat.count, 0),
-          approved: zonalAdminStats.find(s => s._id === true)?.count || 0,
-          pending: zonalAdminStats.find(s => s._id === false)?.count || 0
-        }
+        stateAdmins: stateAdminStats.reduce((acc, stat) => acc + stat.count, 0),
+        branchAdmins: branchAdminStats.reduce((acc, stat) => acc + stat.count, 0),
+        zonalAdmins: zonalAdminStats.reduce((acc, stat) => acc + stat.count, 0),
+        workers: workerStats.reduce((acc, stat) => acc + stat.count, 0)
       };
     } catch (error) {
       throw new HttpException(`Failed to fetch admin hierarchy stats: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -471,89 +442,8 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
           totalApproved: roleBreakdown.reduce((acc, role) => acc + role.approved, 0),
           totalPending: roleBreakdown.reduce((acc, role) => acc + role.pending, 0)
         }
-      };
-    } catch (error) {
+      };    } catch (error) {
       throw new HttpException(`Failed to fetch user role breakdown: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
-  }
-  /**
-   * Get system health indicators
-   */
-  async getSystemHealth(): Promise<any> {
-    try {
-      const [
-        totalUsers,
-        recentRegistrations,
-        pendingApprovals
-      ] = await Promise.all([
-        this.userModel.countDocuments(),
-        this.userModel.countDocuments({
-          createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Last 24 hours
-        }),
-        this.userModel.countDocuments({ isApproved: false })
-      ]);
-
-      const systemErrors = 0; // System errors - will implement proper error tracking later
-
-      const healthScore = this.calculateHealthScore(totalUsers, pendingApprovals, systemErrors);
-
-      return {
-        status: healthScore > 80 ? 'healthy' : healthScore > 60 ? 'warning' : 'critical',
-        score: healthScore,
-        metrics: {
-          totalUsers,
-          recentRegistrations,
-          pendingApprovals,
-          systemErrors,
-          uptime: process.uptime(),
-          memoryUsage: process.memoryUsage(),
-          lastChecked: new Date()
-        },
-        alerts: this.generateHealthAlerts(pendingApprovals, systemErrors)
-      };
-    } catch (error) {
-      throw new HttpException(`Failed to fetch system health: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  /**
-   * Calculate system health score
-   */
-  private calculateHealthScore(totalUsers: number, pendingApprovals: number, systemErrors: number): number {
-    let score = 100;
-    
-    // Deduct points for pending approvals
-    const pendingRatio = totalUsers > 0 ? (pendingApprovals / totalUsers) * 100 : 0;
-    if (pendingRatio > 20) score -= 30; // More than 20% pending
-    else if (pendingRatio > 10) score -= 15; // More than 10% pending
-    else if (pendingRatio > 5) score -= 5; // More than 5% pending
-
-    // Deduct points for system errors
-    if (systemErrors > 10) score -= 40;
-    else if (systemErrors > 5) score -= 20;
-    else if (systemErrors > 0) score -= 10;
-
-    return Math.max(0, score);
-  }
-
-  /**
-   * Generate health alerts
-   */
-  private generateHealthAlerts(pendingApprovals: number, systemErrors: number): string[] {
-    const alerts = [];
-    
-    if (pendingApprovals > 10) {
-      alerts.push(`High number of pending approvals: ${pendingApprovals}`);
-    }
-    
-    if (systemErrors > 0) {
-      alerts.push(`System errors detected: ${systemErrors}`);
-    }
-    
-    if (process.memoryUsage().heapUsed / process.memoryUsage().heapTotal > 0.9) {
-      alerts.push('High memory usage detected');
-    }
-    
-    return alerts;
   }
 }
