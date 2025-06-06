@@ -2,6 +2,11 @@ import { HttpException, HttpStatus, Injectable, NotFoundException, UnauthorizedE
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Schema as MongooseSchema, Types } from 'mongoose';
 import { User, UserDocument } from '../schemas/user.schema';
+import { Event, EventDocument } from '../schemas/event.schema';
+import { Guest, GuestDocument } from '../schemas/guest.schema';
+import { State, StateDocument } from '../schemas/state.schema';
+import { Branch, BranchDocument } from '../schemas/branch.schema';
+import { Zone, ZoneDocument } from '../schemas/zone.schema';
 import { Role } from '../common/enums/role.enum';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -10,6 +15,11 @@ import { UpdateUserDto } from './dto/update-user.dto';
 export class UsersService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Event.name) private eventModel: Model<EventDocument>,
+    @InjectModel(Guest.name) private guestModel: Model<GuestDocument>,
+    @InjectModel(State.name) private stateModel: Model<StateDocument>,
+    @InjectModel(Branch.name) private branchModel: Model<BranchDocument>,
+    @InjectModel(Zone.name) private zoneModel: Model<ZoneDocument>,
   ) {}
  async create(createUserDto: CreateUserDto): Promise<UserDocument> {
   try {
@@ -299,11 +309,9 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
   }
 
   // System Metrics Methods for Super Admin Dashboard
-
   /**
    * Get comprehensive system metrics
-   */
-  async getSystemMetrics(): Promise<any> {
+   */  async getSystemMetrics(): Promise<any> {
     try {
       const [
         totalUsers,
@@ -315,13 +323,12 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
         pendingAdmins,
         activeAdmins      ] = await Promise.all([
         this.userModel.countDocuments({ role: { $ne: Role.GUEST } }), // Exclude guests from total users
-        this.userModel.countDocuments({ role: Role.STATE_ADMIN }),
-        this.userModel.countDocuments({ role: Role.BRANCH_ADMIN }),
-        this.userModel.countDocuments({ role: Role.ZONAL_ADMIN }),
-        // Note: We'll need to inject EventModel and GuestModel for these counts
-        // For now, returning 0 - will need to update when models are injected
-        Promise.resolve(0), // totalEvents
-        Promise.resolve(0), // totalGuests
+        this.stateModel.countDocuments({ isActive: true }),
+        this.branchModel.countDocuments({ isActive: true }),
+        this.zoneModel.countDocuments({ isActive: true }),
+        // Now using actual database queries for events and guests
+        this.eventModel.countDocuments({ isActive: true }),
+        this.guestModel.countDocuments({}),
         this.userModel.countDocuments({ isApproved: false }),
         this.userModel.countDocuments({ 
           isApproved: true,
