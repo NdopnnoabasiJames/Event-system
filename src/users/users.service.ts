@@ -44,9 +44,41 @@ export class UsersService {
   }
 }  async findByEmail(email: string): Promise<UserDocument> {
   try {
-    const user = await this.userModel.findOne({ email }).exec();
+    console.log('UsersService.findByEmail called with:', email);
+    console.log('Email type:', typeof email, 'Length:', email.length);
+    
+    // Trim and normalize email
+    const normalizedEmail = email.trim().toLowerCase();
+    console.log('Normalized email:', normalizedEmail);
+    
+    // First, let's check if any users exist at all
+    const userCount = await this.userModel.countDocuments().exec();
+    console.log('Total users in database:', userCount);
+    
+    // Try exact match first
+    const user = await this.userModel.findOne({ email: normalizedEmail }).exec();
+    console.log('User found with exact match:', user ? 'YES' : 'NO');
+    
+    if (!user) {
+      // If no exact match, let's see if there's a case-insensitive match
+      const userCaseInsensitive = await this.userModel.findOne({ 
+        email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') } 
+      }).exec();
+      console.log('User found with case-insensitive match:', userCaseInsensitive ? 'YES' : 'NO');
+      
+      if (userCaseInsensitive) {
+        console.log('Found user with different case:', userCaseInsensitive.email);
+        return userCaseInsensitive;
+      }
+      
+      // Let's also check what emails actually exist
+      const existingEmails = await this.userModel.find({}, 'email').limit(10).exec();
+      console.log('Existing emails in database:', existingEmails.map(u => u.email));
+    }
+    
     return user;
   } catch (error) {
+    console.error('Error in findByEmail:', error);
     throw new HttpException(`Failed to find user by email: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }
