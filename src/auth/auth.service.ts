@@ -41,13 +41,19 @@ export class AuthService {
   }  async login(user: any) {
     try {
       console.log('Creating JWT payload for user:', user.email);
+      console.log('User object before JWT creation:', JSON.stringify(user, null, 2));
+      console.log('User state field:', user.state);
+      console.log('User branch field:', user.branch);
+      
       const payload = { 
         email: user.email, 
         sub: user._id ? user._id.toString() : user.id,
         role: user.role,
         name: user.name,
-        state: user.state,
-        branch: user.branch,
+        // If populated, the state/branch will be objects with _id field
+        // If not populated, they will be ObjectId strings
+        state: user.state?._id ? user.state._id.toString() : (user.state ? user.state.toString() : null),
+        branch: user.branch?._id ? user.branch._id.toString() : (user.branch ? user.branch.toString() : null),
       };
       console.log('JWT Payload:', payload);
       
@@ -96,12 +102,20 @@ export class AuthService {
         state: userData.state,
         branch: userData.branch,
         zone: userData.zone
-      });
-
-      const { password, ...result } = newUser.toJSON();
+      });      const { password, ...result } = newUser.toJSON();
       return result;
     } catch (error) {
       throw new Error('Failed to register user: ' + error.message);
     }
+  }
+
+  async getUserProfile(userId: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    
+    const { password, ...userProfile } = user.toJSON();
+    return userProfile;
   }
 }

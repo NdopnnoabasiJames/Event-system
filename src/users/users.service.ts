@@ -44,26 +44,23 @@ export class UsersService {
   }
 }  async findByEmail(email: string): Promise<UserDocument> {
   try {
-    console.log('UsersService.findByEmail called with:', email);
-    console.log('Email type:', typeof email, 'Length:', email.length);
-    
-    // Trim and normalize email
-    const normalizedEmail = email.trim().toLowerCase();
-    console.log('Normalized email:', normalizedEmail);
-    
-    // First, let's check if any users exist at all
-    const userCount = await this.userModel.countDocuments().exec();
-    console.log('Total users in database:', userCount);
+    const normalizedEmail = email.toLowerCase().trim();
     
     // Try exact match first
-    const user = await this.userModel.findOne({ email: normalizedEmail }).exec();
-    console.log('User found with exact match:', user ? 'YES' : 'NO');
-    
-    if (!user) {
+    const user = await this.userModel
+      .findOne({ email })
+      .populate('state', 'name code country isActive')
+      .populate('branch', 'name location stateId isActive')
+      .populate('zone', 'name branchId isActive')
+      .exec();
+    console.log('User found with exact match:', user ? 'YES' : 'NO');    if (!user) {
       // If no exact match, let's see if there's a case-insensitive match
-      const userCaseInsensitive = await this.userModel.findOne({ 
-        email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') } 
-      }).exec();
+      const userCaseInsensitive = await this.userModel
+        .findOne({ email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') } })
+        .populate('state', 'name code country isActive')
+        .populate('branch', 'name location stateId isActive')
+        .populate('zone', 'name branchId isActive')
+        .exec();
       console.log('User found with case-insensitive match:', userCaseInsensitive ? 'YES' : 'NO');
       
       if (userCaseInsensitive) {
@@ -81,10 +78,14 @@ export class UsersService {
     console.error('Error in findByEmail:', error);
     throw new HttpException(`Failed to find user by email: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
   }
-}
-  async findById(id: string): Promise<UserDocument> {
+}async findById(id: string): Promise<UserDocument> {
     try {
-      const user = await this.userModel.findById(id).exec();
+      const user = await this.userModel
+        .findById(id)
+        .populate('state', 'name code country isActive')
+        .populate('branch', 'name location stateId isActive')
+        .populate('zone', 'name branchId isActive')
+        .exec();
       if (!user) {
         throw new NotFoundException('User not found');
       }

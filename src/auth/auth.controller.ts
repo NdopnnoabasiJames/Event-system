@@ -32,10 +32,13 @@ export class AuthController {
       role: Role.WORKER,
     });
   }
-
   @UseGuards(JwtAuthGuard)
   @Get('/profile')
-  getProfile(@Request() req) {
-    return req.user;
+  async getProfile(@Request() req) {
+    // Fetch the full user profile with populated fields
+    const fullUser = await this.authService.getUserProfile(req.user.userId);
+    return {
+      data: fullUser
+    };
   }
 }
