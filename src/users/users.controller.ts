@@ -74,8 +74,7 @@ export class UsersController {
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN)
   rejectAdmin(@Param('id') adminId: string) {
     return this.usersService.rejectAdmin(adminId);
-  }
-  // Branch Admin specific endpoints for State Admin approval workflow
+  }  // Branch Admin specific endpoints for State Admin approval workflow
   @Get('pending-branch-admins')
   @Roles(Role.STATE_ADMIN)
   getPendingBranchAdmins(@Request() req) {

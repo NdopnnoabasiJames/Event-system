@@ -45,15 +45,17 @@ export class UsersService {
 }  async findByEmail(email: string): Promise<UserDocument> {
   try {
     const normalizedEmail = email.toLowerCase().trim();
-    
-    // Try exact match first
+      // Try exact match first
     const user = await this.userModel
       .findOne({ email })
       .populate('state', 'name code country isActive')
       .populate('branch', 'name location stateId isActive')
       .populate('zone', 'name branchId isActive')
       .exec();
-    console.log('User found with exact match:', user ? 'YES' : 'NO');    if (!user) {
+    
+    if (user) {
+      return user;
+    }    if (!user) {
       // If no exact match, let's see if there's a case-insensitive match
       const userCaseInsensitive = await this.userModel
         .findOne({ email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') } })
@@ -61,16 +63,10 @@ export class UsersService {
         .populate('branch', 'name location stateId isActive')
         .populate('zone', 'name branchId isActive')
         .exec();
-      console.log('User found with case-insensitive match:', userCaseInsensitive ? 'YES' : 'NO');
       
       if (userCaseInsensitive) {
-        console.log('Found user with different case:', userCaseInsensitive.email);
         return userCaseInsensitive;
       }
-      
-      // Let's also check what emails actually exist
-      const existingEmails = await this.userModel.find({}, 'email').limit(10).exec();
-      console.log('Existing emails in database:', existingEmails.map(u => u.email));
     }
     
     return user;
@@ -516,7 +512,6 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
       throw new HttpException(`Failed to fetch user role breakdown: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-
   // Specific methods for State Admin to manage Branch Admins in their state
   async getPendingBranchAdmins(stateId: string): Promise<UserDocument[]> {
     return this.userModel.find({

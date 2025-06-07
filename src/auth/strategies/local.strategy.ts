@@ -22,12 +22,14 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
         console.error('User object missing ID:', user);
         throw new Error('Invalid user object structure');
       }
-      
-      return {
+        return {
         _id: user._id || user.id,
         email: user.email,
         role: user.role,
         name: user.name,
+        state: user.state,
+        branch: user.branch,
+        zone: user.zone,
       };
     } catch (error) {
       console.error('Validation error:', error);
