@@ -88,7 +88,6 @@ export class UsersController {
     const { state } = req.user;
     return this.usersService.getApprovedBranchAdmins(state);
   }
-
   @Post('approve-branch-admin/:id')
   @Roles(Role.STATE_ADMIN)
   approveBranchAdmin(@Param('id') adminId: string, @Request() req) {

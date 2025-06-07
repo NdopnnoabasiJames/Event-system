@@ -315,7 +315,6 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
     registrar.approvedBy = new Types.ObjectId(branchAdminId);
     return registrar.save();
   }
-
   // Approve admin (State Admin approves Branch Admin, Super Admin approves State Admin)
   async approveAdmin(adminId: string, approverId: string): Promise<UserDocument> {
     const approver = await this.userModel.findById(approverId).exec();
