@@ -445,7 +445,7 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
               _id: '$isApproved',
               count: { $sum: 1 }
             }
-          }        ]),
+          }       ]),
 
         // Workers with breakdown
         this.userModel.aggregate([
@@ -515,5 +515,34 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
       };    } catch (error) {
       throw new HttpException(`Failed to fetch user role breakdown: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  // Specific methods for State Admin to manage Branch Admins in their state
+  async getPendingBranchAdmins(stateId: string): Promise<UserDocument[]> {
+    return this.userModel.find({
+      role: 'branch_admin',
+      isApproved: false,
+      state: stateId
+    })
+    .populate('state', 'name')
+    .populate('branch', 'name location')
+    .select('name email role state branch createdAt')
+    .sort({ createdAt: -1 })
+    .exec();
+  }
+
+  async getApprovedBranchAdmins(stateId: string): Promise<UserDocument[]> {
+    return this.userModel.find({
+      role: 'branch_admin',
+      isApproved: true,
+      isActive: true,
+      state: stateId
+    })
+    .populate('state', 'name')
+    .populate('branch', 'name location')
+    .populate('approvedBy', 'name email')
+    .select('name email role state branch approvedBy isActive createdAt')
+    .sort({ createdAt: -1 })
+    .exec();
   }
 }

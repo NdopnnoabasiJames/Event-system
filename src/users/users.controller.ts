@@ -75,20 +75,19 @@ export class UsersController {
   rejectAdmin(@Param('id') adminId: string) {
     return this.usersService.rejectAdmin(adminId);
   }
-
   // Branch Admin specific endpoints for State Admin approval workflow
   @Get('pending-branch-admins')
   @Roles(Role.STATE_ADMIN)
   getPendingBranchAdmins(@Request() req) {
     const { state } = req.user;
-    return this.usersService.getPendingAdmins('state_admin', state);
+    return this.usersService.getPendingBranchAdmins(state);
   }
 
   @Get('approved-branch-admins')
   @Roles(Role.STATE_ADMIN)
   getApprovedBranchAdmins(@Request() req) {
     const { state } = req.user;
-    return this.usersService.getApprovedAdmins('state_admin', state);
+    return this.usersService.getApprovedBranchAdmins(state);
   }
 
   @Post('approve-branch-admin/:id')
