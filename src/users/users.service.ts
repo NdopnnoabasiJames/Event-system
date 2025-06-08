@@ -325,15 +325,18 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
     const admin = await this.userModel.findById(adminId).exec();
     if (!admin) {
       throw new NotFoundException('Admin not found');
-    }
-
-    // Validation logic based on hierarchy
+    }    // Validation logic based on hierarchy
     if (approver.role === Role.SUPER_ADMIN && admin.role === Role.STATE_ADMIN) {
       // Super admin can approve state admins
     } else if (approver.role === Role.STATE_ADMIN && admin.role === Role.BRANCH_ADMIN) {
       // State admin can approve branch admins in their state
       if (admin.state?.toString() !== approver.state?.toString()) {
         throw new ForbiddenException('Can only approve admins in your state');
+      }
+    } else if (approver.role === Role.BRANCH_ADMIN && admin.role === Role.ZONAL_ADMIN) {
+      // Branch admin can approve zonal admins in their branch
+      if (admin.branch?.toString() !== approver.branch?.toString()) {
+        throw new ForbiddenException('Can only approve admins in your branch');
       }
     } else {
       throw new ForbiddenException('Invalid approval hierarchy');
@@ -524,7 +527,6 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
     .sort({ createdAt: -1 })
     .exec();
   }
-
   async getApprovedBranchAdmins(stateId: string): Promise<UserDocument[]> {
     return this.userModel.find({
       role: 'branch_admin',
@@ -536,6 +538,37 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
     .populate('branch', 'name location')
     .populate('approvedBy', 'name email')
     .select('name email role state branch approvedBy isActive createdAt')
+    .sort({ createdAt: -1 })
+    .exec();
+  }
+
+  // Specific methods for Branch Admin to manage Zonal Admins in their branch
+  async getPendingZonalAdmins(branchId: string): Promise<UserDocument[]> {
+    return this.userModel.find({
+      role: 'zonal_admin',
+      isApproved: false,
+      branch: branchId
+    })
+    .populate('state', 'name')
+    .populate('branch', 'name location')
+    .populate('zone', 'name')
+    .select('name email role state branch zone createdAt')
+    .sort({ createdAt: -1 })
+    .exec();
+  }
+
+  async getApprovedZonalAdmins(branchId: string): Promise<UserDocument[]> {
+    return this.userModel.find({
+      role: 'zonal_admin',
+      isApproved: true,
+      isActive: true,
+      branch: branchId
+    })
+    .populate('state', 'name')
+    .populate('branch', 'name location')
+    .populate('zone', 'name')
+    .populate('approvedBy', 'name email')
+    .select('name email role state branch zone approvedBy isActive createdAt')
     .sort({ createdAt: -1 })
     .exec();
   }

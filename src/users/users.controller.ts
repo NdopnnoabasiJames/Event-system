@@ -93,10 +93,36 @@ export class UsersController {
   approveBranchAdmin(@Param('id') adminId: string, @Request() req) {
     return this.usersService.approveAdmin(adminId, req.user.userId);
   }
-
   @Post('reject-branch-admin/:id')
   @Roles(Role.STATE_ADMIN)
   rejectBranchAdmin(@Param('id') adminId: string, @Body() body: { reason?: string }) {
+    return this.usersService.rejectAdmin(adminId);
+  }
+
+  // Zonal Admin specific endpoints for Branch Admin approval workflow
+  @Get('pending-zonal-admins')
+  @Roles(Role.BRANCH_ADMIN)
+  getPendingZonalAdmins(@Request() req) {
+    const { branch } = req.user;
+    return this.usersService.getPendingZonalAdmins(branch);
+  }
+
+  @Get('approved-zonal-admins')
+  @Roles(Role.BRANCH_ADMIN)
+  getApprovedZonalAdmins(@Request() req) {
+    const { branch } = req.user;
+    return this.usersService.getApprovedZonalAdmins(branch);
+  }
+
+  @Post('approve-zonal-admin/:id')
+  @Roles(Role.BRANCH_ADMIN)
+  approveZonalAdmin(@Param('id') adminId: string, @Request() req) {
+    return this.usersService.approveAdmin(adminId, req.user.userId);
+  }
+
+  @Post('reject-zonal-admin/:id')
+  @Roles(Role.BRANCH_ADMIN)
+  rejectZonalAdmin(@Param('id') adminId: string, @Body() body: { reason?: string }) {
     return this.usersService.rejectAdmin(adminId);
   }
 
