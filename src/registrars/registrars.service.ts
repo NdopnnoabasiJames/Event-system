@@ -322,16 +322,13 @@ export class RegistrarsService {
 
   /**
    * Phase 4.1: Get all approved registrars (for admins)
-   */
-  async getAllApprovedRegistrars(adminId: string): Promise<UserDocument[]> {
+   */  async getAllApprovedRegistrars(adminId: string): Promise<UserDocument[]> {
     const admin = await this.adminHierarchyService.getAdminWithHierarchy(adminId);
     
     let query: any = {
       role: Role.REGISTRAR,
       isApproved: true
-    };
-
-    // Filter based on admin hierarchy
+    };    // Filter based on admin hierarchy
     switch (admin.role) {
       case Role.STATE_ADMIN:
         query.state = admin.state;
@@ -341,18 +338,26 @@ export class RegistrarsService {
         break;
       case Role.ZONAL_ADMIN:
         // Zonal admins can only see registrars assigned to their zone
-        query.assignedZones = { $in: [admin.zone] };
+        if (admin.zone) {
+          query.assignedZones = { $in: [admin.zone] };
+        } else {
+          // Fallback: no zone assigned, return empty result
+          query._id = { $in: [] };
+        }
         break;
       // SUPER_ADMIN can see all
-    }
-
-    return this.userModel.find(query)
+      default:
+        break;
+    }    
+    const result = await this.userModel.find(query)
       .populate('state', 'name')
       .populate('branch', 'name')
       .populate('assignedZones', 'name')
       .select('-password')
       .sort({ createdAt: -1 })
       .exec();
+    
+    return result;
   }
 
   /**
@@ -376,11 +381,9 @@ export class RegistrarsService {
     .select('-password')
     .exec();
   }
-
   /**
    * Phase 4.1: Multiple zone assignments support - Get registrar assignments summary
-   */
-  async getRegistrarAssignmentsSummary(adminId: string): Promise<any> {
+   */  async getRegistrarAssignmentsSummary(adminId: string): Promise<any> {
     const admin = await this.adminHierarchyService.getAdminWithHierarchy(adminId);
     
     let registrars: UserDocument[];
@@ -389,9 +392,8 @@ export class RegistrarsService {
       registrars = await this.getRegistrarsByBranch(adminId);
     } else {
       registrars = await this.getAllApprovedRegistrars(adminId);
-    }
-
-    return {
+    }    
+    const summary = {
       totalRegistrars: registrars.length,
       assignedRegistrars: registrars.filter(r => r.assignedZones && r.assignedZones.length > 0).length,
       unassignedRegistrars: registrars.filter(r => !r.assignedZones || r.assignedZones.length === 0).length,
@@ -405,5 +407,7 @@ export class RegistrarsService {
         assignedZones: r.assignedZones
       }))
     };
+    
+    return summary;
   }
 }
