@@ -32,15 +32,14 @@ export class HierarchicalEventCreationService {
       throw new BadRequestException('Super admin must select at least one state');
     }
 
-    const stateIds = createEventDto.selectedStates.map(id => new Types.ObjectId(id));
-
-    const eventData = {
+    const stateIds = createEventDto.selectedStates.map(id => new Types.ObjectId(id));    const eventData = {
       name: createEventDto.name,
       description: createEventDto.description,
       date: createEventDto.date,
       bannerImage: createEventDto.bannerImage,
       createdBy: new Types.ObjectId(creatorId),
       creatorLevel: 'super_admin',
+      scope: 'national', // Super admin events are always national level
       availableStates: stateIds,
       availableBranches: [], // Will be populated by state admins
       availableZones: [], // Will be populated by branch admins
