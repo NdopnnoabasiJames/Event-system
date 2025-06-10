@@ -55,9 +55,7 @@ export class HierarchicalEventAccessService {
       .populate('availableZones', 'name')
       .sort({ createdAt: -1 })
       .exec();
-  }
-
-  /**
+  }  /**
    * Get accessible events for an admin based on their role and hierarchy
    */
   async getAccessibleEvents(adminId: string): Promise<EventDocument[]> {
@@ -108,9 +106,7 @@ export class HierarchicalEventAccessService {
             { createdBy: new Types.ObjectId(adminId) }
           ]
         };
-        break;
-
-      default:
+        break;      default:
         throw new ForbiddenException('Invalid admin role');
     }
 

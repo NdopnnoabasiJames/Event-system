@@ -71,10 +71,14 @@ export class EventsController {  constructor(
     const today = new Date();
     return this.eventsService.findUpcoming(today);
   }
-
   @Get('state/:state')
   getEventsByState(@Param('state') state: string) {
     return this.eventsService.getEventsByState(state);
+  }
+  @Get('accessible')
+  async getAccessibleEvents(@Request() req) {
+    const { userId } = req.user;
+    return this.hierarchicalEventCreationService.getAccessibleEvents(userId);
   }
 
   @Get(':id')
@@ -187,14 +191,7 @@ export class EventsController {  constructor(
       selectZonesDto.eventId,
       selectZonesDto.selectedZones,
       userId
-    );
-  }
-
-  @Get('accessible')
-  async getAccessibleEvents(@Request() req) {
-    const { userId } = req.user;
-    return this.hierarchicalEventCreationService.getAccessibleEvents(userId);
-  }
+    );  }
 
   @Get('needing-branch-selection')
   @Roles(Role.STATE_ADMIN)
