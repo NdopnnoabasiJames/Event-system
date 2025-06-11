@@ -59,8 +59,7 @@ export class AdminHierarchyController {  constructor(
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
-  }
-  @Get('accessible-branches/:stateId?')
+  }  @Get('accessible-branches/:stateId?')
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
   @RequireJurisdiction('state')
   @RequirePermissions(Permission.READ_BRANCH)
@@ -71,6 +70,40 @@ export class AdminHierarchyController {  constructor(
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
+
+  @Get('accessible-zones/:branchId?')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  @RequireJurisdiction('branch')
+  @RequirePermissions(Permission.READ_ZONE)
+  async getAccessibleZones(@Request() req, @Param('branchId') branchId?: string) {
+    try {
+      return await this.adminHierarchyService.getAccessibleZones(req.user.userId, branchId);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  // Simplified endpoints for selection modal (without restrictive guards)
+  @Get('selection/branches')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async getBranchesForSelection(@Request() req) {
+    try {
+      return await this.adminHierarchyService.getAccessibleBranches(req.user.userId);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Get('selection/zones')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async getZonesForSelection(@Request() req) {
+    try {
+      return await this.adminHierarchyService.getAccessibleZones(req.user.userId);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
   @Get('events')
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
   @RequirePermissions(Permission.READ_EVENT)
