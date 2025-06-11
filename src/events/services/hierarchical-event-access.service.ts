@@ -59,7 +59,17 @@ export class HierarchicalEventAccessService {
    * Get accessible events for an admin based on their role and hierarchy
    */
   async getAccessibleEvents(adminId: string): Promise<EventDocument[]> {
+    console.log('HierarchicalEventAccess: getAccessibleEvents called for admin:', adminId);
+    
     const admin = await this.adminHierarchyService.getAdminWithHierarchy(adminId);
+    console.log('HierarchicalEventAccess: Admin details:', {
+      id: admin._id,
+      role: admin.role,
+      email: admin.email,
+      state: admin.state,
+      branch: admin.branch,
+      zone: admin.zone
+    });
 
     let query: any = {};
 
@@ -67,9 +77,8 @@ export class HierarchicalEventAccessService {
       case Role.SUPER_ADMIN:
         // Super admins can see all events
         query = {};
-        break;
-
-      case Role.STATE_ADMIN:
+        console.log('HierarchicalEventAccess: Super admin - showing all events');
+        break;      case Role.STATE_ADMIN:
         // State admins can see events in their state
         query = {
           $or: [
@@ -78,6 +87,16 @@ export class HierarchicalEventAccessService {
             { createdBy: new Types.ObjectId(adminId) }
           ]
         };
+        console.log('HierarchicalEventAccess: State admin query:', JSON.stringify(query, null, 2));
+        console.log('HierarchicalEventAccess: State admin state ID:', admin.state);
+        console.log('HierarchicalEventAccess: State admin state ID type:', typeof admin.state);
+        
+        // Check if the state ID is being properly referenced
+        if (admin.state instanceof Types.ObjectId) {
+          console.log('HierarchicalEventAccess: State ID is an ObjectId instance');
+        } else if (typeof admin.state === 'string') {
+          console.log('HierarchicalEventAccess: State ID is a string:', admin.state);
+        }
         break;
 
       case Role.BRANCH_ADMIN:
@@ -108,9 +127,7 @@ export class HierarchicalEventAccessService {
         };
         break;      default:
         throw new ForbiddenException('Invalid admin role');
-    }
-
-    return this.eventModel
+    }    const events = await this.eventModel
       .find(query)
       .populate('createdBy', 'name email')
       .populate('availableStates', 'name')
@@ -119,6 +136,37 @@ export class HierarchicalEventAccessService {
       .populate('pickupStations', 'name location')
       .sort({ createdAt: -1 })
       .exec();
+        console.log('HierarchicalEventAccess: Query result count:', events.length);
+    console.log('HierarchicalEventAccess: Event statuses in results:', events.map(e => e.status));
+    
+    if (events.length > 0) {
+      console.log('HierarchicalEventAccess: First event sample:', {
+        id: events[0]._id,
+        name: events[0].name,
+        status: events[0].status,
+        creatorLevel: events[0].creatorLevel,
+        availableStates: events[0].availableStates?.map(s => typeof s === 'object' ? s._id : s)
+      });
+      
+      // Detailed check of state admin's events
+      if (admin.role === Role.STATE_ADMIN) {
+        console.log('HierarchicalEventAccess: Checking state assignments for events:');        events.forEach((event, index) => {
+          const stateIds = Array.isArray(event.availableStates) 
+            ? event.availableStates.map(s => {
+                if (typeof s === 'object' && s !== null && '_id' in s) {
+                  return (s as any)._id.toString();
+                }
+                return s.toString();
+              })
+            : [];
+          
+          console.log(`Event ${index}: ${event.name}, states: [${stateIds.join(', ')}], admin state: ${admin.state.toString()}`);
+          console.log(`Event ${index} is available to admin's state: ${stateIds.includes(admin.state.toString())}`);
+        });
+      }
+    }
+    
+    return events;
   }
 
   /**
@@ -133,13 +181,11 @@ export class HierarchicalEventAccessService {
 
     if (!admin.zone) {
       throw new BadRequestException('Zonal admin must be assigned to a zone');
-    }
-
-    // Find events where this zone is included in availableZones
+    }    // Find events where this zone is included in availableZones
     return await this.eventModel.find({
       availableZones: admin.zone,
-      isActive: true,
-      date: { $gte: new Date().toISOString() } // Only future events
+      status: { $in: ['published', 'active'] }, // Only active/published events
+      date: { $gte: new Date() } // Only future events - compare with Date object, not string
     })
     .populate('createdBy', 'firstName lastName email')
     .populate('availableStates', 'name code')
