@@ -64,11 +64,9 @@ export class HierarchicalEventSelectionService {
     // Validate event type
     if (event.creatorLevel !== 'super_admin') {
       throw new BadRequestException('Can only select branches for super admin events');
-    }
-
-    // Check admin's access to event
+    }    // Check admin's access to event
     const adminStateInEvent = event.availableStates.some(
-      stateId => stateId.toString() === admin.state.toString()
+      stateId => stateId.equals ? stateId.equals(admin.state._id) : stateId.toString() === admin.state._id.toString()
     );
 
     if (!adminStateInEvent) {
@@ -146,11 +144,9 @@ export class HierarchicalEventSelectionService {
     // Validate event type
     if (!['super_admin', 'state_admin'].includes(event.creatorLevel)) {
       throw new BadRequestException('Can only select zones for super admin or state admin events');
-    }
-
-    // Check admin's access to event
+    }    // Check admin's access to event
     const adminBranchInEvent = event.availableBranches.some(
-      branchId => branchId.toString() === admin.branch.toString()
+      branchId => branchId.toString() === admin.branch._id.toString()
     );
 
     if (!adminBranchInEvent) {
@@ -407,11 +403,9 @@ export class HierarchicalEventSelectionService {
 
     if (event.creatorLevel !== 'super_admin') {
       throw new BadRequestException('Can only select branches for super admin events');
-    }
-
-    // Check if admin's state is in the event's available states
+    }    // Check if admin's state is in the event's available states
     const adminStateInEvent = event.availableStates.some(
-      stateId => stateId.toString() === admin.state.toString()
+      stateId => stateId.equals ? stateId.equals(admin.state._id) : stateId.toString() === admin.state._id.toString()
     );
 
     if (!adminStateInEvent) {
@@ -457,11 +451,9 @@ export class HierarchicalEventSelectionService {
 
     if (!['super_admin', 'state_admin'].includes(event.creatorLevel)) {
       throw new BadRequestException('Can only select zones for super admin or state admin events');
-    }
-
-    // Check if admin's branch is in the event's available branches
+    }    // Check if admin's branch is in the event's available branches
     const adminBranchInEvent = event.availableBranches.some(
-      branchId => branchId.toString() === admin.branch.toString()
+      branchId => branchId.toString() === admin.branch._id.toString()
     );
 
     if (!adminBranchInEvent) {

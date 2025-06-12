@@ -78,18 +78,16 @@ export class AdminHierarchyService {
     
     if (!branch) {
       return false;
-    }
-
-    switch (admin.role) {
+    }    switch (admin.role) {
       case Role.SUPER_ADMIN:
         return true; // Super admin can access all branches
       case Role.STATE_ADMIN:
-        return admin.state.toString() === branch.stateId.toString();
+        return admin.state._id.toString() === branch.stateId.toString();
       case Role.BRANCH_ADMIN:
-        return admin.branch.toString() === branchId;
+        return admin.branch._id.toString() === branchId;
       case Role.ZONAL_ADMIN:
         // Zonal admin can access their branch
-        return admin.branch.toString() === branchId;
+        return admin.branch._id.toString() === branchId;
       default:
         return false;
     }
@@ -104,19 +102,17 @@ export class AdminHierarchyService {
     
     if (!zone) {
       return false;
-    }
-
-    switch (admin.role) {
+    }    switch (admin.role) {
       case Role.SUPER_ADMIN:
         return true; // Super admin can access all zones
       case Role.STATE_ADMIN:
         // State admin can access zones in their state
         const branch = await this.branchModel.findById(zone.branchId);
-        return branch && admin.state.toString() === branch.stateId.toString();
+        return branch && admin.state._id.toString() === branch.stateId.toString();
       case Role.BRANCH_ADMIN:
-        return admin.branch.toString() === zone.branchId.toString();
+        return admin.branch._id.toString() === zone.branchId.toString();
       case Role.ZONAL_ADMIN:
-        return admin.zone.toString() === zoneId;
+        return admin.zone._id.toString() === zoneId;
       default:
         return false;
     }

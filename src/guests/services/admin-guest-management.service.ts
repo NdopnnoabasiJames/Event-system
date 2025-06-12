@@ -306,10 +306,10 @@ export class AdminGuestManagementService {
   private async canAdminAccessGuest(admin: UserDocument, guest: GuestDocument): Promise<boolean> {
     switch (admin.role) {
       case Role.SUPER_ADMIN:
-        return true;
-      case Role.STATE_ADMIN:
-        return guest.state.toString() === admin.state.toString();      case Role.BRANCH_ADMIN:
-        return guest.branch.toString() === admin.branch.toString();
+        return true;      case Role.STATE_ADMIN:
+        return guest.state.toString() === admin.state._id.toString();
+      case Role.BRANCH_ADMIN:
+        return guest.branch.toString() === admin.branch._id.toString();
       case Role.ZONAL_ADMIN:
         // Check if guest's branch is accessible to this zonal admin
         const branches = await this.adminHierarchyService.getAccessibleBranches(admin._id.toString());
