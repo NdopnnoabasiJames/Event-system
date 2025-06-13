@@ -612,16 +612,14 @@ export class AdminHierarchyService {
     
     if (admin.role !== Role.BRANCH_ADMIN) {
       throw new ForbiddenException('Only branch admins can access this');
-    }
-
-    const [zones, events, guests, pendingZoneAdmins, approvedZoneAdmins] = await Promise.all([
+    }    const [zones, events, guests, pendingZoneAdmins, approvedZoneAdmins] = await Promise.all([
       this.zoneModel.countDocuments({ branchId: admin.branch, isActive: true }),
       this.eventModel.countDocuments({ 
         $or: [
-          { availableBranches: admin.branch },
+          { availableBranches: { $in: [admin.branch] } },
           { createdBy: branchAdminId, creatorLevel: 'branch_admin' }
         ],
-        status: { $in: ['published', 'active'] }
+        status: { $in: ['published'] }
       }),
       this.guestModel.countDocuments({ branch: admin.branch }),
       this.userModel.countDocuments({ 
