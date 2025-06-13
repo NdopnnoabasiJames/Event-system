@@ -362,6 +362,103 @@ export class AdminHierarchyController {  constructor(
     }
   }
 
+  // Branch Admin specific endpoints
+  @Get('branch/pending-zone-admins')
+  @Roles(Role.BRANCH_ADMIN)
+  async getPendingZoneAdmins(@Request() req) {
+    try {
+      return await this.adminHierarchyService.getPendingZoneAdminsByBranch(req.user.userId);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Get('branch/approved-zone-admins')
+  @Roles(Role.BRANCH_ADMIN)
+  async getApprovedZoneAdmins(@Request() req) {
+    try {
+      return await this.adminHierarchyService.getApprovedZoneAdminsByBranch(req.user.userId);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Post('branch/approve-zone-admin/:adminId')
+  @Roles(Role.BRANCH_ADMIN)
+  async approveZoneAdmin(
+    @Param('adminId') adminId: string,
+    @Body() body: { approvedBy?: string; approvedAt?: string },
+    @Request() req
+  ) {
+    try {
+      return await this.adminHierarchyService.approveZoneAdmin(adminId, req.user.userId, body);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Post('branch/reject-zone-admin/:adminId')
+  @Roles(Role.BRANCH_ADMIN)
+  async rejectZoneAdmin(
+    @Param('adminId') adminId: string,
+    @Body() body: { reason: string },
+    @Request() req
+  ) {
+    try {
+      return await this.adminHierarchyService.rejectZoneAdmin(adminId, req.user.userId, body.reason);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Get('branch/zones')
+  @Roles(Role.BRANCH_ADMIN)
+  async getBranchZones(@Request() req) {
+    try {
+      return await this.adminHierarchyService.getZonesByBranchAdmin(req.user.userId);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Get('branch/dashboard-stats')
+  @Roles(Role.BRANCH_ADMIN)
+  async getBranchDashboardStats(@Request() req) {
+    try {
+      return await this.adminHierarchyService.getBranchDashboardStats(req.user.userId);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Get('events/needing-zone-selection')
+  @Roles(Role.BRANCH_ADMIN)
+  async getEventsNeedingZoneSelection(@Request() req) {
+    try {
+      return await this.hierarchicalEventService.getEventsNeedingZoneSelection(req.user.userId);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Patch('events/:eventId/select-zones')
+  @Roles(Role.BRANCH_ADMIN)
+  async selectZonesForEvent(
+    @Param('eventId') eventId: string,
+    @Body() body: { selectedZones: string[] },
+    @Request() req
+  ) {
+    try {
+      return await this.hierarchicalEventService.selectZonesForEvent(
+        eventId,
+        body.selectedZones,
+        req.user.userId
+      );
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
   // Phase 5.3: Admin Replacement and Jurisdiction Transfer endpoints
   @Post('replace-admin')
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)

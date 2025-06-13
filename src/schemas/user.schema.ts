@@ -26,11 +26,15 @@ export class User {
 
   @Prop({ type: Types.ObjectId, ref: 'Zone', required: false, index: true })
   zone?: Types.ObjectId;
-
   @Prop({ default: false })
   isApproved: boolean;
+
   @Prop({ type: Types.ObjectId, ref: 'User', required: false })
   approvedBy?: Types.ObjectId;
+
+  @Prop({ type: Date, required: false })
+  approvedAt?: Date;
+  
   // Performance rating for workers (all-time rating based on guest check-ins)
   @Prop({ type: Number, min: 0, max: 5, default: 0 })
   performanceRating: number;
