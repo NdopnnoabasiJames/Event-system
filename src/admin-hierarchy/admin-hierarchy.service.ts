@@ -619,7 +619,8 @@ export class AdminHierarchyService {
           { availableBranches: { $in: [admin.branch] } },
           { createdBy: branchAdminId, creatorLevel: 'branch_admin' }
         ],
-        status: { $in: ['published'] }
+        // Include all statuses except cancelled and completed
+        status: { $in: ['draft', 'published'] }
       }),
       this.guestModel.countDocuments({ branch: admin.branch }),
       this.userModel.countDocuments({ 
