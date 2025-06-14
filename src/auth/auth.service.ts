@@ -9,29 +9,25 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-  ) {}  async validateUser(email: string, password: string): Promise<any> {
+  ) {}
+
+  async validateUser(email: string, password: string): Promise<any> {
     try {
-      console.log('Attempting to validate user:', email);
-      
       const user = await this.usersService.findByEmail(email);
       if (!user) {
-        console.log('User not found:', email);
         throw new UnauthorizedException('User not found');
-      }      // Check if admin user is approved (super admins are always approved)
+      }
+      // Check if admin user is approved (super admins are always approved)
       const rolesRequiringApproval = ['state_admin', 'branch_admin', 'zonal_admin', 'worker', 'registrar'];
       if (rolesRequiringApproval.includes(user.role) && !user.isApproved) {
-        console.log('User not approved:', email);
         throw new UnauthorizedException('Your account is pending approval');
       }
       
-      console.log('User found, validating password');
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        console.log('Invalid password for user:', email);
         throw new UnauthorizedException('Invalid password');
       }
 
-      console.log('Password valid, login successful');
       const { password: _, ...result } = user.toJSON();
       return result;
     } catch (error) {
@@ -40,11 +36,6 @@ export class AuthService {
     }
   }  async login(user: any) {
     try {
-      console.log('Creating JWT payload for user:', user.email);
-      console.log('User object before JWT creation:', JSON.stringify(user, null, 2));
-      console.log('User state field:', user.state);
-      console.log('User branch field:', user.branch);
-      
       const payload = { 
         email: user.email, 
         sub: user._id ? user._id.toString() : user.id,
@@ -55,11 +46,8 @@ export class AuthService {
         state: user.state?._id ? user.state._id.toString() : (user.state ? user.state.toString() : null),
         branch: user.branch?._id ? user.branch._id.toString() : (user.branch ? user.branch.toString() : null),
       };
-      console.log('JWT Payload:', payload);
       
-      const access_token = this.jwtService.sign(payload, { expiresIn: '24h' });
-      console.log('JWT Token generated successfully');
-      
+      const access_token = this.jwtService.sign(payload, { expiresIn: '24h' });      
       // Direct format, not nested inside data property
       return {
         access_token,
