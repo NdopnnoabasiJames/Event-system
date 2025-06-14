@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User, UserDocument } from '../../schemas/user.schema';
@@ -171,9 +171,7 @@ export class AdminDataAccessService {
           .populate('availableStates', 'name')
           .populate('availableBranches', 'name location')
           .sort({ createdAt: -1 })
-          .exec();
-
-      case Role.BRANCH_ADMIN:
+          .exec();      case Role.BRANCH_ADMIN:
         // Branch admin sees events in their branch
         return this.eventModel
           .find({
@@ -185,6 +183,25 @@ export class AdminDataAccessService {
           .populate('createdBy', 'name email')
           .populate('availableStates', 'name')
           .populate('availableBranches', 'name location')
+          .sort({ createdAt: -1 })
+          .exec();
+
+      case Role.ZONAL_ADMIN:
+        // Zonal admin sees events in their zone
+        if (!admin.zone) {
+          throw new BadRequestException('Zonal admin must be assigned to a zone');
+        }
+        return this.eventModel
+          .find({
+            $or: [
+              { availableZones: admin.zone }, // Events that include their zone
+              { createdBy: admin._id }, // Events they created
+            ],
+          })
+          .populate('createdBy', 'name email')
+          .populate('availableStates', 'name')
+          .populate('availableBranches', 'name location')
+          .populate('availableZones', 'name')
           .sort({ createdAt: -1 })
           .exec();
 

@@ -59,7 +59,6 @@ export class HierarchicalEventAccessService {
    * Get accessible events for an admin based on their role and hierarchy
    */  async getAccessibleEvents(adminId: string): Promise<EventDocument[]> {
     const admin = await this.adminHierarchyService.getAdminWithHierarchy(adminId);
-
     let query: any = {};
 
     switch (admin.role) {      case Role.SUPER_ADMIN:
@@ -86,13 +85,12 @@ export class HierarchicalEventAccessService {
             { createdBy: new Types.ObjectId(adminId) }
           ]
         };
-        break;
-
-      case Role.ZONAL_ADMIN:
+        break;      case Role.ZONAL_ADMIN:
         // Zonal admins can see events in their zone
         if (!admin.zone) {
           throw new BadRequestException('Zonal admin must be assigned to a zone');
         }
+        
         query = {
           $or: [
             { creatorLevel: 'super_admin', availableZones: admin.zone },
@@ -102,9 +100,12 @@ export class HierarchicalEventAccessService {
             { createdBy: new Types.ObjectId(adminId) }
           ]
         };
-        break;      default:
+        break;
+      default:
         throw new ForbiddenException('Invalid admin role');
-    }    const events = await this.eventModel
+    }
+
+    const events = await this.eventModel
       .find(query)
       .populate('createdBy', 'name email')
       .populate('availableStates', 'name')
@@ -113,7 +114,7 @@ export class HierarchicalEventAccessService {
       .populate('pickupStations', 'name location')
       .sort({ createdAt: -1 })
       .exec();
-    
+        
     return events;
   }
 

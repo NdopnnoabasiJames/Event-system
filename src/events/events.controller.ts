@@ -74,11 +74,11 @@ export class EventsController {  constructor(
   @Get('state/:state')
   getEventsByState(@Param('state') state: string) {
     return this.eventsService.getEventsByState(state);
-  }
-  @Get('accessible')
+  }  @Get('accessible')
   async getAccessibleEvents(@Request() req) {
     const { userId } = req.user;
-    return this.hierarchicalEventCreationService.getAccessibleEvents(userId);
+    const result = await this.hierarchicalEventCreationService.getAccessibleEvents(userId);
+    return result;
   }
 
   @Get(':id')

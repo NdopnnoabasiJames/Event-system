@@ -103,9 +103,8 @@ export class AdminHierarchyController {  constructor(
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
-
   @Get('events')
-  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
   @RequirePermissions(Permission.READ_EVENT)
   async getEventsForAdmin(@Request() req) {
     try {
@@ -332,9 +331,8 @@ export class AdminHierarchyController {  constructor(
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
-  }
-  @Get('export/events')
-  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  }  @Get('export/events')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
   async exportEvents(@Request() req, @Res() res: Response) {
     try {
       const events = await this.adminHierarchyService.getEventsForAdmin(req.user.userId);
