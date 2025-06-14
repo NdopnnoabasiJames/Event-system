@@ -84,9 +84,12 @@ export class User {
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: false })
   rejectedBy?: Types.ObjectId;
-
   @Prop({ type: Date, required: false })
   rejectedAt?: Date;
+
+  // Last login tracking
+  @Prop({ type: Date, required: false })
+  lastLogin?: Date;
 
   // Profile fields for registrars
   @Prop({ type: String, required: false })

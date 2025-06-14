@@ -1,6 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { AdminHierarchyService } from '../admin-hierarchy/admin-hierarchy.service';
+import { AdminHierarchyService } from './admin-hierarchy.service';
 import { AdminHierarchyController } from './admin-hierarchy.controller';
 import { User, UserSchema } from '../schemas/user.schema';
 import { State, StateSchema } from '../schemas/state.schema';
@@ -11,6 +11,14 @@ import { PickupStation, PickupStationSchema } from '../schemas/pickup-station.sc
 import { Guest, GuestSchema } from '../schemas/guest.schema';
 import { HierarchicalEventCreationService } from '../events/hierarchical-event-creation.service';
 import { EventsModule } from '../events/events.module';
+
+// Import the new modular services
+import { AdminHierarchyCoreService } from './services/admin-hierarchy-core.service';
+import { AdminManagementService } from './services/admin-management.service';
+import { ZoneAdminApprovalService } from './services/zone-admin-approval.service';
+import { PerformanceAnalyticsService } from './services/performance-analytics.service';
+import { AdminDataAccessService } from './services/admin-data-access.service';
+import { DashboardStatsService } from './services/dashboard-stats.service';
 
 @Module({
   imports: [
@@ -24,9 +32,16 @@ import { EventsModule } from '../events/events.module';
       { name: Guest.name, schema: GuestSchema },
     ]),
     forwardRef(() => EventsModule),
+  ],  controllers: [AdminHierarchyController],
+  providers: [
+    AdminHierarchyService,
+    AdminHierarchyCoreService,
+    AdminManagementService,
+    ZoneAdminApprovalService,
+    PerformanceAnalyticsService,
+    AdminDataAccessService,
+    DashboardStatsService,
   ],
-  controllers: [AdminHierarchyController],
-  providers: [AdminHierarchyService],
   exports: [AdminHierarchyService],
 })
 export class AdminHierarchyModule {}
