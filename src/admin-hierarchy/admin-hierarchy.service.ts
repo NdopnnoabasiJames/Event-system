@@ -639,9 +639,7 @@ export class AdminHierarchyService {
       throw new ForbiddenException('Only branch admins can access this');
     } // Use the branch ObjectId and convert to string to match stored data
     const branchObjectId = admin.branch._id || admin.branch;
-    const branchId = branchObjectId.toString();
-
-    return this.userModel
+    const branchId = branchObjectId.toString();    const results = await this.userModel
       .find({
         role: Role.ZONAL_ADMIN,
         isApproved: true,
@@ -651,12 +649,11 @@ export class AdminHierarchyService {
       .populate('state', 'name')
       .populate('branch', 'name location')
       .populate('zone', 'name')
-      .populate('approvedBy', 'name email')
-      .select(
-        'name email role state branch zone approvedBy approvedAt createdAt',
+      .populate('approvedBy', 'name email')      .select(
+        'name email role state branch zone approvedBy approvedAt createdAt isApproved',
       )
-      .sort({ approvedAt: -1 })
-      .exec();
+      .sort({ approvedAt: -1, createdAt: -1 })
+      .exec();    return results;
   }
 
   async approveZoneAdmin(
