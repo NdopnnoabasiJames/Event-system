@@ -361,14 +361,23 @@ export class AdminHierarchyController {  constructor(
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
-
   // Branch Admin specific endpoints
   @Get('branch/pending-zone-admins')
   @Roles(Role.BRANCH_ADMIN)
   async getPendingZoneAdmins(@Request() req) {
     try {
-      return await this.adminHierarchyService.getPendingZoneAdminsByBranch(req.user.userId);
+      console.log('🔍 DEBUG: /branch/pending-zone-admins endpoint called');
+      console.log('🔍 DEBUG: Request user:', {
+        userId: req.user?.userId,
+        role: req.user?.role,
+        email: req.user?.email
+      });
+      
+      const result = await this.adminHierarchyService.getPendingZoneAdminsByBranch(req.user.userId);
+      console.log('🔍 DEBUG: Returning', result.length, 'pending zone admins');
+      return result;
     } catch (error) {
+      console.log('❌ DEBUG: Error in getPendingZoneAdmins:', error.message);
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }

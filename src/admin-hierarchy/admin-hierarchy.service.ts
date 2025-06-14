@@ -24,26 +24,42 @@ export class AdminHierarchyService {
     @InjectModel(Zone.name) private zoneModel: Model<ZoneDocument>,
     @InjectModel(Event.name) private eventModel: Model<EventDocument>,
     @InjectModel(Guest.name) private guestModel: Model<GuestDocument>,
-  ) {}
-  /**
+  ) {}  /**
    * Get admin user with hierarchy validation
    */
   async getAdminWithHierarchy(userId: string): Promise<UserDocument> {
+    console.log('🔍 DEBUG: getAdminWithHierarchy called with userId:', userId);
+    
     const admin = await this.userModel
       .findById(userId)
       .populate('state', 'name code')
       .populate('branch', 'name location stateId')
       .populate('zone', 'name branchId')
-      .exec();
+      .exec();    console.log('🔍 DEBUG: Raw admin from database:', {
+      id: admin?._id,
+      name: admin?.name,
+      email: admin?.email,
+      role: admin?.role,
+      state: admin?.state,
+      branch: admin?.branch,
+      zone: admin?.zone,
+      isApproved: admin?.isApproved,
+      isActive: admin?.isActive,
+      branchType: typeof admin?.branch,
+      branchName: (admin?.branch as any)?.name || 'Branch not populated'
+    });
 
     if (!admin) {
+      console.log('❌ DEBUG: Admin not found for userId:', userId);
       throw new NotFoundException('Admin not found');
     }
 
     if (![Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN].includes(admin.role)) {
+      console.log('❌ DEBUG: User is not an admin, role is:', admin.role);
       throw new ForbiddenException('User is not an admin');
     }
 
+    console.log('✅ DEBUG: Admin hierarchy validated successfully');
     return admin;
   }
   /**
@@ -491,43 +507,94 @@ export class AdminHierarchyService {
       .select('name email role state branch zone disabledBy disabledAt disableReason')
       .sort({ disabledAt: -1 })
       .exec();
-  }
-
-  // Branch Admin specific methods for zone admin management
+  }  // Branch Admin specific methods for zone admin management
   async getPendingZoneAdminsByBranch(branchAdminId: string): Promise<UserDocument[]> {
+    console.log('🔍 DEBUG: getPendingZoneAdminsByBranch called with branchAdminId:', branchAdminId);
+    
     const admin = await this.getAdminWithHierarchy(branchAdminId);
+    console.log('🔍 DEBUG: Branch admin details:', {
+      id: admin._id,
+      role: admin.role,
+      name: admin.name,
+      email: admin.email,
+      branchId: admin.branch?._id || admin.branch,
+      branchName: (admin.branch as any)?.name || 'No branch name',
+      branchType: typeof admin.branch
+    });
     
     if (admin.role !== Role.BRANCH_ADMIN) {
+      console.log('❌ DEBUG: Admin is not a branch admin, role is:', admin.role);
       throw new ForbiddenException('Only branch admins can access this');
-    }
+    }    // Use the branch ObjectId and convert to string to match stored data
+    const branchObjectId = admin.branch._id || admin.branch;
+    const branchId = branchObjectId.toString();
+    
+    const query = {
+      role: Role.ZONAL_ADMIN,
+      isApproved: false,
+      branch: branchId,
+      isActive: true
+    };
+    
+    console.log('🔍 DEBUG: Query for pending zone admins:', query);
+    console.log('🔍 DEBUG: Branch ID being searched for (as string):', branchId);
+    console.log('🔍 DEBUG: Original ObjectId:', branchObjectId);    // First, let's see ALL zonal admins in the system for debugging
+    const allZonalAdmins = await this.userModel.find({ role: Role.ZONAL_ADMIN }).exec();
+    console.log('🔍 DEBUG: All zonal admins in system:', allZonalAdmins.map(za => ({
+      id: za._id,
+      name: za.name,
+      email: za.email,
+      branchId: za.branch,
+      branchIdType: typeof za.branch,
+      isApproved: za.isApproved,
+      isActive: za.isActive
+    })));
 
-    return this.userModel
-      .find({
-        role: Role.ZONAL_ADMIN,
-        isApproved: false,
-        branch: admin.branch,
-        isActive: true
-      })
+    console.log('🔍 DEBUG: Comparing branchId string:', branchId, 'with stored branch values...');
+    const matchingAdmins = allZonalAdmins.filter(za => 
+      za.branch && za.branch.toString() === branchId && 
+      za.role === Role.ZONAL_ADMIN && 
+      za.isApproved === false && 
+      za.isActive === true
+    );
+    console.log('🔍 DEBUG: Manual filter found', matchingAdmins.length, 'matching admins:', 
+      matchingAdmins.map(ma => ({ name: ma.name, branchId: ma.branch })));
+
+    const results = await this.userModel
+      .find(query)
       .populate('state', 'name')
       .populate('branch', 'name location')
       .populate('zone', 'name')
       .select('name email role state branch zone createdAt')
       .sort({ createdAt: -1 })
       .exec();
+      
+    console.log('🔍 DEBUG: Query results - found', results.length, 'pending zone admins');
+    console.log('🔍 DEBUG: Results details:', results.map(r => ({
+      id: r._id,
+      name: r.name,
+      email: r.email,
+      branchId: r.branch,
+      isApproved: r.isApproved,
+      isActive: r.isActive
+    })));
+
+    return results;
   }
 
-  async getApprovedZoneAdminsByBranch(branchAdminId: string): Promise<UserDocument[]> {
-    const admin = await this.getAdminWithHierarchy(branchAdminId);
+  async getApprovedZoneAdminsByBranch(branchAdminId: string): Promise<UserDocument[]> {    const admin = await this.getAdminWithHierarchy(branchAdminId);
     
     if (admin.role !== Role.BRANCH_ADMIN) {
       throw new ForbiddenException('Only branch admins can access this');
-    }
+    }    // Use the branch ObjectId and convert to string to match stored data
+    const branchObjectId = admin.branch._id || admin.branch;
+    const branchId = branchObjectId.toString();
 
     return this.userModel
       .find({
         role: Role.ZONAL_ADMIN,
         isApproved: true,
-        branch: admin.branch,
+        branch: branchId,
         isActive: true
       })
       .populate('state', 'name')
@@ -549,14 +616,12 @@ export class AdminHierarchyService {
     const zoneAdmin = await this.userModel.findById(zoneAdminId);
     if (!zoneAdmin) {
       throw new NotFoundException('Zone admin not found');
-    }
-
-    if (zoneAdmin.role !== Role.ZONAL_ADMIN) {
+    }    if (zoneAdmin.role !== Role.ZONAL_ADMIN) {
       throw new BadRequestException('User is not a zone admin');
-    }
-
-    // Verify the zone admin belongs to this branch admin's branch
-    if (zoneAdmin.branch.toString() !== branchAdmin.branch._id.toString()) {
+    }    // Verify the zone admin belongs to this branch admin's branch
+    const branchObjectId = branchAdmin.branch._id || branchAdmin.branch;
+    const branchId = branchObjectId.toString();
+    if (zoneAdmin.branch.toString() !== branchId) {
       throw new ForbiddenException('You can only approve zone admins in your branch');
     }
 
@@ -576,11 +641,10 @@ export class AdminHierarchyService {
 
     const zoneAdmin = await this.userModel.findById(zoneAdminId);
     if (!zoneAdmin) {
-      throw new NotFoundException('Zone admin not found');
-    }
-
-    // Verify the zone admin belongs to this branch admin's branch
-    if (zoneAdmin.branch.toString() !== branchAdmin.branch._id.toString()) {
+      throw new NotFoundException('Zone admin not found');    }    // Verify the zone admin belongs to this branch admin's branch
+    const branchObjectId = branchAdmin.branch._id || branchAdmin.branch;
+    const branchId = branchObjectId.toString();
+    if (zoneAdmin.branch.toString() !== branchId) {
       throw new ForbiddenException('You can only reject zone admins in your branch');
     }
 
@@ -592,7 +656,6 @@ export class AdminHierarchyService {
 
     return zoneAdmin.save();
   }
-
   async getZonesByBranchAdmin(branchAdminId: string): Promise<ZoneDocument[]> {
     const admin = await this.getAdminWithHierarchy(branchAdminId);
     
@@ -600,38 +663,43 @@ export class AdminHierarchyService {
       throw new ForbiddenException('Only branch admins can access this');
     }
 
+    // Use the branch ObjectId instead of the populated object
+    const branchId = admin.branch._id || admin.branch;
+
     return this.zoneModel
-      .find({ branchId: admin.branch, isActive: true })
+      .find({ branchId: branchId, isActive: true })
       .populate('branchId', 'name location')
       .sort({ name: 1 })
       .exec();
   }
-
   async getBranchDashboardStats(branchAdminId: string): Promise<any> {
     const admin = await this.getAdminWithHierarchy(branchAdminId);
     
     if (admin.role !== Role.BRANCH_ADMIN) {
       throw new ForbiddenException('Only branch admins can access this');
-    }    const [zones, events, guests, pendingZoneAdmins, approvedZoneAdmins] = await Promise.all([
-      this.zoneModel.countDocuments({ branchId: admin.branch, isActive: true }),
+    }    // Use the branch ObjectId and convert to string to match stored data
+    const branchObjectId = admin.branch._id || admin.branch;
+    const branchId = branchObjectId.toString();
+
+    const [zones, events, guests, pendingZoneAdmins, approvedZoneAdmins] = await Promise.all([
+      this.zoneModel.countDocuments({ branchId: branchId, isActive: true }),
       this.eventModel.countDocuments({ 
         $or: [
-          { availableBranches: { $in: [admin.branch] } },
+          { availableBranches: { $in: [branchId] } },
           { createdBy: branchAdminId, creatorLevel: 'branch_admin' }
         ],
         // Include all statuses except cancelled and completed
         status: { $in: ['draft', 'published'] }
       }),
-      this.guestModel.countDocuments({ branch: admin.branch }),
+      this.guestModel.countDocuments({ branch: branchId }),
       this.userModel.countDocuments({ 
         role: Role.ZONAL_ADMIN, 
-        branch: admin.branch, 
+        branch: branchId, 
         isApproved: false,
         isActive: true 
-      }),
-      this.userModel.countDocuments({ 
+      }),      this.userModel.countDocuments({ 
         role: Role.ZONAL_ADMIN, 
-        branch: admin.branch, 
+        branch: branchId, 
         isApproved: true,
         isActive: true 
       })
