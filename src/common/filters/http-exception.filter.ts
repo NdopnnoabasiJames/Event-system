@@ -58,8 +58,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
           error: 'Conflict',
         };
       }
+    }    // Log the original exception details for debugging
+    this.logger.error(`Original exception:`, exception);
+    if (exception instanceof Error) {
+      this.logger.error(`Stack trace:`, exception.stack);
     }
-
+    
     this.logger.error(
       `Http Status: ${status} Error Message: ${JSON.stringify(errorResponse)}`,
     );

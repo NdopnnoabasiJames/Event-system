@@ -46,23 +46,46 @@ export class PickupStationManagementService {
 
   /**
    * Create pickup station specific to a zone by zonal admin
-   */
-  async createZoneSpecificPickupStation(
+   */  async createZoneSpecificPickupStation(
     zoneId: string,
     adminId: string,
     createDto: ZoneSpecificCreateDto
   ): Promise<PickupStationDocument> {
-    const admin = await this.userModel.findById(adminId);
+    console.log('DEBUG createZoneSpecificPickupStation: zoneId:', zoneId, 'adminId:', adminId);
+    
+    const admin = await this.userModel.findById(adminId)
+      .populate('zone')
+      .populate('branch')
+      .populate('state')
+      .exec();
+    
     if (!admin) {
       throw new NotFoundException('Admin not found');
     }
 
+    console.log('DEBUG admin found:', {
+      id: admin._id,
+      role: admin.role,
+      zone: admin.zone,
+      zoneId: admin.zone?._id || admin.zone,
+      zoneString: admin.zone?.toString()
+    });
+
     // Validate admin can create in this zone
-    if (admin.role !== Role.ZONAL_ADMIN || admin.zone?.toString() !== zoneId) {
-      if (admin.role !== Role.SUPER_ADMIN && admin.role !== Role.STATE_ADMIN && admin.role !== Role.BRANCH_ADMIN) {
-        throw new UnauthorizedException('Only zonal admin or higher can create pickup stations in this zone');
+    if (admin.role === Role.ZONAL_ADMIN) {
+      // Zonal admin can only create in their own zone
+      const adminZoneId = admin.zone?._id ? admin.zone._id.toString() : admin.zone?.toString();
+      console.log('DEBUG comparing zones - adminZoneId:', adminZoneId, 'targetZoneId:', zoneId);
+      
+      if (adminZoneId !== zoneId) {
+        console.log('DEBUG Zone mismatch - throwing UnauthorizedException');
+        throw new UnauthorizedException('Zonal admin can only create pickup stations in their assigned zone');
       }
-    }    // Get zone with populated branch and state
+    } else if (admin.role !== Role.SUPER_ADMIN && admin.role !== Role.STATE_ADMIN && admin.role !== Role.BRANCH_ADMIN) {
+      // Only these roles can create pickup stations
+      console.log('DEBUG Invalid role - throwing UnauthorizedException');
+      throw new UnauthorizedException('Only zonal admin or higher can create pickup stations in this zone');
+    }// Get zone with populated branch and state
     const zone = await this.zoneModel.findById(zoneId)
       .populate({
         path: 'branchId',

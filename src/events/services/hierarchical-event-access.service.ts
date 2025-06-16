@@ -116,32 +116,44 @@ export class HierarchicalEventAccessService {
       .exec();
         
     return events;
-  }
-
-  /**
+  }  /**
    * Get events available for pickup station assignment by Zonal Admin
    */
   async getEventsForPickupAssignment(zonalAdminId: string): Promise<EventDocument[]> {
-    const admin = await this.adminHierarchyService.getAdminWithHierarchy(zonalAdminId);
+    console.log('DEBUG: getEventsForPickupAssignment called with zonalAdminId:', zonalAdminId);
     
-    if (admin.role !== Role.ZONAL_ADMIN) {
-      throw new ForbiddenException('Only zonal admins can assign pickup stations');
-    }
+    try {
+      const admin = await this.adminHierarchyService.getAdminWithHierarchy(zonalAdminId);
+      console.log('DEBUG: Admin retrieved:', { id: admin._id, role: admin.role, zone: admin.zone });
+      
+      if (admin.role !== Role.ZONAL_ADMIN) {
+        console.log('DEBUG: Role check failed - expected zonal_admin, got:', admin.role);
+        throw new ForbiddenException('Only zonal admins can assign pickup stations');
+      }
 
-    if (!admin.zone) {
-      throw new BadRequestException('Zonal admin must be assigned to a zone');
-    }    // Find events where this zone is included in availableZones
-    return await this.eventModel.find({
-      availableZones: admin.zone,
-      status: { $in: ['published', 'active'] }, // Only active/published events
-      date: { $gte: new Date() } // Only future events - compare with Date object, not string
-    })
-    .populate('createdBy', 'firstName lastName email')
-    .populate('availableStates', 'name code')
-    .populate('availableBranches', 'name location')
-    .populate('availableZones', 'name')
-    .populate('pickupStations.pickupStationId', 'location branchId zoneId')
-    .sort({ date: 1 })
-    .exec();
+      if (!admin.zone) {
+        console.log('DEBUG: Zone check failed - admin has no zone assigned');
+        throw new BadRequestException('Zonal admin must be assigned to a zone');
+      }
+
+      console.log('DEBUG: Searching for events with zone:', admin.zone);      // Find events where this zone is included in availableZones
+      const events = await this.eventModel.find({
+        availableZones: admin.zone,
+        status: { $in: ['draft', 'published', 'active'] }, // Include draft events for pickup assignment
+        // Temporarily allow past events for testing - in production you may want: date: { $gte: new Date() }
+      })
+      .populate('createdBy', 'firstName lastName email')
+      .populate('availableStates', 'name code')
+      .populate('availableBranches', 'name location')
+      .populate('availableZones', 'name')
+      .sort({ date: 1 })
+      .exec();
+
+      console.log('DEBUG: Found events:', events.length);
+      return events;
+    } catch (error) {
+      console.error('DEBUG: Error in getEventsForPickupAssignment:', error);
+      throw error;
+    }
   }
 }

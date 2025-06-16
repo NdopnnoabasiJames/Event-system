@@ -34,16 +34,15 @@ export class HierarchicalPickupStationAssignmentService {
 
     if (!admin.zone) {
       throw new BadRequestException('Zonal admin must be assigned to a zone');
-    }
-
-    const event = await this.eventModel.findById(assignDto.eventId);
+    }    const event = await this.eventModel.findById(assignDto.eventId);
     if (!event) {
       throw new BadRequestException('Event not found');
     }
 
     // Check if the event is available in admin's zone
+    const adminZoneId = admin.zone?._id ? admin.zone._id.toString() : admin.zone.toString();
     const zoneIncluded = event.availableZones.some(
-      zoneId => zoneId.toString() === admin.zone.toString()
+      zoneId => zoneId.toString() === adminZoneId
     );
 
     if (!zoneIncluded) {
@@ -52,9 +51,10 @@ export class HierarchicalPickupStationAssignmentService {
 
     // Validate that all pickup stations belong to admin's zone and are active
     const pickupStationIds = assignDto.pickupStations.map(ps => ps.pickupStationId);
+    const adminZoneIdForQuery = admin.zone?._id || admin.zone;
     const pickupStations = await this.pickupStationModel.find({
       _id: { $in: pickupStationIds },
-      zoneId: admin.zone,
+      zoneId: adminZoneIdForQuery,
       isActive: true
     });
 
@@ -74,9 +74,13 @@ export class HierarchicalPickupStationAssignmentService {
       maxCapacity: ps.maxCapacity || 50,
       currentCount: 0,
       notes: ps.notes
-    }));
+    }));    event.pickupStations.push(...newPickupStations);
 
-    event.pickupStations.push(...newPickupStations);
+    // Auto-publish event when pickup stations are assigned (transition from draft to published)
+    if (event.status === 'draft') {
+      console.log('DEBUG: Auto-publishing event after pickup station assignment');
+      event.status = 'published';
+    }
 
     return await event.save();
   }
@@ -96,16 +100,15 @@ export class HierarchicalPickupStationAssignmentService {
 
     if (!admin.zone) {
       throw new BadRequestException('Zonal admin must be assigned to a zone');
-    }
-
-    const event = await this.eventModel.findById(updateDto.eventId);
+    }    const event = await this.eventModel.findById(updateDto.eventId);
     if (!event) {
       throw new BadRequestException('Event not found');
     }
 
     // Check if the event is available in admin's zone
+    const adminZoneId = admin.zone?._id ? admin.zone._id.toString() : admin.zone.toString();
     const zoneIncluded = event.availableZones.some(
-      zoneId => zoneId.toString() === admin.zone.toString()
+      zoneId => zoneId.toString() === adminZoneId
     );
 
     if (!zoneIncluded) {
@@ -113,9 +116,10 @@ export class HierarchicalPickupStationAssignmentService {
     }
 
     // Validate pickup station belongs to admin's zone
+    const adminZoneIdForQuery = admin.zone?._id || admin.zone;
     const pickupStation = await this.pickupStationModel.findOne({
       _id: updateDto.pickupStationId,
-      zoneId: admin.zone,
+      zoneId: adminZoneIdForQuery,
       isActive: true
     });
 
@@ -166,11 +170,10 @@ export class HierarchicalPickupStationAssignmentService {
     const event = await this.eventModel.findById(removeDto.eventId);
     if (!event) {
       throw new BadRequestException('Event not found');
-    }
-
-    // Check if the event is available in admin's zone
+    }    // Check if the event is available in admin's zone
+    const adminZoneId = admin.zone?._id ? admin.zone._id.toString() : admin.zone.toString();
     const zoneIncluded = event.availableZones.some(
-      zoneId => zoneId.toString() === admin.zone.toString()
+      zoneId => zoneId.toString() === adminZoneId
     );
 
     if (!zoneIncluded) {
@@ -178,9 +181,10 @@ export class HierarchicalPickupStationAssignmentService {
     }
 
     // Validate pickup station belongs to admin's zone
+    const adminZoneIdForQuery = admin.zone?._id || admin.zone;
     const pickupStation = await this.pickupStationModel.findOne({
       _id: removeDto.pickupStationId,
-      zoneId: admin.zone
+      zoneId: adminZoneIdForQuery
     });
 
     if (!pickupStation) {
@@ -194,29 +198,42 @@ export class HierarchicalPickupStationAssignmentService {
 
     return await event.save();
   }
-
   /**
    * Get pickup stations available for assignment in admin's zone
    */
   async getAvailablePickupStations(zonalAdminId: string): Promise<PickupStationDocument[]> {
-    const admin = await this.adminHierarchyService.getAdminWithHierarchy(zonalAdminId);
+    console.log('DEBUG: getAvailablePickupStations called with zonalAdminId:', zonalAdminId);
     
-    if (admin.role !== Role.ZONAL_ADMIN) {
-      throw new ForbiddenException('Only zonal admins can view available pickup stations');
-    }
+    try {
+      const admin = await this.adminHierarchyService.getAdminWithHierarchy(zonalAdminId);
+      console.log('DEBUG: Admin retrieved:', { id: admin._id, role: admin.role, zone: admin.zone });
+      
+      if (admin.role !== Role.ZONAL_ADMIN) {
+        console.log('DEBUG: Role check failed - expected zonal_admin, got:', admin.role);
+        throw new ForbiddenException('Only zonal admins can view available pickup stations');
+      }
 
-    if (!admin.zone) {
-      throw new BadRequestException('Zonal admin must be assigned to a zone');
-    }
+      if (!admin.zone) {
+        console.log('DEBUG: Zone check failed - admin has no zone assigned');
+        throw new BadRequestException('Zonal admin must be assigned to a zone');
+      }      console.log('DEBUG: Searching for pickup stations with zoneId:', admin.zone);
 
-    return await this.pickupStationModel.find({
-      zoneId: admin.zone,
-      isActive: true
-    })
-    .populate('branchId', 'name location')
-    .populate('zoneId', 'name')
-    .sort({ location: 1 })
-    .exec();
+      const adminZoneIdForQuery = admin.zone?._id || admin.zone;
+      const stations = await this.pickupStationModel.find({
+        zoneId: adminZoneIdForQuery,
+        isActive: true
+      })
+      .populate('branchId', 'name location')
+      .populate('zoneId', 'name')
+      .sort({ location: 1 })
+      .exec();
+
+      console.log('DEBUG: Found pickup stations:', stations.length);
+      return stations;
+    } catch (error) {
+      console.error('DEBUG: Error in getAvailablePickupStations:', error);
+      throw error;
+    }
   }
 
   /**
@@ -242,11 +259,10 @@ export class HierarchicalPickupStationAssignmentService {
 
     if (!event) {
       throw new BadRequestException('Event not found');
-    }
-
-    // Check if the event is available in admin's zone
+    }    // Check if the event is available in admin's zone
+    const adminZoneId = admin.zone?._id ? admin.zone._id.toString() : admin.zone.toString();
     const zoneIncluded = event.availableZones.some(
-      zoneId => zoneId.toString() === admin.zone.toString()
+      zoneId => zoneId.toString() === adminZoneId
     );
 
     if (!zoneIncluded) {
@@ -256,7 +272,7 @@ export class HierarchicalPickupStationAssignmentService {
     // Filter pickup stations to only show those in admin's zone
     const zonePickupStations = event.pickupStations.filter(ps => {
       const station = ps.pickupStationId as any;
-      return station && station.zoneId && station.zoneId.toString() === admin.zone.toString();
+      return station && station.zoneId && station.zoneId.toString() === adminZoneId;
     });
 
     return {

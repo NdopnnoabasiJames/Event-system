@@ -81,6 +81,39 @@ export class EventsController {  constructor(
     return result;
   }
 
+  // Phase 6: Pickup Station Assignment Endpoints for Zonal Admins (moved before :id route)
+  @Get('for-pickup-assignment')
+  @Roles(Role.ZONAL_ADMIN)
+  async getEventsForPickupAssignment(@Request() req) {
+    const { userId } = req.user;
+    console.log('DEBUG: getEventsForPickupAssignment called with userId:', userId);
+    console.log('DEBUG: req.user:', req.user);
+    try {
+      const result = await this.hierarchicalEventCreationService.getEventsForPickupAssignment(userId);
+      console.log('DEBUG: getEventsForPickupAssignment result:', result);
+      return result;
+    } catch (error) {
+      console.error('DEBUG: getEventsForPickupAssignment error:', error);
+      throw error;
+    }
+  }
+
+  @Get('available-pickup-stations')
+  @Roles(Role.ZONAL_ADMIN)
+  async getAvailablePickupStations(@Request() req) {
+    const { userId } = req.user;
+    console.log('DEBUG: getAvailablePickupStations called with userId:', userId);
+    console.log('DEBUG: req.user:', req.user);
+    try {
+      const result = await this.hierarchicalEventCreationService.getAvailablePickupStations(userId);
+      console.log('DEBUG: getAvailablePickupStations result:', result);
+      return result;
+    } catch (error) {
+      console.error('DEBUG: getAvailablePickupStations error:', error);
+      throw error;
+    }
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.eventsService.findOne(id);
@@ -210,23 +243,17 @@ export class EventsController {  constructor(
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
   async updateEventAvailability(@Body() updateDto: UpdateEventAvailabilityDto, @Request() req) {
     const { userId } = req.user;
-    return this.hierarchicalEventCreationService.updateEventAvailability(updateDto, userId);
-  }
-
-  // Phase 6: Pickup Station Assignment Endpoints for Zonal Admins
-
-  @Get('for-pickup-assignment')
-  @Roles(Role.ZONAL_ADMIN)
-  async getEventsForPickupAssignment(@Request() req) {
-    const { userId } = req.user;
-    return this.hierarchicalEventCreationService.getEventsForPickupAssignment(userId);
-  }
-
-  @Get('available-pickup-stations')
-  @Roles(Role.ZONAL_ADMIN)
-  async getAvailablePickupStations(@Request() req) {
-    const { userId } = req.user;
-    return this.hierarchicalEventCreationService.getAvailablePickupStations(userId);
+    return this.hierarchicalEventCreationService.updateEventAvailability(updateDto, userId);  }
+  // DEBUG endpoint to check user role
+  @Get('debug/user-info')
+  async getUserInfo(@Request() req) {
+    console.log('DEBUG: Full req.user object:', JSON.stringify(req.user, null, 2));
+    return {
+      userId: req.user?.userId,
+      role: req.user?.role,
+      email: req.user?.email,
+      fullUser: req.user
+    };
   }
 
   @Get(':eventId/pickup-stations')

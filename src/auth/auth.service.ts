@@ -35,29 +35,29 @@ export class AuthService {
       throw new UnauthorizedException(error.message);
     }
   }  async login(user: any) {
-    try {
-      const payload = { 
+    try {      const payload = { 
         email: user.email, 
         sub: user._id ? user._id.toString() : user.id,
         role: user.role,
         name: user.name,
-        // If populated, the state/branch will be objects with _id field
+        // If populated, the state/branch/zone will be objects with _id field
         // If not populated, they will be ObjectId strings
         state: user.state?._id ? user.state._id.toString() : (user.state ? user.state.toString() : null),
         branch: user.branch?._id ? user.branch._id.toString() : (user.branch ? user.branch.toString() : null),
+        zone: user.zone?._id ? user.zone._id.toString() : (user.zone ? user.zone.toString() : null),
       };
       
       const access_token = this.jwtService.sign(payload, { expiresIn: '24h' });      
       // Direct format, not nested inside data property
       return {
-        access_token,
-        user: {
+        access_token,        user: {
           id: payload.sub,
           email: payload.email,
           role: payload.role,
           name: payload.name,
           state: payload.state,
           branch: payload.branch,
+          zone: payload.zone,
         }
       };
     } catch (error) {
