@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, Length } from 'class-validator';
 
 export class CreateStateDto {
   @IsString()
@@ -7,11 +7,12 @@ export class CreateStateDto {
 
   @IsString()
   @IsOptional()
+  @Length(3, 3, { message: 'State code must be exactly 3 characters' })
   code?: string;
 
   @IsString()
   @IsOptional()
-  region?: string;
+  description?: string;
 
   @IsBoolean()
   @IsOptional()

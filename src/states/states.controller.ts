@@ -5,7 +5,6 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   UseGuards,
   Query,
 } from '@nestjs/common';
@@ -37,20 +36,15 @@ export class StatesController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.statesService.findOne(id);
-  }  @Patch(':id')
+  }
+  @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
   update(@Param('id') id: string, @Body() updateStateDto: UpdateStateDto) {
     return this.statesService.update(id, updateStateDto);
   }
 
-  @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.SUPER_ADMIN)
-  remove(@Param('id') id: string) {
-    return this.statesService.remove(id);
-  }
-
+  // Optional endpoints for state activation/deactivation
   @Patch(':id/deactivate')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
@@ -64,4 +58,7 @@ export class StatesController {
   activate(@Param('id') id: string) {
     return this.statesService.activate(id);
   }
+
+  // Note: Delete endpoint removed as per requirements
+  // States cannot be deleted, only deactivated
 }
