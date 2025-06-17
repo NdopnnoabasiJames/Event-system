@@ -6,8 +6,8 @@ export class CreateZoneDto {
   name: string;
 
   @IsMongoId()
-  @IsNotEmpty()
-  branchId: string;
+  @IsOptional()
+  branchId?: string;
 
   @IsBoolean()
   @IsOptional()

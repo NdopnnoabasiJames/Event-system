@@ -8,6 +8,8 @@ import {
   Delete,
   UseGuards,
   Query,
+  Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { ZonesService } from './zones.service';
 import { CreateZoneDto } from './dto/create-zone.dto';
@@ -19,8 +21,57 @@ import { Role } from '../common/enums/role.enum';
 
 @Controller('zones')
 export class ZonesController {
-  constructor(private readonly zonesService: ZonesService) {}
-  
+  constructor(private readonly zonesService: ZonesService) {}  // Branch Admin specific endpoints
+  @Get('branch-admin/list')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.BRANCH_ADMIN)
+  findByBranchAdmin(@Req() req: any, @Query('includeInactive') includeInactive?: string) {
+    const branchId = req.user.branch;
+    if (!branchId) {
+      throw new BadRequestException('Branch admin must be assigned to a branch');
+    }
+    const include = includeInactive === 'true';
+    return this.zonesService.findByBranch(branchId, include);
+  }
+
+  @Post('branch-admin/create')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.BRANCH_ADMIN)
+  createByBranchAdmin(@Req() req: any, @Body() createZoneDto: CreateZoneDto) {
+    const branchId = req.user.branch;
+    if (!branchId) {
+      throw new BadRequestException('Branch admin must be assigned to a branch');
+    }
+    // Auto-assign the branchId from the authenticated user
+    const zoneData = {
+      ...createZoneDto,
+      branchId: branchId
+    };
+    return this.zonesService.createByBranchAdmin(branchId, zoneData);
+  }
+
+  @Patch('branch-admin/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.BRANCH_ADMIN)
+  updateByBranchAdmin(@Req() req: any, @Param('id') id: string, @Body() updateZoneDto: UpdateZoneDto) {
+    const branchId = req.user.branch;
+    if (!branchId) {
+      throw new BadRequestException('Branch admin must be assigned to a branch');
+    }
+    return this.zonesService.updateByBranchAdmin(branchId, id, updateZoneDto);
+  }
+
+  @Delete('branch-admin/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.BRANCH_ADMIN)
+  deleteByBranchAdmin(@Req() req: any, @Param('id') id: string) {
+    const branchId = req.user.branch;
+    if (!branchId) {
+      throw new BadRequestException('Branch admin must be assigned to a branch');
+    }
+    return this.zonesService.deleteByBranchAdmin(branchId, id);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.BRANCH_ADMIN)

@@ -211,4 +211,45 @@ export class ZonesService {
   async activate(id: string): Promise<ZoneDocument> {
     return await this.update(id, { isActive: true });
   }
+
+  // Branch Admin specific methods
+  async createByBranchAdmin(branchId: string, createZoneDto: CreateZoneDto): Promise<ZoneDocument> {
+    // Ensure the zone is created for the branch admin's branch
+    const zoneData = {
+      ...createZoneDto,
+      branchId: branchId
+    };
+    return await this.create(zoneData);
+  }
+
+  async updateByBranchAdmin(branchId: string, zoneId: string, updateZoneDto: UpdateZoneDto): Promise<ZoneDocument> {
+    if (!Types.ObjectId.isValid(zoneId)) {
+      throw new BadRequestException('Invalid zone ID');
+    }
+
+    // First verify that the zone belongs to the branch admin's branch
+    const zone = await this.zoneModel.findOne({ _id: zoneId, branchId });
+    if (!zone) {
+      throw new NotFoundException('Zone not found in your branch');
+    }
+
+    // Don't allow changing branchId through this endpoint
+    const { branchId: _, ...updateData } = updateZoneDto;
+    
+    return await this.update(zoneId, updateData);
+  }
+
+  async deleteByBranchAdmin(branchId: string, zoneId: string): Promise<void> {
+    if (!Types.ObjectId.isValid(zoneId)) {
+      throw new BadRequestException('Invalid zone ID');
+    }
+
+    // First verify that the zone belongs to the branch admin's branch
+    const zone = await this.zoneModel.findOne({ _id: zoneId, branchId });
+    if (!zone) {
+      throw new NotFoundException('Zone not found in your branch');
+    }
+
+    await this.remove(zoneId);
+  }
 }
