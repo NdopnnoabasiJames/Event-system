@@ -252,4 +252,17 @@ export class ZonesService {
 
     await this.remove(zoneId);
   }
+
+  // Statistics methods
+  async getZoneStatistics(): Promise<{ totalZones: number; activeZones: number; inactiveZones: number }> {
+    const totalZones = await this.zoneModel.countDocuments();
+    const activeZones = await this.zoneModel.countDocuments({ isActive: true });
+    const inactiveZones = totalZones - activeZones;
+
+    return {
+      totalZones,
+      activeZones,
+      inactiveZones
+    };
+  }
 }

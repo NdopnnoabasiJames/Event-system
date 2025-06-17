@@ -131,4 +131,12 @@ export class ZonesController {
   activate(@Param('id') id: string) {
     return this.zonesService.activate(id);
   }
+
+  // Statistics endpoint
+  @Get('statistics')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  getZoneStatistics() {
+    return this.zonesService.getZoneStatistics();
+  }
 }
