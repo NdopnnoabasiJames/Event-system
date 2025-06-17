@@ -21,9 +21,6 @@ export class State {
   })
   code?: string;
 
-  @Prop()
-  description?: string;
-
   @Prop({ default: 'Nigeria' })
   country: string;
 
