@@ -13,9 +13,14 @@ export class Branch {
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'State', required: true, index: true })
   stateId: MongooseSchema.Types.ObjectId;
-
   @Prop()
   manager?: string;
+
+  @Prop()
+  phone?: string;
+
+  @Prop()
+  email?: string;
 
   @Prop()
   contact?: string;

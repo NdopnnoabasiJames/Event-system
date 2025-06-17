@@ -10,8 +10,8 @@ export class CreateBranchDto {
   location: string;
 
   @IsMongoId()
-  @IsNotEmpty()
-  stateId: string;
+  @IsOptional()
+  stateId?: string;
 
   @IsString()
   @IsNotEmpty()

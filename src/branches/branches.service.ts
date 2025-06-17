@@ -1,16 +1,17 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Branch, BranchDocument } from '../schemas/branch.schema';
 import { State, StateDocument } from '../schemas/state.schema';
+import { Zone, ZoneDocument } from '../schemas/zone.schema';
 import { CreateBranchDto } from './dto/create-branch.dto';
 import { UpdateBranchDto } from './dto/update-branch.dto';
 
 @Injectable()
-export class BranchesService {
-  constructor(
+export class BranchesService {  constructor(
     @InjectModel(Branch.name) private branchModel: Model<BranchDocument>,
     @InjectModel(State.name) private stateModel: Model<StateDocument>,
+    @InjectModel(Zone.name) private zoneModel: Model<ZoneDocument>,
   ) {}
 
   async create(createBranchDto: CreateBranchDto): Promise<BranchDocument> {
@@ -151,8 +152,152 @@ export class BranchesService {
   async deactivate(id: string): Promise<BranchDocument> {
     return await this.update(id, { isActive: false });
   }
-
   async activate(id: string): Promise<BranchDocument> {
     return await this.update(id, { isActive: true });
+  }
+
+  // State Admin specific methods
+  async createByStateAdmin(createBranchDto: CreateBranchDto, user: any): Promise<BranchDocument> {
+    // Ensure the branch is created in the state admin's state
+    const stateId = typeof user.state === 'string' ? user.state : user.state?._id;
+    
+    if (!stateId) {
+      throw new ForbiddenException('State admin must be assigned to a state');
+    }
+
+    // Override the stateId to ensure it's the admin's state
+    const branchData = {
+      ...createBranchDto,
+      stateId
+    };
+
+    // Check if branch name already exists in this state
+    const existingBranch = await this.branchModel.findOne({
+      name: { $regex: new RegExp(`^${createBranchDto.name}$`, 'i') },
+      stateId
+    });
+
+    if (existingBranch) {
+      throw new ConflictException('Branch with this name already exists in your state');
+    }
+
+    // Validate that the state exists and is active
+    const state = await this.stateModel.findOne({ 
+      _id: stateId, 
+      isActive: true 
+    });
+    
+    if (!state) {
+      throw new BadRequestException('Invalid or inactive state');
+    }
+
+    try {
+      const createdBranch = new this.branchModel(branchData);
+      return await createdBranch.save();
+    } catch (error) {
+      if (error.code === 11000) {
+        throw new ConflictException('Branch with this name already exists in your state');
+      }
+      throw error;
+    }
+  }
+
+  async findByStateAdmin(user: any, includeInactive = false): Promise<any[]> {
+    const stateId = typeof user.state === 'string' ? user.state : user.state?._id;
+    
+    if (!stateId) {
+      throw new ForbiddenException('State admin must be assigned to a state');
+    }
+
+    const filter = { 
+      stateId,
+      ...(includeInactive ? {} : { isActive: true })
+    };
+
+    const branches = await this.branchModel
+      .find(filter)
+      .populate('stateId', 'name')
+      .sort({ name: 1 })
+      .exec();
+
+    // Get zone counts for each branch
+    const branchesWithCounts = await Promise.all(
+      branches.map(async (branch) => {
+        const zoneCount = await this.zoneModel.countDocuments({ 
+          branchId: branch._id,
+          isActive: true 
+        });
+
+        return {
+          ...branch.toObject(),
+          zoneCount
+        };
+      })
+    );
+
+    return branchesWithCounts;
+  }
+
+  async updateByStateAdmin(id: string, updateBranchDto: UpdateBranchDto, user: any): Promise<BranchDocument> {
+    const stateId = typeof user.state === 'string' ? user.state : user.state?._id;
+    
+    if (!stateId) {
+      throw new ForbiddenException('State admin must be assigned to a state');
+    }
+
+    // Check if the branch belongs to the state admin's state
+    const branch = await this.branchModel.findOne({ _id: id, stateId });
+    
+    if (!branch) {
+      throw new NotFoundException('Branch not found in your state');
+    }
+
+    // Check if new name conflicts with existing branches in the same state
+    if (updateBranchDto.name) {
+      const existingBranch = await this.branchModel.findOne({
+        name: { $regex: new RegExp(`^${updateBranchDto.name}$`, 'i') },
+        stateId,
+        _id: { $ne: id }
+      });
+
+      if (existingBranch) {
+        throw new ConflictException('Branch with this name already exists in your state');
+      }
+    }
+
+    const updatedBranch = await this.branchModel
+      .findByIdAndUpdate(id, updateBranchDto, { new: true })
+      .populate('stateId', 'name')
+      .exec();
+
+    if (!updatedBranch) {
+      throw new NotFoundException('Branch not found');
+    }
+
+    return updatedBranch;
+  }
+
+  async removeByStateAdmin(id: string, user: any): Promise<void> {
+    const stateId = typeof user.state === 'string' ? user.state : user.state?._id;
+    
+    if (!stateId) {
+      throw new ForbiddenException('State admin must be assigned to a state');
+    }
+
+    // Check if the branch belongs to the state admin's state
+    const branch = await this.branchModel.findOne({ _id: id, stateId });
+    
+    if (!branch) {
+      throw new NotFoundException('Branch not found in your state');
+    }
+
+    // Check if there are zones associated with this branch
+    const zoneCount = await this.zoneModel.countDocuments({ branchId: id });
+    
+    if (zoneCount > 0) {
+      throw new ConflictException('Cannot delete branch that has zones. Please remove or reassign zones first.');
+    }
+
+    await this.branchModel.findByIdAndDelete(id).exec();
   }
 }

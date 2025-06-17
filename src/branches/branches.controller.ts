@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Query,
+  Request,
 } from '@nestjs/common';
 import { BranchesService } from './branches.service';
 import { CreateBranchDto } from './dto/create-branch.dto';
@@ -66,11 +67,40 @@ export class BranchesController {
   deactivate(@Param('id') id: string) {
     return this.branchesService.deactivate(id);
   }
-
   @Patch(':id/activate')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
   activate(@Param('id') id: string) {
     return this.branchesService.activate(id);
+  }
+
+  // State Admin endpoints
+  @Post('state-admin/create')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STATE_ADMIN)
+  createByStateAdmin(@Body() createBranchDto: CreateBranchDto, @Request() req) {
+    return this.branchesService.createByStateAdmin(createBranchDto, req.user);
+  }
+
+  @Get('state-admin/my-branches')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STATE_ADMIN)
+  getMyStateBranches(@Request() req, @Query('includeInactive') includeInactive?: string) {
+    const include = includeInactive === 'true';
+    return this.branchesService.findByStateAdmin(req.user, include);
+  }
+
+  @Patch('state-admin/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STATE_ADMIN)
+  updateByStateAdmin(@Param('id') id: string, @Body() updateBranchDto: UpdateBranchDto, @Request() req) {
+    return this.branchesService.updateByStateAdmin(id, updateBranchDto, req.user);
+  }
+
+  @Delete('state-admin/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STATE_ADMIN)
+  removeByStateAdmin(@Param('id') id: string, @Request() req) {
+    return this.branchesService.removeByStateAdmin(id, req.user);
   }
 }

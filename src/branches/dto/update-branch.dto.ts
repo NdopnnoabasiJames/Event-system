@@ -12,10 +12,17 @@ export class UpdateBranchDto {
   @IsMongoId()
   @IsOptional()
   stateId?: string;
-
   @IsString()
   @IsOptional()
   manager?: string;
+
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @IsString()
+  @IsOptional()
+  email?: string;
 
   @IsString()
   @IsOptional()
