@@ -40,7 +40,9 @@ export class HierarchicalEventCreationService {
       createdBy: new Types.ObjectId(creatorId),
       creatorLevel: 'super_admin',
       scope: 'national', // Super admin events are always national level
-      availableStates: stateIds,
+      selectedBranches: [],
+      selectedZones: [],
+      availableStates: stateIds, // Selected states are stored here for super admin events
       availableBranches: [], // Will be populated by state admins
       availableZones: [], // Will be populated by branch admins
       pickupStations: [],
@@ -78,17 +80,18 @@ export class HierarchicalEventCreationService {
       if (!canAccess) {
         throw new ForbiddenException('Cannot select branches outside your state');
       }
-    }
-
-    const eventData = {
+    }    const eventData = {
       name: createEventDto.name,
       description: createEventDto.description,
       date: createEventDto.date,
       bannerImage: createEventDto.bannerImage,
       createdBy: new Types.ObjectId(creatorId),
       creatorLevel: 'state_admin',
+      scope: 'state',
+      selectedBranches: branchIds, // Store selected branches here
+      selectedZones: [],
       availableStates: [admin.state],
-      availableBranches: branchIds,
+      availableBranches: branchIds, // Also keep in available for delegation logic
       availableZones: [], // Will be populated by branch admins
       pickupStations: [],
       marketers: [],
@@ -125,15 +128,16 @@ export class HierarchicalEventCreationService {
       if (!canAccess) {
         throw new ForbiddenException('Cannot select zones outside your branch');
       }
-    }
-
-    const eventData = {
+    }    const eventData = {
       name: createEventDto.name,
       description: createEventDto.description,
       date: createEventDto.date,
       bannerImage: createEventDto.bannerImage,
       createdBy: new Types.ObjectId(creatorId),
       creatorLevel: 'branch_admin',
+      scope: 'branch',
+      selectedBranches: [admin.branch],
+      selectedZones: zoneIds, // Store selected zones here
       availableStates: [], // Will be populated based on branch's state
       availableBranches: [admin.branch],
       availableZones: zoneIds,

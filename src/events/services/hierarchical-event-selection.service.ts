@@ -394,22 +394,28 @@ export class HierarchicalEventSelectionService {
     
     if (admin.role !== Role.STATE_ADMIN) {
       throw new ForbiddenException('Only state admins can select branches');
-    }
-
-    const event = await this.eventModel.findById(eventId);
+    }    const event = await this.eventModel.findById(eventId);
     if (!event) {
       throw new BadRequestException('Event not found');
     }
 
-    if (event.creatorLevel !== 'super_admin') {
-      throw new BadRequestException('Can only select branches for super admin events');
-    }    // Check if admin's state is in the event's available states
-    const adminStateInEvent = event.availableStates.some(
-      stateId => stateId.equals ? stateId.equals(admin.state._id) : stateId.toString() === admin.state._id.toString()
-    );
+    // Allow branch selection for:
+    // 1. Super admin events (state admin delegating)
+    // 2. State admin's own events (state admin modifying their selection)
+    if (event.creatorLevel !== 'super_admin' && !event.createdBy.equals(stateAdminId)) {
+      throw new BadRequestException('Can only select branches for super admin events or your own events');
+    }    // Check if admin's state is in the event's available states (for super admin events)
+    // Or if it's the admin's own event
+    const isOwnEvent = event.createdBy.equals(stateAdminId);
+    
+    if (!isOwnEvent) {
+      const adminStateInEvent = event.availableStates.some(
+        stateId => stateId.equals ? stateId.equals(admin.state._id) : stateId.toString() === admin.state._id.toString()
+      );
 
-    if (!adminStateInEvent) {
-      throw new ForbiddenException('Event is not available in your state');
+      if (!adminStateInEvent) {
+        throw new ForbiddenException('Event is not available in your state');
+      }
     }
 
     // Validate all selected branches belong to admin's state
@@ -419,13 +425,23 @@ export class HierarchicalEventSelectionService {
       if (!canAccess) {
         throw new ForbiddenException('Cannot select branches outside your state');
       }
+    }    if (isOwnEvent) {
+      // For state admin's own event, replace the selection
+      event.selectedBranches = branchIds;
+      event.availableBranches = branchIds;
+    } else {
+      // For super admin events, only add to availableBranches (delegation)
+      // Do NOT add to selectedBranches (that's only for creator's own selection)
+      const existingAvailableBranches = event.availableBranches.map(id => id.toString());
+      
+      const newBranches = branchIds.filter(id => 
+        !existingAvailableBranches.includes(id.toString())
+      );
+      
+      if (newBranches.length > 0) {
+        event.availableBranches.push(...newBranches);
+      }
     }
-
-    // Add branches to event (don't replace, add to existing)
-    const existingBranches = event.availableBranches.map(id => id.toString());
-    const newBranches = branchIds.filter(id => !existingBranches.includes(id.toString()));
-    
-    event.availableBranches.push(...newBranches);
     
     return await event.save();
   }

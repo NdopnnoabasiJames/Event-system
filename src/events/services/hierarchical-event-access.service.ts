@@ -10,9 +10,7 @@ export class HierarchicalEventAccessService {
   constructor(
     @InjectModel(Event.name) private eventModel: Model<EventDocument>,
     private adminHierarchyService: AdminHierarchyService,
-  ) {}
-
-  /**
+  ) {}  /**
    * Get events that need branch selection by state admin
    */
   async getEventsNeedingBranchSelection(stateAdminId: string): Promise<EventDocument[]> {
@@ -24,12 +22,23 @@ export class HierarchicalEventAccessService {
 
     return this.eventModel
       .find({
-        creatorLevel: 'super_admin',
-        availableStates: admin.state,
-      })
-      .populate('createdBy', 'name email')
+        $or: [
+          // Super admin events available in this state
+          {
+            creatorLevel: 'super_admin',
+            availableStates: admin.state,
+          },
+          // State admin events that can be further delegated
+          {
+            creatorLevel: 'state_admin',
+            createdBy: new Types.ObjectId(stateAdminId),
+            availableBranches: { $exists: true, $not: { $size: 0 } }
+          }        ]
+      })      .populate('createdBy', 'name email')
       .populate('availableStates', 'name')
       .populate('availableBranches', 'name location')
+      .populate('selectedBranches', 'name location')
+      .populate('selectedZones', 'name')
       .sort({ createdAt: -1 })
       .exec();
   }
@@ -48,11 +57,12 @@ export class HierarchicalEventAccessService {
       .find({
         creatorLevel: { $in: ['super_admin', 'state_admin'] },
         availableBranches: admin.branch,
-      })
-      .populate('createdBy', 'name email')
+      })      .populate('createdBy', 'name email')
       .populate('availableStates', 'name')
       .populate('availableBranches', 'name location')
       .populate('availableZones', 'name')
+      .populate('selectedBranches', 'name location')
+      .populate('selectedZones', 'name')
       .sort({ createdAt: -1 })
       .exec();
   }  /**
@@ -106,12 +116,13 @@ export class HierarchicalEventAccessService {
     }
 
     const events = await this.eventModel
-      .find(query)
-      .populate('createdBy', 'name email')
+      .find(query)      .populate('createdBy', 'name email')
       .populate('availableStates', 'name')
       .populate('availableBranches', 'name location')
       .populate('availableZones', 'name')
       .populate('pickupStations', 'name location')
+      .populate('selectedBranches', 'name location')
+      .populate('selectedZones', 'name')
       .sort({ createdAt: -1 })
       .exec();
         
@@ -141,11 +152,12 @@ export class HierarchicalEventAccessService {
         availableZones: admin.zone,
         status: { $in: ['draft', 'published', 'active'] }, // Include draft events for pickup assignment
         // Temporarily allow past events for testing - in production you may want: date: { $gte: new Date() }
-      })
-      .populate('createdBy', 'firstName lastName email')
+      })      .populate('createdBy', 'firstName lastName email')
       .populate('availableStates', 'name code')
       .populate('availableBranches', 'name location')
       .populate('availableZones', 'name')
+      .populate('selectedBranches', 'name location')
+      .populate('selectedZones', 'name')
       .sort({ date: 1 })
       .exec();
 
