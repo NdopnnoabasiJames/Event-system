@@ -223,7 +223,6 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
       .sort({ createdAt: -1 })
       .exec();
   }
-
   // Get pending workers for branch admin approval
   async getPendingWorkers(branchAdminId: string): Promise<UserDocument[]> {
     const branchAdmin = await this.userModel.findById(branchAdminId).exec();
@@ -238,6 +237,26 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
     })
     .populate('state', 'name')
     .populate('branch', 'name')
+    .exec();
+  }
+
+  // Get approved workers for branch admin
+  async getApprovedWorkers(branchAdminId: string): Promise<UserDocument[]> {
+    const branchAdmin = await this.userModel.findById(branchAdminId).exec();
+    if (!branchAdmin || branchAdmin.role !== Role.BRANCH_ADMIN) {
+      throw new ForbiddenException('Only branch admins can view approved workers');
+    }
+
+    return this.userModel.find({
+      role: Role.WORKER,
+      isApproved: true,
+      branch: branchAdmin.branch
+    })
+    .populate('state', 'name')
+    .populate('branch', 'name')
+    .populate('approvedBy', 'name email')
+    .select('name email phone role state branch approvedBy isActive createdAt approvedAt')
+    .sort({ approvedAt: -1, createdAt: -1 })
     .exec();
   }
 

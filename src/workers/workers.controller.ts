@@ -11,6 +11,8 @@ import {
   HttpStatus,
   Query,
   ForbiddenException,
+  Logger,
+  HttpException,
 } from '@nestjs/common';
 
 import { WorkersService } from './workers.service';
@@ -26,6 +28,8 @@ import { RegisterDto } from '../auth/dto/register.dto';
 
 @Controller('workers')
 export class WorkersController {
+  private readonly logger = new Logger(WorkersController.name);
+
   constructor(private readonly workersService: WorkersService) {}
   // Worker Registration - Public endpoint (no authentication required)
   @Post('register')
@@ -39,7 +43,6 @@ export class WorkersController {
   async getWorkerProfile(@Request() req) {
     return this.workersService.getWorkerProfile(req.user.userId);
   }
-
   // Update worker profile
   @Patch('profile')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -47,26 +50,67 @@ export class WorkersController {
   async updateWorkerProfile(@Request() req, @Body() updateData: any) {
     return this.workersService.updateWorkerProfile(req.user.userId, updateData);
   }
+
   // Branch Admin endpoints for worker management
   @Get('pending')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.BRANCH_ADMIN)
   async getPendingWorkers(@Request() req) {
-    return this.workersService.getPendingWorkers(req.user.userId);
+    this.logger.log(`GET /workers/pending - Branch Admin: ${req.user?.email}`);
+    
+    try {
+      const pendingWorkers = await this.workersService.getPendingWorkers(req.user);
+      this.logger.log(`Found ${pendingWorkers.length} pending workers`);
+      return pendingWorkers;
+    } catch (error) {
+      this.logger.error(`Error fetching pending workers: ${error.message}`);
+      throw new HttpException('Failed to fetch pending workers', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
-
+  @Get('approved')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.BRANCH_ADMIN)
+  async getApprovedWorkers(@Request() req) {
+    this.logger.log(`GET /workers/approved - Branch Admin: ${req.user?.email}`);
+    
+    try {
+      const approvedWorkers = await this.workersService.getApprovedWorkers(req.user);
+      this.logger.log(`Found ${approvedWorkers.length} approved workers`);
+      return approvedWorkers;
+    } catch (error) {
+      this.logger.error(`Error fetching approved workers: ${error.message}`);
+      throw new HttpException('Failed to fetch approved workers', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
   @Post('approve/:workerId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.BRANCH_ADMIN)
   async approveWorker(@Param('workerId') workerId: string, @Request() req) {
-    return this.workersService.approveWorker(workerId, req.user.userId);
+    this.logger.log(`Approving worker ${workerId} by ${req.user?.email}`);
+    
+    try {
+      const result = await this.workersService.approveWorker(workerId, req.user);
+      this.logger.log(`Worker ${workerId} approved successfully`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Error approving worker ${workerId}: ${error.message}`);
+      throw new HttpException(error.message || 'Failed to approve worker', HttpStatus.BAD_REQUEST);
+    }
   }
-
   @Delete('reject/:workerId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.BRANCH_ADMIN)
   async rejectWorker(@Param('workerId') workerId: string, @Request() req) {
-    return this.workersService.rejectWorker(workerId, req.user.userId);
+    this.logger.log(`Rejecting worker ${workerId} by ${req.user?.email}`);
+    
+    try {
+      const result = await this.workersService.rejectWorker(workerId, req.user);
+      this.logger.log(`Worker ${workerId} rejected successfully`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Error rejecting worker ${workerId}: ${error.message}`);
+      throw new HttpException(error.message || 'Failed to reject worker', HttpStatus.BAD_REQUEST);
+    }
   }
   @Get('events/available')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -87,19 +131,21 @@ export class WorkersController {
     }
     console.log(`Fetching events for worker: ${userId}`);
     const events = await this.workersService.getWorkerEvents(userId);
-    console.log(`Found ${events.length} events for worker ${userId}`);
-    return events;
-  }  @Post('events/:eventId/volunteer')
+    console.log(`Found ${events.length} events for worker ${userId}`);    return events;
+  }
+
+  @Post('events/:eventId/volunteer')
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.WORKER)
   volunteerForEvent(
     @Param('eventId') eventId: string,
     @Request() req,
   ) {
     return this.workersService.volunteerForEvent(eventId, req.user.userId);
   }
-
   @Delete('events/:eventId/leave')
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.WORKER)
   leaveEvent(
     @Param('eventId') eventId: string,
     @Request() req,

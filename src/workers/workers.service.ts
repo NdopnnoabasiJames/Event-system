@@ -78,15 +78,17 @@ export class WorkersService {
     }
 
     return this.usersService.update(workerId, filteredData, user);
+  }  // Branch Admin Methods
+  async getPendingWorkers(branchAdmin: any) {
+    return this.usersService.getPendingWorkers(branchAdmin.userId);
   }
 
-  // Branch Admin Methods
-  async getPendingWorkers(branchAdminId: string) {
-    return this.usersService.getPendingWorkers(branchAdminId);
+  async getApprovedWorkers(branchAdmin: any) {
+    return this.usersService.getApprovedWorkers(branchAdmin.userId);
   }
 
-  async approveWorker(workerId: string, branchAdminId: string) {
-    const result = await this.usersService.approveWorker(workerId, branchAdminId);
+  async approveWorker(workerId: string, branchAdmin: any) {
+    const result = await this.usersService.approveWorker(workerId, branchAdmin.userId);
     
     // Create worker profile
     await this.createWorkerProfile(workerId);
@@ -96,10 +98,9 @@ export class WorkersService {
       worker: result
     };
   }
-
-  async rejectWorker(workerId: string, branchAdminId: string) {
-    const branchAdmin = await this.usersService.findById(branchAdminId);
-    if (!branchAdmin || branchAdmin.role !== Role.BRANCH_ADMIN) {
+  async rejectWorker(workerId: string, branchAdmin: any) {
+    const branchAdminUser = await this.usersService.findById(branchAdmin.userId);
+    if (!branchAdminUser || branchAdminUser.role !== Role.BRANCH_ADMIN) {
       throw new ForbiddenException('Only branch admins can reject workers');
     }
 
@@ -108,9 +109,9 @@ export class WorkersService {
       throw new NotFoundException('Worker not found');
     }
 
-    if (worker.branch?.toString() !== branchAdmin.branch?.toString()) {
+    if (worker.branch?.toString() !== branchAdminUser.branch?.toString()) {
       throw new ForbiddenException('Can only reject workers in your branch');
-    }    // Delete the worker registration
+    }// Delete the worker registration
     await this.usersService.delete(workerId, { role: Role.BRANCH_ADMIN });
     
     return {
