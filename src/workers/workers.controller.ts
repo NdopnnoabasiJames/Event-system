@@ -25,18 +25,16 @@ import { QuickGuestRegistrationDto } from '../guests/dto/quick-guest-registratio
 import { RegisterDto } from '../auth/dto/register.dto';
 
 @Controller('workers')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class WorkersController {
   constructor(private readonly workersService: WorkersService) {}
-
-  // Worker Registration
+  // Worker Registration - Public endpoint (no authentication required)
   @Post('register')
   async registerWorker(@Body() registerData: RegisterDto) {
     return this.workersService.registerWorker(registerData);
   }
-
   // Get worker profile
   @Get('profile')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.WORKER)
   async getWorkerProfile(@Request() req) {
     return this.workersService.getWorkerProfile(req.user.userId);
@@ -44,37 +42,41 @@ export class WorkersController {
 
   // Update worker profile
   @Patch('profile')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.WORKER)
   async updateWorkerProfile(@Request() req, @Body() updateData: any) {
     return this.workersService.updateWorkerProfile(req.user.userId, updateData);
   }
-
   // Branch Admin endpoints for worker management
   @Get('pending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.BRANCH_ADMIN)
   async getPendingWorkers(@Request() req) {
     return this.workersService.getPendingWorkers(req.user.userId);
   }
 
   @Post('approve/:workerId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.BRANCH_ADMIN)
   async approveWorker(@Param('workerId') workerId: string, @Request() req) {
     return this.workersService.approveWorker(workerId, req.user.userId);
   }
 
   @Delete('reject/:workerId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.BRANCH_ADMIN)
   async rejectWorker(@Param('workerId') workerId: string, @Request() req) {
     return this.workersService.rejectWorker(workerId, req.user.userId);
   }
-
   @Get('events/available')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.WORKER, Role.SUPER_ADMIN)
   getAvailableEvents(@Request() req) {
     return this.workersService.getAvailableEvents(req.user.userId);
   }
 
   @Get('events/my')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   async getMyEvents(@Request() req, @Query('workerId') workerId?: string) {
     const userId = workerId || req.user.userId;
     // If workerId is provided and user is not admin, verify access
@@ -87,8 +89,8 @@ export class WorkersController {
     const events = await this.workersService.getWorkerEvents(userId);
     console.log(`Found ${events.length} events for worker ${userId}`);
     return events;
-  }
-  @Post('events/:eventId/volunteer')
+  }  @Post('events/:eventId/volunteer')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   volunteerForEvent(
     @Param('eventId') eventId: string,
     @Request() req,
@@ -97,15 +99,16 @@ export class WorkersController {
   }
 
   @Delete('events/:eventId/leave')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   leaveEvent(
     @Param('eventId') eventId: string,
     @Request() req,
   ) {
     return this.workersService.leaveEvent(eventId, req.user.userId);
   }
-
   // Phase 2.3: Quick Guest Registration (30-second target)
   @Post('events/:eventId/guests/quick')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.WORKER)
   quickRegisterGuest(
     @Param('eventId') eventId: string,
@@ -120,6 +123,7 @@ export class WorkersController {
   }
 
   @Post('events/:eventId/guests')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.WORKER)
   registerGuest(
     @Param('eventId') eventId: string,
@@ -132,9 +136,9 @@ export class WorkersController {
       guestData,
     );
   }
-
   // Phase 2.4: Enhanced Worker's Guest Management
   @Get('guests')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.WORKER)
   getMyGuestsWithFilters(
     @Request() req,
@@ -160,8 +164,8 @@ export class WorkersController {
     
     return this.workersService.getWorkerGuestsWithFilters(req.user.userId, filters);
   }
-
   @Patch('guests/bulk')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.WORKER)
   bulkUpdateGuests(
     @Body() bulkUpdateData: { guestIds: string[]; updateData: any },
@@ -175,6 +179,7 @@ export class WorkersController {
   }
 
   @Get('guests/stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.WORKER)
   getGuestRegistrationStats(
     @Request() req,
@@ -184,6 +189,7 @@ export class WorkersController {
   }
 
   @Get('events/:eventId/guests')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.WORKER)
   getEventGuests(
     @Param('eventId') eventId: string,
@@ -193,6 +199,7 @@ export class WorkersController {
   }
 
   @Patch('guests/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   updateGuest(
     @Param('id') id: string,
     @Body() updateData: UpdateGuestDto,
@@ -202,13 +209,14 @@ export class WorkersController {
   }
 
   @Delete('guests/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   removeGuest(
     @Param('id') id: string,
     @Request() req,
   ) {
     return this.workersService.removeGuest(req.user.userId, id);
-  }
-  @Get('analytics/performance')
+  }  @Get('analytics/performance')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   getMyPerformance(@Request() req, @Query('workerId') workerId?: string) {
     const userId = workerId || req.user.userId;
     // If workerId is provided and user is not admin, verify access
@@ -221,6 +229,7 @@ export class WorkersController {
   }
 
   @Get('analytics/event/:eventId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   getEventPerformance(
     @Param('eventId') eventId: string,
     @Request() req,
@@ -237,6 +246,7 @@ export class WorkersController {
   }
 
   @Get('analytics/top')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
   getTopWorkers() {
     return this.workersService.getTopPerformingWorkers(10);
