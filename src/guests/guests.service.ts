@@ -219,4 +219,56 @@ export class GuestsService {
       throw new HttpException(`Failed to retrieve guests by registrar: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  // Count total guests registered by a specific worker
+  async countGuestsByWorker(workerId: string): Promise<number> {
+    try {
+      return await this.guestModel.countDocuments({ registeredBy: workerId }).exec();
+    } catch (error) {
+      throw new HttpException(`Failed to count guests by worker: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  // Count checked-in guests registered by a specific worker
+  async countCheckedInGuestsByWorker(workerId: string): Promise<number> {
+    try {
+      return await this.guestModel.countDocuments({ 
+        registeredBy: workerId, 
+        isCheckedIn: true 
+      }).exec();
+    } catch (error) {      throw new HttpException(`Failed to count checked-in guests by worker: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  // Find all guests registered by a specific worker
+  async findGuestsByWorker(workerId: string): Promise<GuestDocument[]> {
+    try {
+      return await this.guestModel
+        .find({ registeredBy: workerId })        .populate({
+          path: 'event',
+          select: 'name title date time location description selectedBranches availableStates scope',
+          populate: [
+            {
+              path: 'selectedBranches',
+              select: 'name location',
+              populate: {
+                path: 'stateId',
+                select: 'name',
+                model: 'State'
+              }
+            },
+            {
+              path: 'availableStates',
+              select: 'name',
+              model: 'State'
+            }
+          ]
+        })
+        .populate('registeredBy', 'name email')
+        .sort({ createdAt: -1 })
+        .exec();
+    } catch (error) {
+      throw new HttpException(`Failed to find guests by worker: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
 }

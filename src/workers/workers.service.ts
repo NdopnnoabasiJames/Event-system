@@ -8,6 +8,8 @@ import { Model, Types } from 'mongoose';
 import { Worker, WorkerDocument } from '../schemas/worker.schema';
 import { RegisterDto } from '../auth/dto/register.dto';
 import { Role } from '../common/enums/role.enum';
+import { WorkerStatsService } from './services/worker-stats.service';
+import { WorkerGuestService } from './services/worker-guest.service';
 
 @Injectable()
 export class WorkersService {
@@ -16,6 +18,8 @@ export class WorkersService {
     private readonly guestsService: GuestsService,
     private readonly usersService: UsersService,
     private readonly authService: AuthService,
+    private readonly workerStatsService: WorkerStatsService,
+    private readonly workerGuestService: WorkerGuestService,
     @InjectModel(Worker.name) private workerModel: Model<WorkerDocument>,
   ) {}
 
@@ -132,23 +136,30 @@ export class WorkersService {
       lastActivityDate: new Date()
     });
 
-    return newWorker.save();
-  }
+    return newWorker.save();  }
 
   // Enhanced Event Viewing for Workers
   async getAvailableEvents(workerId: string) {
     const worker = await this.usersService.findById(workerId);
+    
     if (!worker || worker.role !== Role.WORKER) {
       throw new ForbiddenException('Only approved workers can view events');
-    }
-
-    if (!worker.isApproved) {
+    }    if (!worker.isApproved) {
       throw new ForbiddenException('Worker must be approved to view events');
     }
 
-    // Get events that are available in worker's branch and are finalized
-    const events = await this.eventsService.getEventsForWorkerBranch(worker.branch.toString());
-    return events.filter(event => event.status === 'published' || event.status === 'in_progress');
+    // Get the branch ID from the worker's branch object
+    const branchId = worker.branch?._id?.toString() || worker.branch?.toString();
+    
+    if (!branchId) {
+      throw new BadRequestException('Worker does not have a valid branch assignment');
+    }
+    
+    const allEvents = await this.eventsService.getEventsForWorkerBranch(branchId);
+    
+    const filteredEvents = allEvents.filter(event => event.status === 'published' || event.status === 'in_progress');
+    
+    return filteredEvents;
   }
 
   async volunteerForEvent(eventId: string, workerId: string) {
@@ -312,18 +323,9 @@ export class WorkersService {
     today.setHours(0, 0, 0, 0);
     
     if (today >= eventDate) {
-      throw new ForbiddenException('Cannot delete guest details on or after the event day');
-    }
+      throw new ForbiddenException('Cannot delete guest details on or after the event day');    }
 
     return this.guestsService.remove(guestId);
-  }
-
-  async getWorkerGuests(workerId: string, eventId?: string) {
-    const query = { registeredBy: workerId };
-    if (eventId) {
-      query['event'] = eventId;
-    }
-    return this.guestsService.findByQuery(query);
   }
 
   // Phase 2.4: Enhanced Worker's Guest Management
@@ -572,7 +574,21 @@ export class WorkersService {
       }
       return b.checkInRate - a.checkInRate;
     });
-    
-    return workerStats.slice(0, limit);
+      return workerStats.slice(0, limit);
+  }
+
+  // Get worker statistics - delegate to WorkerStatsService
+  async getWorkerStats(workerId: string) {
+    return this.workerStatsService.getWorkerStats(workerId);
+  }
+
+  // Get worker's registered guests - delegate to WorkerGuestService
+  async getWorkerGuests(workerId: string) {
+    return this.workerGuestService.getWorkerGuests(workerId);
+  }
+
+  // Register guest for event - delegate to WorkerGuestService
+  async registerGuestForEvent(guestData: any, workerId: string) {
+    return this.workerGuestService.registerGuestForEvent(guestData, workerId);
   }
 }

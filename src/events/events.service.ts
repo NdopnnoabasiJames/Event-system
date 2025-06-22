@@ -40,18 +40,38 @@ export class EventsService {  constructor(
       console.error('Failed to create event:', error);
       throw new HttpException(`Failed to create event: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
-  }
-  async findAll(): Promise<EventDocument[]> {
-    try {
-      return await this.eventModel.find().populate('workers', '-password').exec();
+  }  async findAll(): Promise<EventDocument[]> {    try {
+      return await this.eventModel
+        .find()
+        .populate('workers', '-password')
+        .populate({
+          path: 'selectedBranches',
+          select: 'name location',
+          populate: {
+            path: 'stateId',
+            select: 'name',
+            model: 'State'
+          }
+        })
+        .populate('availableStates', 'name')
+        .exec();
     } catch (error) {
       throw new HttpException(`Failed to retrieve events: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
-  }
-  async findOne(id: string): Promise<EventDocument> {
+  }  async findOne(id: string): Promise<EventDocument> {
     const event = await this.eventModel
       .findById(id)
       .populate('workers', '-password')
+      .populate({
+        path: 'selectedBranches',
+        select: 'name location',
+        populate: {
+          path: 'stateId',
+          select: 'name',
+          model: 'State'
+        }
+      })
+      .populate('availableStates', 'name')
       .exec();
     
     if (!event) {
@@ -277,15 +297,27 @@ export class EventsService {  constructor(
     event.registrarRequests.splice(reqIndex, 1);
     await event.save();
     return { message: 'Registrar request cancelled successfully' };
-  }
-  async getEventsForWorkerBranch(branchId: string): Promise<EventDocument[]> {
+  }  async getEventsForWorkerBranch(branchId: string): Promise<EventDocument[]> {
     try {
       const events = await this.eventModel
         .find({ 
-          branches: { $in: [branchId] },
+          $or: [
+            { selectedBranches: { $in: [branchId] } },
+            { availableBranches: { $in: [branchId] } }
+          ],
           isActive: true 
         })
         .populate('workers', '-password')
+        .populate({
+          path: 'selectedBranches',
+          select: 'name location',
+          populate: {
+            path: 'stateId',
+            select: 'name',
+            model: 'State'
+          }
+        })
+        .populate('availableStates', 'name')
         .exec();
 
       return events || [];

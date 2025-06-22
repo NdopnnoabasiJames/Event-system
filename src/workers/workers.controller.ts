@@ -129,9 +129,8 @@ export class WorkersController {
         throw new ForbiddenException('Cannot access another worker\'s events');
       }
     }
-    console.log(`Fetching events for worker: ${userId}`);
     const events = await this.workersService.getWorkerEvents(userId);
-    console.log(`Found ${events.length} events for worker ${userId}`);    return events;
+  return events;
   }
 
   @Post('events/:eventId/volunteer')
@@ -233,7 +232,6 @@ export class WorkersController {
   ) {
     return this.workersService.getGuestRegistrationStats(req.user.userId, eventId);
   }
-
   @Get('events/:eventId/guests')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.WORKER)
@@ -241,7 +239,7 @@ export class WorkersController {
     @Param('eventId') eventId: string,
     @Request() req,
   ) {
-    return this.workersService.getWorkerGuests(req.user.userId, eventId);
+    return this.workersService.getWorkerGuestsWithFilters(req.user.userId, { eventId });
   }
 
   @Patch('guests/:id')
@@ -296,5 +294,54 @@ export class WorkersController {
   @Roles(Role.SUPER_ADMIN)
   getTopWorkers() {
     return this.workersService.getTopPerformingWorkers(10);
+  }
+
+  // Worker statistics endpoint
+  @Get('stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.WORKER)
+  async getWorkerStats(@Request() req) {
+    this.logger.log(`GET /workers/stats - Worker: ${req.user?.email}`);
+    
+    try {
+      const stats = await this.workersService.getWorkerStats(req.user.userId);
+      return stats;
+    } catch (error) {
+      this.logger.error(`Error fetching worker stats: ${error.message}`);
+      throw new HttpException('Failed to fetch worker statistics', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  // Get worker's registered guests
+  @Get('guests')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.WORKER)
+  async getWorkerGuests(@Request() req) {
+    this.logger.log(`GET /workers/guests - Worker: ${req.user?.email}`);
+    
+    try {
+      const guests = await this.workersService.getWorkerGuests(req.user.userId);
+      return guests;
+    } catch (error) {
+      this.logger.error(`Error fetching worker guests: ${error.message}`);
+      throw new HttpException('Failed to fetch worker guests', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  // Register guest for event
+  @Post('events/register-guest')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.WORKER)
+  async registerGuestForEvent(@Request() req, @Body() guestData: any) {
+    this.logger.log(`POST /workers/events/register-guest - Worker: ${req.user?.email}`);
+    
+    try {
+      const result = await this.workersService.registerGuestForEvent(guestData, req.user.userId);
+      this.logger.log(`Guest registered successfully by worker ${req.user?.email}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Error registering guest: ${error.message}`);
+      throw new HttpException(error.message || 'Failed to register guest', HttpStatus.BAD_REQUEST);
+    }
   }
 }
