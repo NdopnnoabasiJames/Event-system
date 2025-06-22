@@ -46,14 +46,15 @@ export class WorkerGuestService {
 
     if (!isAuthorized) {
       throw new ForbiddenException('Worker not authorized to register guests for this event');
-    }
-
-    // Register the guest
+    }    // Register the guest
     const guestRegistrationData = {
       ...guestData,
       event: guestData.eventId,
       registeredBy: workerId,
-      registeredAt: new Date()
+      registeredAt: new Date(),
+      // Add required state and branch from worker's profile
+      state: worker.state, // Worker's state
+      branch: worker.branch // Worker's branch
     };
 
     return this.guestsService.create(guestRegistrationData);
