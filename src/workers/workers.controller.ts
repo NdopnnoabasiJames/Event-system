@@ -16,6 +16,8 @@ import {
 } from '@nestjs/common';
 
 import { WorkersService } from './workers.service';
+import { WorkerVolunteerService } from './services/worker-volunteer.service';
+import { VolunteerApprovalService } from './services/volunteer-approval.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -30,7 +32,11 @@ import { RegisterDto } from '../auth/dto/register.dto';
 export class WorkersController {
   private readonly logger = new Logger(WorkersController.name);
 
-  constructor(private readonly workersService: WorkersService) {}
+  constructor(
+    private readonly workersService: WorkersService,
+    private readonly workerVolunteerService: WorkerVolunteerService,
+    private readonly volunteerApprovalService: VolunteerApprovalService,
+  ) {}
   // Worker Registration - Public endpoint (no authentication required)
   @Post('register')
   async registerWorker(@Body() registerData: RegisterDto) {
@@ -111,36 +117,57 @@ export class WorkersController {
       this.logger.error(`Error rejecting worker ${workerId}: ${error.message}`);
       throw new HttpException(error.message || 'Failed to reject worker', HttpStatus.BAD_REQUEST);
     }
-  }
-  @Get('events/available')
+  }  // Get all published events for workers to volunteer for
+  @Get('events/all')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.WORKER, Role.SUPER_ADMIN)
-  getAvailableEvents(@Request() req) {
-    return this.workersService.getAvailableEvents(req.user.userId);
+  async getAvailableEvents(@Request() req) {
+    const events = await this.workerVolunteerService.getPublishedEvents();
+    
+    // For each event, get the worker's volunteer status
+    const eventsWithStatus = await Promise.all(
+      events.map(async (event) => {
+        const status = await this.workerVolunteerService.getVolunteerStatus(
+          event._id.toString(), 
+          req.user.userId
+        );
+        return {
+          ...event.toObject(),
+          volunteerStatus: status.status
+        };
+      })
+    );
+    
+    return eventsWithStatus;
   }
-
+  // Get events where worker has been approved
   @Get('events/my')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  async getMyEvents(@Request() req, @Query('workerId') workerId?: string) {
-    const userId = workerId || req.user.userId;
-    // If workerId is provided and user is not admin, verify access
-    if (workerId && req.user.role !== Role.SUPER_ADMIN) {
-      if (workerId !== req.user.userId) {
-        throw new ForbiddenException('Cannot access another worker\'s events');
-      }
-    }
-    const events = await this.workersService.getWorkerEvents(userId);
-  return events;
+  @Roles(Role.WORKER)
+  async getMyEvents(@Request() req) {
+    return this.workerVolunteerService.getWorkerApprovedEvents(req.user.userId);
   }
 
+  // Volunteer for an event
   @Post('events/:eventId/volunteer')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.WORKER)
-  volunteerForEvent(
+  async volunteerForEvent(
     @Param('eventId') eventId: string,
     @Request() req,
   ) {
-    return this.workersService.volunteerForEvent(eventId, req.user.userId);
+    return this.workerVolunteerService.volunteerForEvent(eventId, req.user.userId);
+  }
+
+  // Get volunteer status for an event
+  @Get('events/:eventId/volunteer-status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.WORKER)
+  async getVolunteerStatus(
+    @Param('eventId') eventId: string,
+    @Request() req,
+  ) {
+    return this.workerVolunteerService.getVolunteerStatus(eventId, req.user.userId);
   }
   @Delete('events/:eventId/leave')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -179,36 +206,8 @@ export class WorkersController {
       req.user.userId,
       eventId,
       guestData,
-    );
-  }
-  // Phase 2.4: Enhanced Worker's Guest Management
-  @Get('guests')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.WORKER)
-  getMyGuestsWithFilters(
-    @Request() req,
-    @Query('eventId') eventId?: string,
-    @Query('transportPreference') transportPreference?: 'bus' | 'private',
-    @Query('checkedIn') checkedIn?: string,
-    @Query('search') search?: string,
-    @Query('sortBy') sortBy?: 'name' | 'registeredAt' | 'checkedInTime',
-    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
-    const filters = {
-      eventId,
-      transportPreference,
-      checkedIn: checkedIn === 'true' ? true : checkedIn === 'false' ? false : undefined,
-      search,
-      sortBy,
-      sortOrder,
-      page: page ? parseInt(page) : undefined,
-      limit: limit ? parseInt(limit) : undefined,
-    };
-    
-    return this.workersService.getWorkerGuestsWithFilters(req.user.userId, filters);
-  }
+    );  }
+
   @Patch('guests/bulk')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.WORKER)
@@ -342,6 +341,67 @@ export class WorkersController {
     } catch (error) {
       this.logger.error(`Error registering guest: ${error.message}`);
       throw new HttpException(error.message || 'Failed to register guest', HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  // ========== BRANCH ADMIN VOLUNTEER MANAGEMENT ENDPOINTS ==========
+  
+  // Get pending volunteer requests for branch admin
+  @Get('admin/volunteer-requests/pending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.BRANCH_ADMIN, Role.SUPER_ADMIN)
+  async getPendingVolunteerRequests(@Request() req) {
+    this.logger.log(`GET /workers/admin/volunteer-requests/pending - Admin: ${req.user?.email}`);
+    
+    try {
+      const requests = await this.volunteerApprovalService.getPendingVolunteerRequests(req.user.userId);
+      return requests;
+    } catch (error) {
+      this.logger.error(`Error fetching pending volunteer requests: ${error.message}`);
+      throw new HttpException(error.message || 'Failed to fetch pending requests', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  // Approve or reject volunteer request
+  @Post('admin/volunteer-requests/:eventId/:requestId/:action')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.BRANCH_ADMIN, Role.SUPER_ADMIN)
+  async reviewVolunteerRequest(
+    @Param('eventId') eventId: string,
+    @Param('requestId') requestId: string,
+    @Param('action') action: 'approve' | 'reject',
+    @Request() req
+  ) {
+    this.logger.log(`POST /workers/admin/volunteer-requests/${eventId}/${requestId}/${action} - Admin: ${req.user?.email}`);
+    
+    try {
+      const result = await this.volunteerApprovalService.reviewVolunteerRequest(
+        eventId, 
+        requestId, 
+        req.user.userId, 
+        action
+      );
+      this.logger.log(`Volunteer request ${action}ed successfully by admin ${req.user?.email}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Error reviewing volunteer request: ${error.message}`);
+      throw new HttpException(error.message || 'Failed to review volunteer request', HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  // Get volunteer request statistics for branch admin
+  @Get('admin/volunteer-requests/stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.BRANCH_ADMIN, Role.SUPER_ADMIN)
+  async getVolunteerRequestStats(@Request() req) {
+    this.logger.log(`GET /workers/admin/volunteer-requests/stats - Admin: ${req.user?.email}`);
+    
+    try {
+      const stats = await this.volunteerApprovalService.getVolunteerRequestStats(req.user.userId);
+      return stats;
+    } catch (error) {
+      this.logger.error(`Error fetching volunteer request stats: ${error.message}`);
+      throw new HttpException(error.message || 'Failed to fetch volunteer stats', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }

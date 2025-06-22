@@ -95,9 +95,31 @@ export class Event {
     }],
     default: []
   })
-  pickupStations: EventPickupStation[];
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }] })
+  pickupStations: EventPickupStation[];  @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }] })
   workers: Types.ObjectId[];
+
+  @Prop({
+    type: [
+      {
+        _id: { type: MongooseSchema.Types.ObjectId, auto: true },
+        workerId: { type: Types.ObjectId, ref: 'User', required: true },
+        status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+        requestedAt: { type: Date, default: Date.now },
+        reviewedAt: { type: Date },
+        reviewedBy: { type: Types.ObjectId, ref: 'User' },
+      },
+    ],
+    default: [],
+  })
+  volunteerRequests: {
+    _id?: MongooseSchema.Types.ObjectId;
+    workerId: Types.ObjectId,
+    status: string,
+    requestedAt: Date,
+    reviewedAt?: Date,
+    reviewedBy?: Types.ObjectId,
+  }[];
+
   @Prop({ default: false })
   isActive: boolean;
     @Prop()
