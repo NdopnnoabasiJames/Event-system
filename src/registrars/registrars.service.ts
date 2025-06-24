@@ -4,6 +4,8 @@ import { Model, Types } from 'mongoose';
 import { User, UserDocument } from '../schemas/user.schema';
 import { Zone, ZoneDocument } from '../schemas/zone.schema';
 import { Branch, BranchDocument } from '../schemas/branch.schema';
+import { Event, EventDocument } from '../schemas/event.schema';
+import { Guest, GuestDocument } from '../schemas/guest.schema';
 import { Role } from '../common/enums/role.enum';
 import { 
   RegistrarRegistrationDto,
@@ -19,11 +21,12 @@ import { AdminHierarchyService } from '../admin-hierarchy/admin-hierarchy.servic
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
-export class RegistrarsService {
-  constructor(
+export class RegistrarsService {  constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Zone.name) private zoneModel: Model<ZoneDocument>,
     @InjectModel(Branch.name) private branchModel: Model<BranchDocument>,
+    @InjectModel(Event.name) private eventModel: Model<EventDocument>,
+    @InjectModel(Guest.name) private guestModel: Model<GuestDocument>,
     private usersService: UsersService,
     private adminHierarchyService: AdminHierarchyService,
   ) {}
@@ -479,5 +482,390 @@ export class RegistrarsService {
     };
     
     return summary;
+  }
+
+  /**
+   * Get registrar statistics dashboard data
+   */
+  async getRegistrarStats(registrarId: string): Promise<any> {
+    try {
+      // Find the registrar
+      const registrar = await this.userModel.findById(registrarId);
+      if (!registrar) {
+        throw new NotFoundException('Registrar not found');
+      }
+
+      if (registrar.role !== Role.REGISTRAR) {
+        throw new BadRequestException('User is not a registrar');
+      }
+
+      // Get the registrar's assigned zones
+      const assignedZones = registrar.assignedZones || [];
+
+      // Count events where registrar is assigned
+      const eventsCount = await this.eventModel.countDocuments({
+        assignedRegistrars: { $in: [new Types.ObjectId(registrarId)] }
+      });
+
+      // Count guests registered by this registrar
+      const guestsCount = await this.guestModel.countDocuments({
+        registeredBy: new Types.ObjectId(registrarId)
+      });
+
+      // Get recent activity (last 5 registered guests)
+      const recentActivity = await this.guestModel.find({
+        registeredBy: new Types.ObjectId(registrarId)
+      })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('name email phone createdAt eventId')
+      .populate('eventId', 'name startDate')
+      .exec();
+
+      return {
+        stats: {
+          assignedZones: assignedZones.length,
+          eventsCount,
+          guestsCount,
+          isApproved: registrar.isApproved,
+          dateJoined: (registrar as any).createdAt,
+        },
+        recentActivity
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Get all events a registrar has access to
+   */
+  async getRegistrarEvents(registrarId: string): Promise<any[]> {
+    try {
+      console.log('[DEBUG] getRegistrarEvents called with registrarId:', registrarId);
+      
+      // Find the registrar
+      const registrar = await this.userModel.findById(registrarId)
+        .populate('assignedZones', 'name branchId')
+        .exec();
+      
+      console.log('[DEBUG] Found registrar:', registrar ? {
+        id: registrar._id,
+        name: registrar.name,
+        email: registrar.email,
+        isApproved: registrar.isApproved,
+        branch: registrar.branch,
+        assignedZones: registrar.assignedZones
+      } : 'Not found');
+      
+      if (!registrar) {
+        throw new NotFoundException('Registrar not found');
+      }
+
+      if (registrar.role !== Role.REGISTRAR) {
+        throw new BadRequestException('User is not a registrar');
+      }
+
+      if (!registrar.isApproved) {
+        console.log('[DEBUG] Registrar is not approved, approval status:', registrar.isApproved);
+        throw new ForbiddenException('Registrar must be approved to view events');
+      }
+
+      // Get the registrar's assigned zones
+      const assignedZoneIds = registrar.assignedZones?.map(zone => zone._id) || [];
+      console.log('[DEBUG] Assigned zone IDs:', assignedZoneIds);
+      
+      // Branch ID check and conversion
+      const branchId = typeof registrar.branch === 'string' 
+        ? new Types.ObjectId(registrar.branch)
+        : registrar.branch;
+      
+      console.log('[DEBUG] Using branch ID for query:', branchId);
+
+      // Modified query to include events without branch information 
+      // This allows registrars to see all active events if branch isn't set
+      const query = {
+        isActive: true,
+        status: { $ne: 'cancelled' }, // Exclude cancelled events
+        $or: [
+          // Regular branch events
+          { branch: branchId },
+          // Events where branch is explicitly included
+          { selectedBranches: { $in: [branchId] } },
+          // Include events with no branch info for legacy support
+          // (only if branch and selectedBranches are both undefined/null/empty)
+          { 
+            $and: [
+              { $or: [
+                { branch: { $exists: false } },
+                { branch: null }
+              ] },
+              { $or: [
+                { selectedBranches: { $exists: false } },
+                { selectedBranches: null },
+                { selectedBranches: { $size: 0 } }
+              ] }
+            ]
+          }
+        ]
+      };
+      
+      console.log('[DEBUG] Enhanced query for event debugging. Branch ID:', branchId);
+      console.log('[DEBUG] Event query:', JSON.stringify(query, null, 2));
+      
+      try {
+        console.log('[DEBUG] Executing expanded query for events:', JSON.stringify(query));
+          // Get all events matching criteria
+        const events = await this.eventModel.find(query)
+          .populate('selectedBranches', 'name')
+          .populate('selectedZones', 'name')
+          .populate({
+            path: 'registrarRequests.registrarId',
+            select: 'name email'
+          })
+          .sort({ date: 1 })  // Sort by date
+          .exec();
+          
+        console.log('[DEBUG] Events found:', events.length);
+          if (events.length === 0) {
+          // Let's first check if there are any events for this branch
+          const branchEvents = await this.eventModel.find({ 
+            $or: [
+              { branch: branchId },
+              { selectedBranches: { $in: [branchId] } }
+            ],
+            isActive: true
+          })
+            .select('_id name selectedBranches selectedZones date')
+            .limit(5)
+            .exec();
+              console.log('[DEBUG] Branch events:', 
+            branchEvents.map(e => ({
+              id: e._id,
+              name: e.name,
+              selectedBranches: e.selectedBranches,
+              selectedZones: e.selectedZones,
+              date: e.date
+            }))
+          );
+            // Let's check if there are any events at all in the system
+          const allEvents = await this.eventModel.find({ isActive: true })
+            .select('_id name selectedBranches selectedZones date registrarRequests')
+            .limit(5)
+            .exec();
+              console.log('[DEBUG] Sample of all active events in system:', 
+            allEvents.map(e => ({
+              id: e._id,
+              name: e.name,
+              selectedBranches: e.selectedBranches || [],
+              selectedZones: e.selectedZones || [],
+              date: e.date,
+              registrarRequests: e.registrarRequests?.length || 0
+            }))
+          );
+        } else {          // Log a sample of the events found
+          console.log('[DEBUG] Sample of events found:', 
+            events.slice(0, 2).map(e => ({
+              id: e._id,
+              name: e.name,
+              selectedBranches: e.selectedBranches?.map(b => (b as any).name || b) || [],
+              selectedZones: e.selectedZones?.map(z => (z as any).name || z) || [],
+              date: e.date,
+              registrarRequests: e.registrarRequests?.map(r => ({
+                registrarId: r.registrarId,
+                status: r.status
+              }))
+            }))
+          );
+        }
+
+        // Format events for consistent frontend display
+        const formattedEvents = events.map(event => {
+          // Create a plain object that we can modify safely
+          const formattedEvent = event.toObject();
+            // Ensure branch information is available
+          if (!(formattedEvent as any).branch) {
+            // Use type assertion to avoid TypeScript errors
+            (formattedEvent as any).branch = branchId;
+            (formattedEvent as any).branchName = 'Church Branch'; // Fallback name
+          }
+          
+          // Extract date information for consistent display
+          if (formattedEvent.date && !(formattedEvent as any).startDate) {
+            try {
+              // Try to parse the date string into a Date object
+              const eventDate = new Date(formattedEvent.date);
+              (formattedEvent as any).startDate = eventDate.toISOString();
+              
+              // Set endDate to 2 hours after startDate if not defined
+              if (!(formattedEvent as any).endDate) {
+                const endDate = new Date(eventDate);
+                endDate.setHours(endDate.getHours() + 2);
+                (formattedEvent as any).endDate = endDate.toISOString();
+              }
+            } catch (err) {
+              console.log('[DEBUG] Error parsing date:', formattedEvent.date, err);
+            }
+          }
+          
+          return formattedEvent;
+        });
+        
+        console.log('[DEBUG] Returning formatted events, count:', formattedEvents.length);
+        if (formattedEvents.length > 0) {
+          console.log('[DEBUG] Sample of first formatted event:', JSON.stringify(formattedEvents[0], null, 2));
+        }
+        
+        return formattedEvents;
+      } catch (error) {
+        console.error('[DEBUG] Error executing event query:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('[DEBUG] Error in getRegistrarEvents:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Helper method to check registrar approval status in detail
+   */
+  async checkRegistrarStatus(registrarId: string): Promise<any> {
+    console.log('[DEBUG] Checking detailed registrar status for ID:', registrarId);
+    
+    try {
+      // Find the registrar with approval details
+      const registrar = await this.userModel.findById(registrarId)
+        .select('name email role isApproved isActive branch state zone assignedZones approvedAt approverName')
+        .populate('branch', 'name')
+        .populate('state', 'name')
+        .populate('assignedZones', 'name branchId')
+        .exec();
+      
+      if (!registrar) {
+        console.error('[DEBUG] Registrar not found with ID:', registrarId);
+        throw new NotFoundException('Registrar not found');
+      }
+      
+      console.log('[DEBUG] Registrar details:', {
+        id: registrar._id,
+        name: registrar.name,
+        email: registrar.email,
+        role: registrar.role,
+        isApproved: registrar.isApproved,
+        isActive: registrar.isActive,
+        branch: registrar.branch,
+        assignedZones: registrar.assignedZones?.length || 0,
+        approvedAt: registrar.approvedAt,
+        approverName: registrar.approverName
+      });
+      
+      // Check if there are any events that this registrar can access
+      const branchId = typeof registrar.branch === 'string' 
+        ? new Types.ObjectId(registrar.branch) 
+        : registrar.branch;
+        
+      const assignedZoneIds = registrar.assignedZones?.map(zone => zone._id) || [];
+      
+      const availableEventCount = await this.eventModel.countDocuments({
+        isActive: true,
+        $or: [
+          { branch: branchId },
+          { selectedBranches: { $in: [branchId] } }
+        ]
+      });
+      
+      console.log('[DEBUG] Available events in registrar branch:', availableEventCount);
+      
+      return {
+        registrarDetails: {
+          id: registrar._id,
+          name: registrar.name,
+          email: registrar.email,
+          role: registrar.role,
+          isApproved: registrar.isApproved,
+          isActive: registrar.isActive,
+          branch: registrar.branch,
+          assignedZones: registrar.assignedZones,
+          approvedAt: registrar.approvedAt
+        },
+        eventStatus: {
+          availableEventCount,
+        }
+      };
+    } catch (error) {
+      console.error('[DEBUG] Error checking registrar status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Debug method to inspect the structure of events in the database
+   */
+  async debugEventStructure(): Promise<any> {
+    try {
+      // Get a sample event
+      const sampleEvent = await this.eventModel.findOne({ isActive: true }).exec();
+      
+      if (!sampleEvent) {
+        return {
+          message: 'No active events found',
+          eventCount: 0
+        };
+      }
+      
+      // Count various event types
+      const stats = {
+        totalEvents: await this.eventModel.countDocuments(),
+        activeEvents: await this.eventModel.countDocuments({ isActive: true }),
+        eventsWithBranch: await this.eventModel.countDocuments({ branch: { $exists: true, $ne: null } }),
+        eventsWithSelectedBranches: await this.eventModel.countDocuments({ 'selectedBranches.0': { $exists: true } }),
+        eventsWithZone: await this.eventModel.countDocuments({ zone: { $exists: true, $ne: null } }),
+        eventsWithSelectedZones: await this.eventModel.countDocuments({ 'selectedZones.0': { $exists: true } }),
+        eventsWithRegistrars: await this.eventModel.countDocuments({ 'registrars.0': { $exists: true } }),
+        eventsWithRegistrarRequests: await this.eventModel.countDocuments({ 'registrarRequests.0': { $exists: true } })
+      };
+      
+      // Get available event fields
+      const eventFields = Object.keys(sampleEvent.toObject());
+      
+      // Deep check for startDate and endDate
+      let hasStartDateField = false;
+      let hasEndDateField = false;
+      let startDateSources = [];
+      let endDateSources = [];
+      
+      if (sampleEvent.toObject().hasOwnProperty('startDate')) {
+        hasStartDateField = true;
+        startDateSources.push('direct field');
+      }
+      
+      if (sampleEvent.toObject().hasOwnProperty('endDate')) {
+        hasEndDateField = true;
+        endDateSources.push('direct field');
+      }
+      
+      // Check if date field exists and can be used as a fallback
+      const hasDateField = sampleEvent.toObject().hasOwnProperty('date');
+      
+      return {
+        message: 'Event structure debug information',
+        stats,
+        eventFields,
+        dateFields: {
+          hasStartDateField,
+          hasEndDateField,
+          hasDateField,
+          startDateSources,
+          endDateSources,
+          sampleDate: sampleEvent.toObject().date
+        },
+        // Sample of an actual event structure
+        sampleEvent: sampleEvent.toObject()
+      };
+    } catch (error) {
+      console.error('[DEBUG] Error in debugEventStructure:', error);
+      throw error;
+    }
   }
 }
