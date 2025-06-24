@@ -27,26 +27,42 @@ export class RegistrarsService {
     private usersService: UsersService,
     private adminHierarchyService: AdminHierarchyService,
   ) {}
-
   /**
    * Phase 4.1: Registrar registration with Branch Admin approval workflow
    */
   async registerRegistrar(registrationDto: RegistrarRegistrationDto): Promise<{ message: string; registrarId: string }> {
+    console.log('DEBUG - RegistrarsService - registerRegistrar: Registration data received:', { 
+      name: registrationDto.name,
+      email: registrationDto.email,
+      branch: registrationDto.branch,
+      state: registrationDto.state,
+      role: registrationDto.role
+    });
+
     // Check if user with this email already exists
     const existingUser = await this.userModel.findOne({ email: registrationDto.email });
     if (existingUser) {
+      console.log('DEBUG - RegistrarsService - registerRegistrar: Email already exists');
       throw new BadRequestException('User with this email already exists');
-    }    // Validate branch exists and is active
+    }
+    
+    // Validate branch exists and is active
     const branch = await this.branchModel.findOne({ 
       _id: registrationDto.branch, 
       isActive: true 
     });
+    
+    console.log('DEBUG - RegistrarsService - registerRegistrar: Found branch:', 
+      branch ? { id: branch._id, name: branch.name, stateId: branch.stateId } : 'Not found');
     
     if (!branch) {
       throw new BadRequestException('Invalid or inactive branch');
     }
     
     // Validate state matches branch
+    console.log('DEBUG - RegistrarsService - registerRegistrar: State comparison:',
+      { branchStateId: branch.stateId.toString(), requestedState: registrationDto.state });
+    
     if (branch.stateId.toString() !== registrationDto.state) {
       throw new BadRequestException('State does not match the selected branch');
     }
@@ -67,7 +83,17 @@ export class RegistrarsService {
       createdAt: new Date(),
     });
 
+    console.log('DEBUG - RegistrarsService - registerRegistrar: Created registrar document:', { 
+      name: registrar.name, 
+      email: registrar.email, 
+      role: registrar.role,
+      branch: registrar.branch,
+      state: registrar.state,
+      isApproved: registrar.isApproved
+    });
+
     const savedRegistrar = await registrar.save();
+    console.log('DEBUG - RegistrarsService - registerRegistrar: Saved registrar with ID:', savedRegistrar._id);
 
     return {
       message: 'Registrar registration submitted successfully. Awaiting Branch Admin approval.',
@@ -197,36 +223,112 @@ export class RegistrarsService {
     .select('-password')
     .exec();
   }
-
   /**
    * Phase 4.1: Get pending registrars for approval
    */
   async getPendingRegistrars(branchAdminId: string): Promise<UserDocument[]> {
-    return this.usersService.getPendingRegistrars(branchAdminId);
+    console.log('DEBUG - RegistrarsService - getPendingRegistrars: Called with branchAdminId:', branchAdminId);
+    try {
+      const result = await this.usersService.getPendingRegistrars(branchAdminId);
+      console.log('DEBUG - RegistrarsService - getPendingRegistrars: Result count:', result?.length || 0);
+      return result;
+    } catch (error) {
+      console.error('DEBUG - RegistrarsService - getPendingRegistrars: Error:', error.message);
+      throw error;
+    }
   }
+  /**
+   * Phase 4.1: Get approved registrars for management
+   */
+  async getApprovedRegistrars(branchAdminId: string): Promise<UserDocument[]> {
+    console.log('DEBUG - RegistrarsService - getApprovedRegistrars: Called with branchAdminId:', branchAdminId);
+    
+    try {
+      // Get the branch admin to determine their branch
+      const branchAdmin = await this.userModel.findById(branchAdminId);
+      console.log('DEBUG - RegistrarsService - getApprovedRegistrars: Found branch admin:', 
+        branchAdmin ? { id: branchAdmin._id, role: branchAdmin.role, branch: branchAdmin.branch } : 'Not found');
+      
+      if (!branchAdmin || branchAdmin.role !== Role.BRANCH_ADMIN) {
+        throw new ForbiddenException('Only branch admins can view approved registrars');
+      }
+      
+      // Convert branch to ObjectId if it's a string
+      const branchFilter = typeof branchAdmin.branch === 'string' 
+        ? new Types.ObjectId(branchAdmin.branch) 
+        : branchAdmin.branch;
+      
+      console.log('DEBUG - RegistrarsService - getApprovedRegistrars: Using branch filter:', branchFilter);
 
+      // Find all approved registrars in the branch admin's branch
+      const registrars = await this.userModel.find({
+        role: Role.REGISTRAR,
+        branch: branchFilter,
+        isApproved: true,
+        isActive: true
+      })
+      .populate('branch', 'name')
+      .populate('state', 'name')
+      .select('name email phone role state branch approvedAt approvedBy createdAt')
+      .sort({ createdAt: -1 })
+      .exec();
+      
+      console.log('DEBUG - RegistrarsService - getApprovedRegistrars: Found registrars count:', registrars?.length || 0);
+      return registrars;
+    } catch (error) {
+      console.error('DEBUG - RegistrarsService - getApprovedRegistrars: Error:', error.message, error.stack);
+      throw error;
+    }
+  }
   /**
    * Phase 4.1: Approve registrar
    */
-  async approveRegistrar(approvalDto: ApproveRegistrarDto, branchAdminId: string): Promise<{ message: string; registrar: UserDocument }> {
-    const result = await this.usersService.approveRegistrar(approvalDto.registrarId, branchAdminId);
+  async approveRegistrar(registrarId: string, branchAdminId: string, approverName: string): Promise<{ message: string; registrar: UserDocument }> {
+    // Verify branch admin
+    const branchAdmin = await this.userModel.findById(branchAdminId);
+    if (!branchAdmin || branchAdmin.role !== Role.BRANCH_ADMIN) {
+      throw new ForbiddenException('Only branch admins can approve registrars');
+    }
+
+    // Find the registrar
+    const registrar = await this.userModel.findById(registrarId);
+    if (!registrar) {
+      throw new NotFoundException('Registrar not found');
+    }
+
+    if (registrar.role !== Role.REGISTRAR) {
+      throw new BadRequestException('User is not a registrar');
+    }
+
+    if (registrar.branch?.toString() !== branchAdmin.branch?.toString()) {
+      throw new ForbiddenException('Can only approve registrars in your branch');
+    }
+
+    if (registrar.isApproved) {
+      throw new BadRequestException('Registrar is already approved');
+    }    // Update the registrar status
+    registrar.isApproved = true;
+    registrar.approvedBy = new Types.ObjectId(branchAdminId);
+    registrar.approverName = approverName;
+    registrar.approvedAt = new Date();
+    
+    await registrar.save();
     
     return {
       message: 'Registrar approved successfully',
-      registrar: result
+      registrar: registrar
     };
   }
-
   /**
    * Phase 4.1: Reject registrar (custom implementation)
    */
-  async rejectRegistrar(rejectDto: RejectRegistrarDto, branchAdminId: string): Promise<{ message: string }> {
+  async rejectRegistrar(registrarId: string, branchAdminId: string, rejectionReason?: string): Promise<{ message: string }> {
     const branchAdmin = await this.userModel.findById(branchAdminId);
     if (!branchAdmin || branchAdmin.role !== Role.BRANCH_ADMIN) {
       throw new ForbiddenException('Only branch admins can reject registrars');
     }
 
-    const registrar = await this.userModel.findById(rejectDto.registrarId);
+    const registrar = await this.userModel.findById(registrarId);
     if (!registrar) {
       throw new NotFoundException('Registrar not found');
     }
@@ -245,7 +347,7 @@ export class RegistrarsService {
 
     // Mark as rejected by setting a flag or removing the record
     registrar.isActive = false;
-    registrar.rejectionReason = rejectDto.rejectionReason;
+    registrar.rejectionReason = rejectionReason || 'Rejected by branch admin';
     registrar.rejectedBy = new Types.ObjectId(branchAdminId);
     registrar.rejectedAt = new Date();
     await registrar.save();

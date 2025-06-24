@@ -262,19 +262,67 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
 
   // Get pending registrars for branch admin approval
   async getPendingRegistrars(branchAdminId: string): Promise<UserDocument[]> {
-    const branchAdmin = await this.userModel.findById(branchAdminId).exec();
-    if (!branchAdmin || branchAdmin.role !== Role.BRANCH_ADMIN) {
-      throw new ForbiddenException('Only branch admins can view pending registrars');
-    }
+    console.log('DEBUG - UsersService - getPendingRegistrars: Called with branchAdminId:', branchAdminId);
+    
+    try {
+      // Get the branch admin to determine their branch
+      const branchAdmin = await this.userModel.findById(branchAdminId).exec();
+      console.log('DEBUG - UsersService - getPendingRegistrars: Found branch admin:', 
+        branchAdmin ? { 
+          id: branchAdmin._id, 
+          role: branchAdmin.role, 
+          branch: branchAdmin.branch 
+        } : 'Not found');
+      
+      if (!branchAdmin || branchAdmin.role !== Role.BRANCH_ADMIN) {
+        console.log('DEBUG - UsersService - getPendingRegistrars: Invalid branch admin or role');
+        throw new ForbiddenException('Only branch admins can view pending registrars');
+      }      // Find all pending registrars in the branch admin's branch
+      console.log('DEBUG - UsersService - getPendingRegistrars: Branch type:', typeof branchAdmin.branch);
+      
+      // Convert branch to ObjectId if it's a string
+      const branchFilter = typeof branchAdmin.branch === 'string' 
+        ? new Types.ObjectId(branchAdmin.branch)
+        : branchAdmin.branch;
+      
+      console.log('DEBUG - UsersService - getPendingRegistrars: Using branch filter:', branchFilter);
+      
+      const registrars = await this.userModel.find({
+        role: Role.REGISTRAR,
+        isApproved: false,
+        isActive: true,
+        branch: branchFilter
+      })
+      .populate('state', 'name')
+      .populate('branch', 'name')
+      .select('name email phone role state branch createdAt')
+      .sort({ createdAt: -1 })
+      .exec();
 
-    return this.userModel.find({
-      role: Role.REGISTRAR,
-      isApproved: false,
-      branch: branchAdmin.branch
-    })
-    .populate('state', 'name')
-    .populate('branch', 'name')
-    .exec();
+      console.log('DEBUG - UsersService - getPendingRegistrars: Found registrars count:', registrars?.length || 0);
+      console.log('DEBUG - UsersService - getPendingRegistrars: Looking for branch:', branchAdmin.branch);
+      
+      // If no registrars are found, let's check the database for any registrars to debug
+      if (registrars.length === 0) {
+        const allRegistrars = await this.userModel.find({
+          role: Role.REGISTRAR
+        }).select('branch isApproved isActive').exec();
+        
+        console.log('DEBUG - UsersService - getPendingRegistrars: All registrars in system:', 
+          allRegistrars.map(r => ({ 
+            id: r._id, 
+            branch: r.branch, 
+            isApproved: r.isApproved, 
+            isActive: r.isActive 
+          }))
+        );
+      }
+      
+      return registrars;
+    } catch (error) {
+      console.error('DEBUG - UsersService - getPendingRegistrars: Error:', error.message, error.stack);
+      throw error;
+    }
   }
 
   // Approve worker by branch admin

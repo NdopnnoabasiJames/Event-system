@@ -32,6 +32,9 @@ export class User {
   @Prop({ type: Types.ObjectId, ref: 'User', required: false })
   approvedBy?: Types.ObjectId;
 
+  @Prop({ type: String, required: false })
+  approverName?: string;
+
   @Prop({ type: Date, required: false })
   approvedAt?: Date;
   
