@@ -42,21 +42,15 @@ export class RegistrarsController {  constructor(
   }
   /**
    * Get pending registrars for Branch Admin approval
-   */
-  @Get('pending')
+   */  @Get('pending')
   @Roles(Role.BRANCH_ADMIN)
   async getPendingRegistrars(@Request() req) {
-    console.log('DEBUG - RegistrarsController - getPendingRegistrars: Request received');
-    console.log('DEBUG - RegistrarsController - getPendingRegistrars: User:', req.user);
-    try {      const result = await this.registrarsService.getPendingRegistrars(req.user.userId);
-      console.log('DEBUG - RegistrarsController - getPendingRegistrars: Found registrars:', result?.length || 0);
-      console.log('DEBUG - RegistrarsController - getPendingRegistrars: Result sample:', 
-        result?.length > 0 ? { id: result[0]._id, email: result[0].email } : 'No registrars found');
+    try {
+      const result = await this.registrarsService.getPendingRegistrars(req.user.userId);
       
       // Return directly without wrapping in data object - the frontend expects plain array
       return result;
     } catch (error) {
-      console.error('DEBUG - RegistrarsController - getPendingRegistrars: Error:', error.message);
       throw error;
     }
   }
@@ -66,13 +60,10 @@ export class RegistrarsController {  constructor(
    */  @Get('approved')
   @Roles(Role.BRANCH_ADMIN)
   async getApprovedRegistrars(@Request() req) {
-    console.log('DEBUG - RegistrarsController - getApprovedRegistrars: Request received');
     try {
       const result = await this.registrarsService.getApprovedRegistrars(req.user.userId);
-      console.log('DEBUG - RegistrarsController - getApprovedRegistrars: Found registrars:', result?.length || 0);
       return result;
     } catch (error) {
-      console.error('DEBUG - RegistrarsController - getApprovedRegistrars: Error:', error.message);
       throw error;
     }
   }
