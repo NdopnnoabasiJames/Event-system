@@ -4,6 +4,8 @@ import { RegistrarsController } from './registrars.controller';
 import { CheckInController } from './controllers/check-in.controller';
 import { RegistrarsService } from './registrars.service';
 import { CheckInService } from './services/check-in.service';
+import { RegistrarVolunteerService } from './services/registrar-volunteer.service';
+import { RegistrarGuestService } from './services/registrar-guest.service';
 import { CheckInDelegator } from './check-in.delegator';
 import { EventsModule } from '../events/events.module';
 import { UsersModule } from '../users/users.module';
@@ -14,7 +16,8 @@ import { Branch, BranchSchema } from '../schemas/branch.schema';
 import { Guest, GuestSchema } from '../schemas/guest.schema';
 import { Event, EventSchema } from '../schemas/event.schema';
 
-@Module({  imports: [
+@Module({
+  imports: [
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: Zone.name, schema: ZoneSchema },
@@ -25,8 +28,15 @@ import { Event, EventSchema } from '../schemas/event.schema';
     EventsModule,
     UsersModule,
     AdminHierarchyModule,
-  ],  controllers: [RegistrarsController, CheckInController],
-  providers: [RegistrarsService, CheckInService, CheckInDelegator],
-  exports: [RegistrarsService],
+  ],
+  controllers: [RegistrarsController, CheckInController],
+  providers: [
+    RegistrarsService, 
+    CheckInService, 
+    CheckInDelegator,
+    RegistrarVolunteerService,
+    RegistrarGuestService,
+  ],
+  exports: [RegistrarsService, RegistrarVolunteerService, RegistrarGuestService],
 })
 export class RegistrarsModule {}

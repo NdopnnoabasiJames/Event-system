@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsEmail, IsMongoId } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEmail, IsMongoId, IsEnum } from 'class-validator';
 
 export class RegistrarRegistrationDto {
 
@@ -17,6 +17,10 @@ export class RegistrarRegistrationDto {
   @IsString()
   @IsNotEmpty()
   password: string;
+
+  @IsString()
+  @IsNotEmpty()
+  role: string;
 
   @IsMongoId()
   @IsNotEmpty()

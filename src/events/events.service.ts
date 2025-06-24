@@ -196,13 +196,13 @@ export class EventsService {  constructor(
       throw new NotFoundException('Event not found');
     }
 
-    if (event.registrarRequests && event.registrarRequests.some(r => r.user.toString() === userId && r.status === 'Pending')) {
+    if (event.registrarRequests && event.registrarRequests.some(r => r.registrarId.toString() === userId && r.status === 'Pending')) {
       throw new HttpException('You already have a pending registrar request for this event', HttpStatus.BAD_REQUEST);
     }
 
     event.registrarRequests = event.registrarRequests || [];
     event.registrarRequests.push({
-      user: new Types.ObjectId(userId),
+      registrarId: new Types.ObjectId(userId),
       status: 'Pending',
       requestedAt: new Date(),
     });
@@ -227,7 +227,7 @@ export class EventsService {  constructor(
     }).lean();
 
     return events.map(event => {
-      const myRequest = (event.registrarRequests || []).find(r => r.user.toString() === userId);
+      const myRequest = (event.registrarRequests || []).find(r => r.registrarId.toString() === userId);
       return {
         event,
         request: myRequest
@@ -291,7 +291,7 @@ export class EventsService {  constructor(
     const event = await this.findOne(eventId);
     if (!event) throw new NotFoundException('Event not found');
 
-    const reqIndex = event.registrarRequests.findIndex(r => r.user.toString() === userId && r.status === 'Pending');
+    const reqIndex = event.registrarRequests.findIndex(r => r.registrarId.toString() === userId && r.status === 'Pending');
     if (reqIndex === -1) throw new NotFoundException('No pending request found');
 
     event.registrarRequests.splice(reqIndex, 1);
@@ -334,7 +334,7 @@ export class EventsService {  constructor(
       }
 
       const registrarApproved = event.registrarRequests?.some(
-        req => req.user.toString() === registrarId && req.status === 'Approved'
+        req => req.registrarId.toString() === registrarId && req.status === 'Approved'
       );
 
       if (!registrarApproved) {

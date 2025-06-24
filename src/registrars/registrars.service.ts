@@ -36,13 +36,11 @@ export class RegistrarsService {
     const existingUser = await this.userModel.findOne({ email: registrationDto.email });
     if (existingUser) {
       throw new BadRequestException('User with this email already exists');
-    }
-
-    // Validate branch exists and is active
+    }    // Validate branch exists and is active
     const branch = await this.branchModel.findOne({ 
       _id: registrationDto.branch, 
       isActive: true 
-    }).populate('stateId');
+    });
     
     if (!branch) {
       throw new BadRequestException('Invalid or inactive branch');

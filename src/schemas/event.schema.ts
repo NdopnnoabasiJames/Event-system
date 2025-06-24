@@ -120,6 +120,10 @@ export class Event {
     reviewedBy?: Types.ObjectId,
   }[];
 
+  // Approved registrars for this event
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }] })
+  registrars: Types.ObjectId[];
+
   @Prop({ default: false })
   isActive: boolean;
     @Prop()
@@ -144,13 +148,12 @@ export class Event {
     maxCapacity?: number;
     currentCount?: number;
     notes?: string;
-  }[];
-  @Prop({
+  }[];  @Prop({
     type: [
       {
         _id: { type: MongooseSchema.Types.ObjectId, auto: true },
-        user: { type: Types.ObjectId, ref: 'User', required: true },
-        status: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
+        registrarId: { type: Types.ObjectId, ref: 'User', required: true },
+        status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
         requestedAt: { type: Date, default: Date.now },
         reviewedAt: { type: Date },
         reviewedBy: { type: Types.ObjectId, ref: 'User' },
@@ -160,7 +163,7 @@ export class Event {
   })
   registrarRequests: {
     _id?: MongooseSchema.Types.ObjectId;
-    user: Types.ObjectId,
+    registrarId: Types.ObjectId,
     status: string,
     requestedAt: Date,
     reviewedAt?: Date,

@@ -2,9 +2,12 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Query, Request, UseGua
 import { EventsService } from '../events/events.service';
 import { RegistrarsService } from './registrars.service';
 import { CheckInDelegator } from './check-in.delegator';
+import { RegistrarVolunteerService } from './services/registrar-volunteer.service';
+import { RegistrarGuestService } from './services/registrar-guest.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { Role } from '../common/enums/role.enum';
 import { 
   RegistrarRegistrationDto,
@@ -20,18 +23,19 @@ import {
 
 @Controller('registrars')
 @UseGuards(JwtAuthGuard, RolesGuard)
-export class RegistrarsController {
-  constructor(
+export class RegistrarsController {  constructor(
     private readonly eventsService: EventsService,
     private readonly registrarsService: RegistrarsService,
-    private readonly checkInDelegator: CheckInDelegator
+    private readonly checkInDelegator: CheckInDelegator,
+    private readonly registrarVolunteerService: RegistrarVolunteerService,
+    private readonly registrarGuestService: RegistrarGuestService,
   ) {}
 
   // Phase 4.1: Registrar Registration & Assignment
-
   /**
    * Public endpoint - Registrar registration (no auth required for initial registration)
    */
+  @Public()
   @Post('register')
   async registerRegistrar(@Body() registrationDto: RegistrarRegistrationDto) {
     return this.registrarsService.registerRegistrar(registrationDto);
@@ -183,13 +187,85 @@ export class RegistrarsController {
   @Roles(Role.REGISTRAR, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN, Role.SUPER_ADMIN)
   async getCheckInStatistics(@Param('eventId') eventId: string, @Query('zoneId') zoneId?: string) {
     return this.checkInDelegator.getCheckInStatistics(eventId, zoneId);
-  }
-  /**
+  }  /**
    * Get registrar dashboard with assigned zones and check-in statistics
    */
   @Get('dashboard')
   @Roles(Role.REGISTRAR)
   async getRegistrarDashboard(@Request() req) {
     return this.checkInDelegator.getRegistrarDashboard(req.user.userId);
+  }
+
+  // NEW: Volunteer-based registrar endpoints
+  
+  /**
+   * Get registrar statistics for volunteer dashboard
+   */
+  @Get('volunteer/stats')
+  @Roles(Role.REGISTRAR)
+  async getVolunteerStats(@Request() req) {
+    return this.registrarVolunteerService.getRegistrarStats(req.user.userId);
+  }
+
+  /**
+   * Get all published events for volunteering
+   */
+  @Get('volunteer/events')
+  @Roles(Role.REGISTRAR)
+  async getAllEventsForVolunteering(@Request() req) {
+    return this.registrarVolunteerService.getRegistrarEvents(req.user.userId);
+  }
+
+  /**
+   * Get registrar's approved volunteer events
+   */
+  @Get('volunteer/events/my')
+  @Roles(Role.REGISTRAR)
+  async getMyVolunteerEvents(@Request() req) {
+    return this.registrarVolunteerService.getMyEvents(req.user.userId);
+  }
+
+  /**
+   * Volunteer for an event
+   */
+  @Post('volunteer/events/:id/volunteer')
+  @Roles(Role.REGISTRAR)
+  async volunteerForEvent(@Param('id') eventId: string, @Request() req) {
+    return this.registrarVolunteerService.volunteerForEvent(req.user.userId, eventId);
+  }
+
+  /**
+   * Get guests for a specific event (volunteer-based)
+   */
+  @Get('volunteer/events/:id/guests')
+  @Roles(Role.REGISTRAR)
+  async getVolunteerEventGuests(@Param('id') eventId: string, @Request() req) {
+    return this.registrarGuestService.getEventGuests(eventId, req.user.userId);
+  }
+
+  /**
+   * Search guests by phone number (volunteer-based)
+   */
+  @Get('volunteer/events/:id/guests/search')
+  @Roles(Role.REGISTRAR)
+  async searchVolunteerGuestsByPhone(
+    @Param('id') eventId: string, 
+    @Query('phone') phone: string,
+    @Request() req
+  ) {
+    return this.registrarGuestService.searchGuestByPhone(eventId, phone, req.user.userId);
+  }
+
+  /**
+   * Check in a guest (volunteer-based)
+   */
+  @Post('volunteer/events/:eventId/guests/:guestId/checkin')
+  @Roles(Role.REGISTRAR)
+  async volunteerCheckInGuest(
+    @Param('eventId') eventId: string,
+    @Param('guestId') guestId: string,
+    @Request() req
+  ) {
+    return this.registrarGuestService.checkInGuest(eventId, guestId, req.user.userId);
   }
 }
