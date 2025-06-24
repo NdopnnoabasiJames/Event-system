@@ -12,12 +12,7 @@ export class UpdateRegistrarProfileDto {
   @IsString()
   @IsOptional()
   phone?: string;
-
   @IsString()
   @IsOptional()
   bio?: string;
-
-  @IsString()
-  @IsOptional()
-  profileImage?: string;
 }

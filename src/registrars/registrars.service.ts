@@ -212,15 +212,10 @@ export class RegistrarsService {  constructor(
   }
   /**
    * Phase 4.1: Get approved registrars for management
-   */
-  async getApprovedRegistrars(branchAdminId: string): Promise<UserDocument[]> {
-    console.log('DEBUG - RegistrarsService - getApprovedRegistrars: Called with branchAdminId:', branchAdminId);
-    
+   */  async getApprovedRegistrars(branchAdminId: string): Promise<UserDocument[]> {
     try {
       // Get the branch admin to determine their branch
       const branchAdmin = await this.userModel.findById(branchAdminId);
-      console.log('DEBUG - RegistrarsService - getApprovedRegistrars: Found branch admin:', 
-        branchAdmin ? { id: branchAdmin._id, role: branchAdmin.role, branch: branchAdmin.branch } : 'Not found');
       
       if (!branchAdmin || branchAdmin.role !== Role.BRANCH_ADMIN) {
         throw new ForbiddenException('Only branch admins can view approved registrars');
@@ -230,8 +225,6 @@ export class RegistrarsService {  constructor(
       const branchFilter = typeof branchAdmin.branch === 'string' 
         ? new Types.ObjectId(branchAdmin.branch) 
         : branchAdmin.branch;
-      
-      console.log('DEBUG - RegistrarsService - getApprovedRegistrars: Using branch filter:', branchFilter);
 
       // Find all approved registrars in the branch admin's branch
       const registrars = await this.userModel.find({
@@ -246,10 +239,8 @@ export class RegistrarsService {  constructor(
       .sort({ createdAt: -1 })
       .exec();
       
-      console.log('DEBUG - RegistrarsService - getApprovedRegistrars: Found registrars count:', registrars?.length || 0);
       return registrars;
     } catch (error) {
-      console.error('DEBUG - RegistrarsService - getApprovedRegistrars: Error:', error.message, error.stack);
       throw error;
     }
   }
@@ -536,27 +527,15 @@ export class RegistrarsService {  constructor(
       throw error;
     }
   }
-
   /**
    * Get all events a registrar has access to
    */
   async getRegistrarEvents(registrarId: string): Promise<any[]> {
     try {
-      console.log('[DEBUG] getRegistrarEvents called with registrarId:', registrarId);
-      
       // Find the registrar
       const registrar = await this.userModel.findById(registrarId)
         .populate('assignedZones', 'name branchId')
         .exec();
-      
-      console.log('[DEBUG] Found registrar:', registrar ? {
-        id: registrar._id,
-        name: registrar.name,
-        email: registrar.email,
-        isApproved: registrar.isApproved,
-        branch: registrar.branch,
-        assignedZones: registrar.assignedZones
-      } : 'Not found');
       
       if (!registrar) {
         throw new NotFoundException('Registrar not found');
@@ -567,20 +546,16 @@ export class RegistrarsService {  constructor(
       }
 
       if (!registrar.isApproved) {
-        console.log('[DEBUG] Registrar is not approved, approval status:', registrar.isApproved);
         throw new ForbiddenException('Registrar must be approved to view events');
       }
 
       // Get the registrar's assigned zones
       const assignedZoneIds = registrar.assignedZones?.map(zone => zone._id) || [];
-      console.log('[DEBUG] Assigned zone IDs:', assignedZoneIds);
       
       // Branch ID check and conversion
       const branchId = typeof registrar.branch === 'string' 
         ? new Types.ObjectId(registrar.branch)
         : registrar.branch;
-      
-      console.log('[DEBUG] Using branch ID for query:', branchId);
 
       // Modified query to include events without branch information 
       // This allows registrars to see all active events if branch isn't set
@@ -610,12 +585,8 @@ export class RegistrarsService {  constructor(
         ]
       };
       
-      console.log('[DEBUG] Enhanced query for event debugging. Branch ID:', branchId);
-      console.log('[DEBUG] Event query:', JSON.stringify(query, null, 2));
-      
       try {
-        console.log('[DEBUG] Executing expanded query for events:', JSON.stringify(query));
-          // Get all events matching criteria
+        // Get all events matching criteria
         const events = await this.eventModel.find(query)
           .populate('selectedBranches', 'name')
           .populate('selectedZones', 'name')
@@ -625,59 +596,6 @@ export class RegistrarsService {  constructor(
           })
           .sort({ date: 1 })  // Sort by date
           .exec();
-          
-        console.log('[DEBUG] Events found:', events.length);
-          if (events.length === 0) {
-          // Let's first check if there are any events for this branch
-          const branchEvents = await this.eventModel.find({ 
-            $or: [
-              { branch: branchId },
-              { selectedBranches: { $in: [branchId] } }
-            ],
-            isActive: true
-          })
-            .select('_id name selectedBranches selectedZones date')
-            .limit(5)
-            .exec();
-              console.log('[DEBUG] Branch events:', 
-            branchEvents.map(e => ({
-              id: e._id,
-              name: e.name,
-              selectedBranches: e.selectedBranches,
-              selectedZones: e.selectedZones,
-              date: e.date
-            }))
-          );
-            // Let's check if there are any events at all in the system
-          const allEvents = await this.eventModel.find({ isActive: true })
-            .select('_id name selectedBranches selectedZones date registrarRequests')
-            .limit(5)
-            .exec();
-              console.log('[DEBUG] Sample of all active events in system:', 
-            allEvents.map(e => ({
-              id: e._id,
-              name: e.name,
-              selectedBranches: e.selectedBranches || [],
-              selectedZones: e.selectedZones || [],
-              date: e.date,
-              registrarRequests: e.registrarRequests?.length || 0
-            }))
-          );
-        } else {          // Log a sample of the events found
-          console.log('[DEBUG] Sample of events found:', 
-            events.slice(0, 2).map(e => ({
-              id: e._id,
-              name: e.name,
-              selectedBranches: e.selectedBranches?.map(b => (b as any).name || b) || [],
-              selectedZones: e.selectedZones?.map(z => (z as any).name || z) || [],
-              date: e.date,
-              registrarRequests: e.registrarRequests?.map(r => ({
-                registrarId: r.registrarId,
-                status: r.status
-              }))
-            }))
-          );
-        }
 
         // Format events for consistent frontend display
         const formattedEvents = events.map(event => {
@@ -704,35 +622,25 @@ export class RegistrarsService {  constructor(
                 (formattedEvent as any).endDate = endDate.toISOString();
               }
             } catch (err) {
-              console.log('[DEBUG] Error parsing date:', formattedEvent.date, err);
+              // Silently continue on date parsing errors
             }
           }
           
           return formattedEvent;
         });
         
-        console.log('[DEBUG] Returning formatted events, count:', formattedEvents.length);
-        if (formattedEvents.length > 0) {
-          console.log('[DEBUG] Sample of first formatted event:', JSON.stringify(formattedEvents[0], null, 2));
-        }
-        
         return formattedEvents;
       } catch (error) {
-        console.error('[DEBUG] Error executing event query:', error);
         throw error;
       }
     } catch (error) {
-      console.error('[DEBUG] Error in getRegistrarEvents:', error);
       throw error;
     }
   }
-
   /**
    * Helper method to check registrar approval status in detail
    */
   async checkRegistrarStatus(registrarId: string): Promise<any> {
-    console.log('[DEBUG] Checking detailed registrar status for ID:', registrarId);
-    
     try {
       // Find the registrar with approval details
       const registrar = await this.userModel.findById(registrarId)
@@ -743,22 +651,8 @@ export class RegistrarsService {  constructor(
         .exec();
       
       if (!registrar) {
-        console.error('[DEBUG] Registrar not found with ID:', registrarId);
         throw new NotFoundException('Registrar not found');
       }
-      
-      console.log('[DEBUG] Registrar details:', {
-        id: registrar._id,
-        name: registrar.name,
-        email: registrar.email,
-        role: registrar.role,
-        isApproved: registrar.isApproved,
-        isActive: registrar.isActive,
-        branch: registrar.branch,
-        assignedZones: registrar.assignedZones?.length || 0,
-        approvedAt: registrar.approvedAt,
-        approverName: registrar.approverName
-      });
       
       // Check if there are any events that this registrar can access
       const branchId = typeof registrar.branch === 'string' 
@@ -774,8 +668,6 @@ export class RegistrarsService {  constructor(
           { selectedBranches: { $in: [branchId] } }
         ]
       });
-      
-      console.log('[DEBUG] Available events in registrar branch:', availableEventCount);
       
       return {
         registrarDetails: {
@@ -794,11 +686,9 @@ export class RegistrarsService {  constructor(
         }
       };
     } catch (error) {
-      console.error('[DEBUG] Error checking registrar status:', error);
       throw error;
     }
   }
-
   /**
    * Debug method to inspect the structure of events in the database
    */
@@ -864,7 +754,6 @@ export class RegistrarsService {  constructor(
         sampleEvent: sampleEvent.toObject()
       };
     } catch (error) {
-      console.error('[DEBUG] Error in debugEventStructure:', error);
       throw error;
     }
   }

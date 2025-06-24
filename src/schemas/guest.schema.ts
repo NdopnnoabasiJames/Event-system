@@ -55,14 +55,16 @@ export class Guest {
     },
     index: true
   })
-  pickupStation?: MongooseSchema.Types.ObjectId;
-  @Prop({ 
+  pickupStation?: MongooseSchema.Types.ObjectId;  @Prop({ 
     type: String,
     required: function() {
       return this.transportPreference === 'bus';
     }
   })
   departureTime?: string;
+
+  @Prop({ type: String, required: false })
+  comments?: string;
 }
 
 export const GuestSchema = SchemaFactory.createForClass(Guest);

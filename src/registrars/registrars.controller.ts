@@ -306,7 +306,6 @@ export class RegistrarsController {  constructor(
       throw error;
     }
   }
-
   /**
    * Get all events available to a registrar
    */
@@ -314,21 +313,12 @@ export class RegistrarsController {  constructor(
   @Roles(Role.REGISTRAR)
   async getRegistrarEvents(@Request() req) {
     try {
-      console.log('[DEBUG] Controller - getRegistrarEvents called by user:', {
-        userId: req.user.userId,
-        email: req.user.email,
-        role: req.user.role
-      });
-      
       const events = await this.registrarsService.getRegistrarEvents(req.user.userId);
-      console.log('[DEBUG] Controller - getRegistrarEvents response count:', events.length);
       return events;
     } catch (error) {
-      console.error('[DEBUG] Controller - getRegistrarEvents error:', error.message);
       throw error;
     }
   }
-
   /**
    * Debug endpoint to check registrar status in detail
    */
@@ -336,19 +326,11 @@ export class RegistrarsController {  constructor(
   @Roles(Role.REGISTRAR)
   async checkRegistrarStatus(@Request() req) {
     try {
-      console.log('[DEBUG] Controller - checkRegistrarStatus called by user:', {
-        userId: req.user.userId,
-        email: req.user.email,
-        role: req.user.role
-      });
-      
       return await this.registrarsService.checkRegistrarStatus(req.user.userId);
     } catch (error) {
-      console.error('[DEBUG] Controller - checkRegistrarStatus error:', error.message);
       throw error;
     }
   }
-
   /**
    * Debug endpoint to check raw event data structure
    */
@@ -356,15 +338,8 @@ export class RegistrarsController {  constructor(
   @Roles(Role.REGISTRAR)
   async debugEventStructure(@Request() req) {
     try {
-      console.log('[DEBUG] Controller - debugEventStructure called by user:', {
-        userId: req.user.userId,
-        email: req.user.email,
-        role: req.user.role
-      });
-      
       return await this.registrarsService.debugEventStructure();
     } catch (error) {
-      console.error('[DEBUG] Controller - debugEventStructure error:', error.message);
       throw error;
     }
   }

@@ -93,13 +93,9 @@ export class User {
   // Last login tracking
   @Prop({ type: Date, required: false })
   lastLogin?: Date;
-
   // Profile fields for registrars
   @Prop({ type: String, required: false })
   bio?: string;
-
-  @Prop({ type: String, required: false })
-  profileImage?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
