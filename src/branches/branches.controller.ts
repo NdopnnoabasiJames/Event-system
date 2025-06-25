@@ -103,4 +103,13 @@ export class BranchesController {
   removeByStateAdmin(@Param('id') id: string, @Request() req) {
     return this.branchesService.removeByStateAdmin(id, req.user);
   }
+
+  // Super Admin endpoint to get all branches with admin details
+  @Get('super-admin/all-with-admins')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SUPER_ADMIN)
+  getAllBranchesWithAdmins(@Query('includeInactive') includeInactive?: string) {
+    const include = includeInactive === 'true';
+    return this.branchesService.findAllWithAdmins(include);
+  }
 }
