@@ -9,9 +9,7 @@ export class VolunteerApprovalService {
   constructor(
     @InjectModel(Event.name) private eventModel: Model<EventDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-  ) {}
-
-  /**
+  ) {}  /**
    * Get pending volunteer requests for events created by or assigned to a branch admin
    */
   async getPendingVolunteerRequests(branchAdminId: string): Promise<any[]> {
@@ -24,13 +22,11 @@ export class VolunteerApprovalService {
       const branchId = branchAdmin.branch?._id?.toString() || branchAdmin.branch?.toString();
       if (!branchId) {
         throw new BadRequestException('Branch admin has no assigned branch');
-      }
-
-      // Find events where this branch is selected and have pending volunteer requests
+      }      // Find events in this branch that have pending volunteer requests from workers in OTHER branches
       const events = await this.eventModel
         .find({
-          selectedBranches: branchId,
-          'volunteerRequests.status': 'pending'
+          'volunteerRequests.status': 'pending',
+          'selectedBranches': branchId  // Only events in this admin's branch
         })
         .populate({
           path: 'volunteerRequests.workerId',
@@ -43,11 +39,16 @@ export class VolunteerApprovalService {
         .select('name date volunteerRequests selectedBranches')
         .exec();
 
-      // Extract only pending requests
+      // Extract only pending requests from workers in OTHER branches
       const pendingRequests = [];
       events.forEach(event => {
         event.volunteerRequests
-          .filter(req => req.status === 'pending')
+          .filter(req => req.status === 'pending')          .filter(req => {
+            // Only include requests from workers in OTHER branches (not this admin's branch)
+            const worker = req.workerId as any;
+            const workerBranchId = worker?.branch?._id?.toString() || worker?.branch?.toString();
+            return workerBranchId !== branchId; // Different branch
+          })
           .forEach(req => {
             pendingRequests.push({
               requestId: req._id,
@@ -170,6 +171,69 @@ export class VolunteerApprovalService {
       };
     } catch (error) {
       throw new HttpException(`Failed to get volunteer stats: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Get approved event workers organized by event for a branch admin
+   */
+  async getApprovedEventWorkers(branchAdminId: string): Promise<any[]> {
+    try {
+      const branchAdmin = await this.userModel.findById(branchAdminId).populate('branch').exec();
+      if (!branchAdmin) {
+        throw new NotFoundException('Branch admin not found');
+      }
+
+      const branchId = branchAdmin.branch?._id?.toString() || branchAdmin.branch?.toString();
+      if (!branchId) {
+        throw new BadRequestException('Branch admin has no assigned branch');
+      }      // Find events in this branch that have approved workers from OTHER branches
+      const events = await this.eventModel
+        .find({
+          workers: { $exists: true, $not: { $size: 0 } },
+          'selectedBranches': branchId  // Only events in this admin's branch
+        })
+        .populate({
+          path: 'workers',
+          select: 'name email branch',
+          populate: {
+            path: 'branch',
+            select: 'name'
+          }
+        })
+        .select('name date workers')
+        .exec();
+
+      // Group workers by event, filtering only workers from OTHER branches
+      const eventWorkers = [];
+      events.forEach(event => {
+        const externalWorkers = event.workers.filter(worker => {
+          const workerObj = worker as any;
+          const workerBranchId = workerObj?.branch?._id?.toString() || workerObj?.branch?.toString();
+          return workerBranchId !== branchId; // Different branch
+        });
+
+        if (externalWorkers.length > 0) {
+          eventWorkers.push({
+            eventId: event._id,
+            eventName: event.name,
+            eventDate: event.date,
+            workers: externalWorkers.map(worker => ({
+              id: (worker as any)._id,
+              name: (worker as any).name,
+              email: (worker as any).email,
+              branch: (worker as any).branch
+            }))
+          });
+        }
+      });
+
+      return eventWorkers;
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new HttpException(`Failed to get approved event workers: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }

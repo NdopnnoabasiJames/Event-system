@@ -44,7 +44,7 @@ export class RegistrarVolunteerService {
 
       event.registrarRequests.push({
         registrarId: registrarId as any,
-        status: 'Pending',
+        status: 'pending',
         requestedAt: new Date()
       });
 
@@ -52,7 +52,7 @@ export class RegistrarVolunteerService {
 
       return {
         message: 'Volunteer request submitted successfully',
-        status: 'Pending'
+        status: 'pending'
       };
     } catch (error) {
       throw new BadRequestException(`Failed to volunteer for event: ${error.message}`);
@@ -80,7 +80,7 @@ export class RegistrarVolunteerService {
           path: 'availableStates',
           select: 'name'
         })
-        .populate('registrarRequests.user', 'name email')
+        .populate('registrarRequests.registrarId', 'name email')
         .exec();
     } catch (error) {
       throw new BadRequestException(`Failed to get events: ${error.message}`);
@@ -92,8 +92,8 @@ export class RegistrarVolunteerService {
       // Get events where registrar is approved
       return await this.eventModel
         .find({ 
-          'registrarRequests.user': registrarId,
-          'registrarRequests.status': 'Approved',
+          'registrarRequests.registrarId': registrarId,
+          'registrarRequests.status': 'approved',
           status: 'published',
           isActive: true 
         })
@@ -120,18 +120,18 @@ export class RegistrarVolunteerService {
     try {
       // Count total events volunteered for
       const totalEventsVolunteered = await this.eventModel.countDocuments({
-        'registrarRequests.user': registrarId
+        'registrarRequests.registrarId': registrarId
       });
 
       // Count approved events
       const approvedEvents = await this.eventModel.countDocuments({
-        'registrarRequests.user': registrarId,
-        'registrarRequests.status': 'Approved'
+        'registrarRequests.registrarId': registrarId,
+        'registrarRequests.status': 'approved'
       });
 
       // Count total guests checked in by this registrar
       const totalCheckedInGuests = await this.eventModel.aggregate([
-        { $match: { 'registrarRequests.user': registrarId, 'registrarRequests.status': 'Approved' } },
+        { $match: { 'registrarRequests.registrarId': registrarId, 'registrarRequests.status': 'approved' } },
         { $lookup: { from: 'guests', localField: '_id', foreignField: 'event', as: 'guests' } },
         { $unwind: '$guests' },
         { $match: { 'guests.checkedInBy': registrarId, 'guests.isCheckedIn': true } },

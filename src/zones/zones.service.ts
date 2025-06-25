@@ -3,6 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Zone, ZoneDocument } from '../schemas/zone.schema';
 import { Branch, BranchDocument } from '../schemas/branch.schema';
+import { User, UserDocument } from '../schemas/user.schema';
+import { PickupStation, PickupStationDocument } from '../schemas/pickup-station.schema';
 import { CreateZoneDto } from './dto/create-zone.dto';
 import { UpdateZoneDto } from './dto/update-zone.dto';
 
@@ -11,6 +13,8 @@ export class ZonesService {
   constructor(
     @InjectModel(Zone.name) private zoneModel: Model<ZoneDocument>,
     @InjectModel(Branch.name) private branchModel: Model<BranchDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(PickupStation.name) private pickupStationModel: Model<PickupStationDocument>,
   ) {}
 
   async create(createZoneDto: CreateZoneDto): Promise<ZoneDocument> {
@@ -56,9 +60,53 @@ export class ZonesService {
           path: 'stateId',
           select: 'name code isActive'
         }
+      })      .sort({ name: 1 })
+      .exec();
+  }
+
+  async findAllWithAdminsAndPickupStations(includeInactive = false): Promise<any[]> {
+    const filter = includeInactive ? {} : { isActive: true };
+    const zones = await this.zoneModel
+      .find(filter)
+      .populate({
+        path: 'branchId',
+        select: 'name location stateId isActive',
+        populate: {
+          path: 'stateId',
+          select: 'name code isActive'
+        }
       })
       .sort({ name: 1 })
+      .lean()
       .exec();
+
+    // Get additional data for each zone
+    const zonesWithDetails = await Promise.all(
+      zones.map(async (zone) => {
+        // Find zonal admin
+        const zonalAdmin = await this.userModel
+          .findOne({ 
+            zone: zone._id.toString(), 
+            role: 'zonal_admin',
+            isApproved: true 
+          })
+          .select('name email')
+          .lean()
+          .exec();
+
+        // Count pickup stations in this zone
+        const pickupStationCount = await this.pickupStationModel.countDocuments({
+          zoneId: zone._id,
+          isActive: true
+        });
+
+        return {
+          ...zone,
+          zonalAdmin: zonalAdmin || null,
+          pickupStationCount
+        };
+      })
+    );    return zonesWithDetails;
   }
 
   async findByBranch(branchId: string, includeInactive = false): Promise<ZoneDocument[]> {

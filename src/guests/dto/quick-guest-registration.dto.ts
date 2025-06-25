@@ -21,9 +21,12 @@ export class QuickGuestRegistrationDto {
   @IsOptional()
   @IsMongoId()
   pickupStation?: string;
-
   // Optional fields for quick registration
   @IsOptional()
   @IsString()
   email?: string;
+
+  @IsOptional()
+  @IsString()
+  comments?: string;
 }

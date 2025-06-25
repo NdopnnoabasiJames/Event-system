@@ -5,6 +5,7 @@ import { BranchesController } from './branches.controller';
 import { Branch, BranchSchema } from '../schemas/branch.schema';
 import { State, StateSchema } from '../schemas/state.schema';
 import { Zone, ZoneSchema } from '../schemas/zone.schema';
+import { User, UserSchema } from '../schemas/user.schema';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { Zone, ZoneSchema } from '../schemas/zone.schema';
       { name: Branch.name, schema: BranchSchema },
       { name: State.name, schema: StateSchema },
       { name: Zone.name, schema: ZoneSchema },
+      { name: User.name, schema: UserSchema },
     ])
   ],
   controllers: [BranchesController],

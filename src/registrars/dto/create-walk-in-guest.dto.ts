@@ -25,10 +25,13 @@ export class CreateWalkInGuestDto {
   @IsMongoId()
   @IsNotEmpty()
   branchId: string;
-
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @IsString()
+  @IsOptional()
+  comments?: string;
   
   @IsBoolean()
   @IsOptional()

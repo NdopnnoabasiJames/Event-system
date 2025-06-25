@@ -261,6 +261,15 @@ export class RegistrarsController {  constructor(
   }
 
   /**
+   * Alternative volunteer endpoint for frontend compatibility
+   */
+  @Post('events/:id/volunteer')
+  @Roles(Role.REGISTRAR)
+  async volunteerForEventAlt(@Param('id') eventId: string, @Request() req) {
+    return this.registrarVolunteerService.volunteerForEvent(req.user.userId, eventId);
+  }
+
+  /**
    * Get guests for a specific event (volunteer-based)
    */
   @Get('volunteer/events/:id/guests')
@@ -281,7 +290,6 @@ export class RegistrarsController {  constructor(
   ) {
     return this.registrarGuestService.searchGuestByPhone(eventId, phone, req.user.userId);
   }
-
   /**
    * Check in a guest (volunteer-based)
    */
@@ -293,5 +301,55 @@ export class RegistrarsController {  constructor(
     @Request() req
   ) {
     return this.registrarGuestService.checkInGuest(eventId, guestId, req.user.userId);
+  }
+
+  /**
+   * Get registrar dashboard statistics
+   */
+  @Get('stats')
+  @Roles(Role.REGISTRAR)
+  async getRegistrarStats(@Request() req) {
+    try {
+      return await this.registrarsService.getRegistrarStats(req.user.userId);
+    } catch (error) {
+      throw error;
+    }
+  }
+  /**
+   * Get all events available to a registrar
+   */
+  @Get('events/all')
+  @Roles(Role.REGISTRAR)
+  async getRegistrarEvents(@Request() req) {
+    try {
+      const events = await this.registrarsService.getRegistrarEvents(req.user.userId);
+      return events;
+    } catch (error) {
+      throw error;
+    }
+  }
+  /**
+   * Debug endpoint to check registrar status in detail
+   */
+  @Get('debug/status')
+  @Roles(Role.REGISTRAR)
+  async checkRegistrarStatus(@Request() req) {
+    try {
+      return await this.registrarsService.checkRegistrarStatus(req.user.userId);
+    } catch (error) {
+      throw error;
+    }
+  }
+  /**
+   * Debug endpoint to check raw event data structure
+   */
+  @Get('debug/event-structure')
+  @Roles(Role.REGISTRAR)
+  async debugEventStructure(@Request() req) {
+    try {
+      return await this.registrarsService.debugEventStructure();
+    } catch (error) {
+      throw error;
+    }
   }
 }

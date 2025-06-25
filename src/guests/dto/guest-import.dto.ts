@@ -18,10 +18,13 @@ export class GuestImportDataDto {
   @IsOptional()
   @IsString()
   pickupStation?: string;
-
   @IsOptional()
   @IsEnum(['invited', 'confirmed', 'checked_in', 'no_show', 'cancelled'])
   status?: string;
+
+  @IsOptional()
+  @IsString()
+  comments?: string;
 }
 
 export class GuestImportDto {

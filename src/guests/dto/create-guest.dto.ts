@@ -38,7 +38,10 @@ export class CreateGuestDto {
 
   @IsMongoId()
   branch: string;
-
   @IsMongoId()
   event: string;
+
+  @IsOptional()
+  @IsString()
+  comments?: string;
 }
