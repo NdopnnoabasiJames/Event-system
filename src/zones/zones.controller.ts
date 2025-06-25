@@ -21,7 +21,16 @@ import { Role } from '../common/enums/role.enum';
 
 @Controller('zones')
 export class ZonesController {
-  constructor(private readonly zonesService: ZonesService) {}  // Branch Admin specific endpoints
+  constructor(private readonly zonesService: ZonesService) {}
+
+  // Super Admin specific endpoint
+  @Get('super-admin/all-with-admins')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SUPER_ADMIN)
+  findAllWithAdmins(@Query('includeInactive') includeInactive?: string) {
+    const include = includeInactive === 'true';
+    return this.zonesService.findAllWithAdminsAndPickupStations(include);
+  }  // Branch Admin specific endpoints
   @Get('branch-admin/list')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.BRANCH_ADMIN)
