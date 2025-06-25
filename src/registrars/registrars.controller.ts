@@ -261,6 +261,15 @@ export class RegistrarsController {  constructor(
   }
 
   /**
+   * Alternative volunteer endpoint for frontend compatibility
+   */
+  @Post('events/:id/volunteer')
+  @Roles(Role.REGISTRAR)
+  async volunteerForEventAlt(@Param('id') eventId: string, @Request() req) {
+    return this.registrarVolunteerService.volunteerForEvent(req.user.userId, eventId);
+  }
+
+  /**
    * Get guests for a specific event (volunteer-based)
    */
   @Get('volunteer/events/:id/guests')

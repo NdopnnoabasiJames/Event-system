@@ -404,4 +404,20 @@ export class WorkersController {
       throw new HttpException(error.message || 'Failed to fetch volunteer stats', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  // Get approved event workers for branch admin
+  @Get('admin/approved-event-workers')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.BRANCH_ADMIN, Role.SUPER_ADMIN)
+  async getApprovedEventWorkers(@Request() req) {
+    this.logger.log(`GET /workers/admin/approved-event-workers - Admin: ${req.user?.email}`);
+    
+    try {
+      const eventWorkers = await this.volunteerApprovalService.getApprovedEventWorkers(req.user.userId);
+      return eventWorkers;
+    } catch (error) {
+      this.logger.error(`Error fetching approved event workers: ${error.message}`);
+      throw new HttpException(error.message || 'Failed to fetch approved event workers', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
 }

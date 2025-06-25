@@ -121,13 +121,11 @@ export class WorkerVolunteerService {
       
       if (existingRequest || event.workers.includes(workerId as any)) {
         throw new BadRequestException('Already volunteered for this event');
-      }
-
-      // Check if event is in worker's own branch
+      }      // Check if event is in worker's own branch
       const workerBranchId = worker.branch?._id?.toString() || worker.branch?.toString();
-      const isOwnBranch = event.selectedBranches.some(
+      const isOwnBranch = event.selectedBranches?.some(
         branchId => branchId.toString() === workerBranchId
-      );
+      ) || false;
 
       if (isOwnBranch) {
         // Auto-approve for own branch
