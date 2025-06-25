@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { State, StateDocument } from '../schemas/state.schema';
 import { Branch, BranchDocument } from '../schemas/branch.schema';
 import { Zone, ZoneDocument } from '../schemas/zone.schema';
+import { User, UserDocument } from '../schemas/user.schema';
 import { CreateStateDto } from './dto/create-state.dto';
 import { UpdateStateDto } from './dto/update-state.dto';
 
@@ -13,6 +14,7 @@ export class StatesService {
     @InjectModel(State.name) private stateModel: Model<StateDocument>,
     @InjectModel(Branch.name) private branchModel: Model<BranchDocument>,
     @InjectModel(Zone.name) private zoneModel: Model<ZoneDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {}
   async create(createStateDto: CreateStateDto): Promise<StateDocument> {
     try {
@@ -50,32 +52,48 @@ export class StatesService {
       }
       throw error;
     }
-  }
-  async findAll(includeInactive = false): Promise<any[]> {
+  }  async findAll(includeInactive = false): Promise<any[]> {
     const filter = includeInactive ? {} : { isActive: true };
     const states = await this.stateModel
       .find(filter)
       .sort({ name: 1 })
       .exec();
 
-    // Get branch and zone counts for each state
+    // Get branch and zone counts for each state, plus state admin info
     const statesWithCounts = await Promise.all(
-      states.map(async (state) => {
-        const branchCount = await this.branchModel.countDocuments({ 
+      states.map(async (state) => {        const branchCount = await this.branchModel.countDocuments({ 
           stateId: state._id,
           isActive: true 
         });
-        
+          // Get all branches in this state first
+        const branchesInState = await this.branchModel.find({ 
+          stateId: state._id,
+          isActive: true 
+        }).select('_id').lean().exec();
+          // Count zones within all branches of this state
+        const branchIds = branchesInState.map(branch => branch._id);
         const zoneCount = await this.zoneModel.countDocuments({ 
-          stateId: state._id,
+          branchId: { $in: branchIds },
           isActive: true 
         });
+
+        // Find state admin - compare as string since state field in User is stored as string
+        const stateIdString = state._id.toString();
+        const stateAdmin = await this.userModel
+          .findOne({ 
+            state: stateIdString, 
+            role: 'state_admin',
+            isApproved: true 
+          })
+          .select('name email')
+          .lean()
+          .exec();
 
         return {
           ...state.toObject(),
           branchCount,
           zoneCount,
-          totalSubdivisions: branchCount + zoneCount
+          stateAdmin: stateAdmin || null
         };
       })
     );
