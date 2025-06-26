@@ -494,4 +494,14 @@ export class AdminHierarchyController {  constructor(
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
+
+  @Get('guests')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN, Role.ZONAL_ADMIN)
+  async getAccessibleGuests(@Request() req) {
+    try {
+      return await this.adminHierarchyService.getAccessibleGuests(req.user.userId);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
 }

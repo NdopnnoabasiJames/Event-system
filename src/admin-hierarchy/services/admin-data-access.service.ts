@@ -322,4 +322,49 @@ export class AdminDataAccessService {
 
     return workersWithGuestCounts;
   }
+
+  /**
+   * Get guests accessible by admin with detailed information
+   */
+  async getAccessibleGuests(adminId: string): Promise<any[]> {
+    const admin = await this.adminHierarchyCoreService.getAdminWithHierarchy(adminId);
+
+    let query: any = {};
+
+    // Filter based on requesting admin's jurisdiction
+    switch (admin.role) {
+      case Role.SUPER_ADMIN:
+        // Can see all guests
+        break;
+      case Role.STATE_ADMIN:
+        query.state = admin.state;
+        break;
+      case Role.BRANCH_ADMIN:
+        query.branch = admin.branch;
+        break;
+      case Role.ZONAL_ADMIN:
+        // Zonal admins can only see guests in their zone
+        // First get workers in their zone, then filter guests by those workers
+        const zoneWorkers = await this.userModel
+          .find({ zone: admin.zone, role: Role.WORKER })
+          .select('_id')
+          .exec();
+        const workerIds = zoneWorkers.map(worker => worker._id);
+        query.registeredBy = { $in: workerIds };
+        break;
+      default:
+        // Other roles can't access guest data
+        return [];
+    }    const guests = await this.guestModel
+      .find(query)
+      .populate('event', 'name')
+      .populate('registeredBy', 'name')
+      .populate('state', 'name')
+      .populate('branch', 'name location')
+      .populate('pickupStation', 'name location')      .select('name email phone transportPreference event registeredBy state branch pickupStation status checkedIn checkedInTime createdAt')
+      .sort({ createdAt: -1 })
+      .exec();
+
+    return guests;
+  }
 }

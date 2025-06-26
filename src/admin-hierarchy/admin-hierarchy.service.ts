@@ -126,6 +126,13 @@ export class AdminHierarchyService {  constructor(
     return this.adminDataAccessService.getAccessibleWorkers(adminId);
   }
 
+  /**
+   * Get guests accessible by requesting admin
+   */
+  async getAccessibleGuests(adminId: string): Promise<any[]> {
+    return this.adminDataAccessService.getAccessibleGuests(adminId);
+  }
+
   // ===============================
   // Admin Management Methods
   // ===============================
