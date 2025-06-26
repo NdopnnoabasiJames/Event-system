@@ -147,4 +147,13 @@ export class ZonesController {
   getZoneStatistics() {
     return this.zonesService.getZoneStatistics();
   }
+
+  // State Admin specific endpoint
+  @Get('state-admin/my-zones')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STATE_ADMIN)
+  async findByStateAdmin(@Req() req: any, @Query('includeInactive') includeInactive?: string) {
+    const include = includeInactive === 'true';
+    return this.zonesService.findByStateAdmin(req.user, include);
+  }
 }

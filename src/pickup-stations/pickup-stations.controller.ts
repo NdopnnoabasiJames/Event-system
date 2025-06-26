@@ -209,4 +209,12 @@ export class PickupStationsController {
       res.status(400).json({ message: error.message });
     }
   }
+
+  // State Admin specific endpoint
+  @Get('state-admin/my-stations')
+  @Roles(Role.STATE_ADMIN)
+  async findByStateAdmin(@Request() req, @Query('includeInactive') includeInactive?: string) {
+    const include = includeInactive === 'true';
+    return this.pickupStationsService.findByStateAdmin(req.user, include);
+  }
 }

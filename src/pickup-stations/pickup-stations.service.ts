@@ -332,4 +332,41 @@ export class PickupStationsService {
       stations: allStations
     };
   }
+
+  // State Admin method to get all pickup stations in their state
+  async findByStateAdmin(user: any, includeInactive = false): Promise<any[]> {
+    const stateId = typeof user.state === 'string' ? user.state : user.state?._id;
+    
+    if (!stateId) {
+      throw new BadRequestException('State admin must be assigned to a state');
+    }
+
+    // First get all branches in the state
+    const branches = await this.branchModel
+      .find({ stateId, isActive: true })
+      .select('_id')
+      .lean()
+      .exec();
+
+    const branchIds = branches.map(branch => branch._id);
+
+    if (branchIds.length === 0) {
+      return [];
+    }
+
+    const filter = { 
+      branchId: { $in: branchIds },
+      ...(includeInactive ? {} : { isActive: true })
+    };
+
+    const pickupStations = await this.pickupStationModel
+      .find(filter)
+      .populate('branchId', 'name location')
+      .populate('zoneId', 'name')
+      .sort({ location: 1 })
+      .lean()
+      .exec();
+
+    return pickupStations;
+  }
 }

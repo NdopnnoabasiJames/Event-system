@@ -204,7 +204,6 @@ export class BranchesService {  constructor(
       throw error;
     }
   }
-
   async findByStateAdmin(user: any, includeInactive = false): Promise<any[]> {
     const stateId = typeof user.state === 'string' ? user.state : user.state?._id;
     
@@ -221,18 +220,34 @@ export class BranchesService {  constructor(
       .find(filter)
       .populate('stateId', 'name')
       .sort({ name: 1 })
+      .lean()
       .exec();
 
-    // Get zone counts for each branch
+    // Get zone counts and branch admin info for each branch (similar to SuperAdmin method)
     const branchesWithCounts = await Promise.all(
       branches.map(async (branch) => {
+        // Ensure branch._id is properly handled - it could be string or ObjectId
+        const branchId = branch._id.toString();
+        
+        // Find the branch admin for this branch
+        const branchAdmin = await this.userModel
+          .findOne({
+            role: Role.BRANCH_ADMIN,
+            branch: branchId,
+            isApproved: true
+          })
+          .select('name email phone isApproved approvedAt')
+          .lean()
+          .exec();
+
         const zoneCount = await this.zoneModel.countDocuments({ 
           branchId: branch._id,
           isActive: true 
         });
 
         return {
-          ...branch.toObject(),
+          ...branch,
+          branchAdmin: branchAdmin || null,
           zoneCount
         };
       })

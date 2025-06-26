@@ -7,6 +7,7 @@ import { User, UserDocument } from '../schemas/user.schema';
 import { PickupStation, PickupStationDocument } from '../schemas/pickup-station.schema';
 import { CreateZoneDto } from './dto/create-zone.dto';
 import { UpdateZoneDto } from './dto/update-zone.dto';
+import { Role } from '../common/enums/role.enum';
 
 @Injectable()
 export class ZonesService {
@@ -80,12 +81,11 @@ export class ZonesService {
 
     // Get additional data for each zone
     const zonesWithDetails = await Promise.all(
-      zones.map(async (zone) => {
-        // Find zonal admin
+      zones.map(async (zone) => {        // Find zonal admin
         const zonalAdmin = await this.userModel
           .findOne({ 
             zone: zone._id.toString(), 
-            role: 'zonal_admin',
+            role: Role.ZONAL_ADMIN,
             isApproved: true 
           })
           .select('name email')
@@ -313,5 +313,69 @@ export class ZonesService {
       activeZones,
       inactiveZones
     };
+  }
+
+  // State Admin method to get all zones in their state
+  async findByStateAdmin(user: any, includeInactive = false): Promise<any[]> {
+    const stateId = typeof user.state === 'string' ? user.state : user.state?._id;
+    
+    if (!stateId) {
+      throw new BadRequestException('State admin must be assigned to a state');
+    }
+
+    // First get all branches in the state
+    const branches = await this.branchModel
+      .find({ stateId, isActive: true })
+      .select('_id')
+      .lean()
+      .exec();
+
+    const branchIds = branches.map(branch => branch._id);
+
+    if (branchIds.length === 0) {
+      return [];
+    }
+
+    const filter = { 
+      branchId: { $in: branchIds },
+      ...(includeInactive ? {} : { isActive: true })
+    };
+
+    const zones = await this.zoneModel
+      .find(filter)
+      .populate('branchId', 'name location')
+      .sort({ name: 1 })
+      .lean()
+      .exec();
+
+    // Get zone admin info and pickup station counts for each zone
+    const zonesWithDetails = await Promise.all(
+      zones.map(async (zone) => {
+        const zoneId = zone._id.toString();        // Find the zone admin for this zone
+        const zonalAdmin = await this.userModel
+          .findOne({
+            role: Role.ZONAL_ADMIN,
+            zone: zoneId,
+            isApproved: true
+          })
+          .select('name email phone isApproved approvedAt')
+          .lean()
+          .exec();
+
+        // Count pickup stations in this zone
+        const pickupStationCount = await this.pickupStationModel.countDocuments({ 
+          zoneId: zone._id,
+          isActive: true 
+        });
+
+        return {
+          ...zone,
+          zonalAdmin: zonalAdmin || null,
+          pickupStationCount
+        };
+      })
+    );
+
+    return zonesWithDetails;
   }
 }
