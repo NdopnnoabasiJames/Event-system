@@ -74,11 +74,8 @@ export class HierarchicalPickupStationAssignmentService {
       maxCapacity: ps.maxCapacity || 50,
       currentCount: 0,
       notes: ps.notes
-    }));    event.pickupStations.push(...newPickupStations);
-
-    // Auto-publish event when pickup stations are assigned (transition from draft to published)
+    }));    event.pickupStations.push(...newPickupStations);    // Auto-publish event when pickup stations are assigned (transition from draft to published)
     if (event.status === 'draft') {
-      console.log('DEBUG: Auto-publishing event after pickup station assignment');
       event.status = 'published';
     }
 
@@ -200,23 +197,17 @@ export class HierarchicalPickupStationAssignmentService {
   }
   /**
    * Get pickup stations available for assignment in admin's zone
-   */
-  async getAvailablePickupStations(zonalAdminId: string): Promise<PickupStationDocument[]> {
-    console.log('DEBUG: getAvailablePickupStations called with zonalAdminId:', zonalAdminId);
-    
+   */  async getAvailablePickupStations(zonalAdminId: string): Promise<PickupStationDocument[]> {
     try {
       const admin = await this.adminHierarchyService.getAdminWithHierarchy(zonalAdminId);
-      console.log('DEBUG: Admin retrieved:', { id: admin._id, role: admin.role, zone: admin.zone });
       
       if (admin.role !== Role.ZONAL_ADMIN) {
-        console.log('DEBUG: Role check failed - expected zonal_admin, got:', admin.role);
         throw new ForbiddenException('Only zonal admins can view available pickup stations');
       }
 
       if (!admin.zone) {
-        console.log('DEBUG: Zone check failed - admin has no zone assigned');
         throw new BadRequestException('Zonal admin must be assigned to a zone');
-      }      console.log('DEBUG: Searching for pickup stations with zoneId:', admin.zone);
+      }
 
       const adminZoneIdForQuery = admin.zone?._id || admin.zone;
       const stations = await this.pickupStationModel.find({
@@ -228,10 +219,8 @@ export class HierarchicalPickupStationAssignmentService {
       .sort({ location: 1 })
       .exec();
 
-      console.log('DEBUG: Found pickup stations:', stations.length);
       return stations;
     } catch (error) {
-      console.error('DEBUG: Error in getAvailablePickupStations:', error);
       throw error;
     }
   }

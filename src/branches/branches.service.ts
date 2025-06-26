@@ -306,8 +306,7 @@ export class BranchesService {  constructor(
   // Super Admin method to get all branches with admin details
   async findAllWithAdmins(includeInactive = false): Promise<any[]> {
     const filter = includeInactive ? {} : { isActive: true };
-    
-    // Get all branches with state information
+      // Get all branches with state information
     const branches = await this.branchModel
       .find(filter)
       .populate('stateId', 'name code country isActive')
@@ -315,7 +314,7 @@ export class BranchesService {  constructor(
       .lean()
       .exec();
 
-    console.log(`Found ${branches.length} branches`);    // For each branch, find the branch admin
+    // For each branch, find the branch admin
     const branchesWithAdmins = await Promise.all(
       branches.map(async (branch) => {
         // Ensure branch._id is properly handled - it could be string or ObjectId
@@ -324,31 +323,14 @@ export class BranchesService {  constructor(
         // Find the branch admin for this branch
         const branchAdmin = await this.userModel
           .findOne({
-            role: Role.BRANCH_ADMIN,
-            branch: branchId,
+            role: Role.BRANCH_ADMIN,            branch: branchId,
             isApproved: true
           })
           .select('name email phone isApproved approvedAt')
           .lean()
           .exec();
 
-        // Debug: Check if there are any BRANCH_ADMIN users for this branch (approved or not)
-        const anyBranchAdmin = await this.userModel
-          .findOne({
-            role: Role.BRANCH_ADMIN,
-            branch: branchId
-          })
-          .select('name email isApproved')
-          .lean()
-          .exec();
-
-        // Debug: Count all BRANCH_ADMIN users
-        const totalBranchAdmins = await this.userModel.countDocuments({
-          role: Role.BRANCH_ADMIN,
-          branch: branchId
-        });
-
-        console.log(`Branch: ${branch.name}, Admin found: ${!!branchAdmin}, Any admin: ${!!anyBranchAdmin}, Total admins: ${totalBranchAdmins}`);        // Count zones in this branch
+        // Count zones in this branch
         const zonesCount = await this.zoneModel.countDocuments({ 
           branchId: branch._id,
           isActive: true 
@@ -359,18 +341,11 @@ export class BranchesService {  constructor(
           role: Role.WORKER,
           branch: branchId,
           isApproved: true
-        });
-
-        return {
+        });        return {
           ...branch,
           branchAdmin: branchAdmin || null,
           zonesCount,
-          workersCount,
-          // Debug info
-          debug: {
-            anyBranchAdmin: anyBranchAdmin || null,
-            totalBranchAdmins
-          }
+          workersCount
         };
       })
     );

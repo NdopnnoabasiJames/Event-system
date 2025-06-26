@@ -14,27 +14,21 @@ export class EventsService {  constructor(
     private usersService: UsersService,
     private guestsService: GuestsService,
   ) {}
-
   async create(createEventDto: CreateEventDto): Promise<EventDocument> {
     try {
-      console.log('Creating event with data:', JSON.stringify(createEventDto, null, 2));
-      
       // Make sure states is an array
       if (!Array.isArray(createEventDto.states)) {
-        console.log('Converting states to array');
         createEventDto.states = createEventDto.states ? [String(createEventDto.states)] : [];
       }
       
       // Validate branches is an array
       if (!Array.isArray(createEventDto.branches)) {
-        console.log('Converting branches to array format');
         createEventDto.branches = [];
       }
       
       // Create new event with validated data
       const event = new this.eventModel(createEventDto);
       const savedEvent = await event.save();
-      console.log('Event saved successfully:', savedEvent);
       return savedEvent;
     } catch (error) {
       console.error('Failed to create event:', error);

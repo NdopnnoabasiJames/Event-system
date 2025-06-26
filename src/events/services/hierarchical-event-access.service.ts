@@ -131,23 +131,18 @@ export class HierarchicalEventAccessService {
    * Get events available for pickup station assignment by Zonal Admin
    */
   async getEventsForPickupAssignment(zonalAdminId: string): Promise<EventDocument[]> {
-    console.log('DEBUG: getEventsForPickupAssignment called with zonalAdminId:', zonalAdminId);
-    
     try {
       const admin = await this.adminHierarchyService.getAdminWithHierarchy(zonalAdminId);
-      console.log('DEBUG: Admin retrieved:', { id: admin._id, role: admin.role, zone: admin.zone });
       
       if (admin.role !== Role.ZONAL_ADMIN) {
-        console.log('DEBUG: Role check failed - expected zonal_admin, got:', admin.role);
         throw new ForbiddenException('Only zonal admins can assign pickup stations');
       }
 
       if (!admin.zone) {
-        console.log('DEBUG: Zone check failed - admin has no zone assigned');
         throw new BadRequestException('Zonal admin must be assigned to a zone');
       }
 
-      console.log('DEBUG: Searching for events with zone:', admin.zone);      // Find events where this zone is included in availableZones
+      // Find events where this zone is included in availableZones
       const events = await this.eventModel.find({
         availableZones: admin.zone,
         status: { $in: ['draft', 'published', 'active'] }, // Include draft events for pickup assignment
@@ -161,10 +156,8 @@ export class HierarchicalEventAccessService {
       .sort({ date: 1 })
       .exec();
 
-      console.log('DEBUG: Found events:', events.length);
       return events;
     } catch (error) {
-      console.error('DEBUG: Error in getEventsForPickupAssignment:', error);
       throw error;
     }
   }
