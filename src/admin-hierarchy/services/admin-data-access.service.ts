@@ -7,6 +7,7 @@ import { Branch, BranchDocument } from '../../schemas/branch.schema';
 import { Zone, ZoneDocument } from '../../schemas/zone.schema';
 import { Event, EventDocument } from '../../schemas/event.schema';
 import { Guest, GuestDocument } from '../../schemas/guest.schema';
+import { Worker, WorkerDocument } from '../../schemas/worker.schema';
 import { Role } from '../../common/enums/role.enum';
 import { AdminHierarchyCoreService } from './admin-hierarchy-core.service';
 
@@ -20,8 +21,8 @@ export class AdminDataAccessService {
     @InjectModel(State.name) private stateModel: Model<StateDocument>,
     @InjectModel(Branch.name) private branchModel: Model<BranchDocument>,
     @InjectModel(Zone.name) private zoneModel: Model<ZoneDocument>,
-    @InjectModel(Event.name) private eventModel: Model<EventDocument>,
-    @InjectModel(Guest.name) private guestModel: Model<GuestDocument>,
+    @InjectModel(Event.name) private eventModel: Model<EventDocument>,    @InjectModel(Guest.name) private guestModel: Model<GuestDocument>,
+    @InjectModel(Worker.name) private workerModel: Model<WorkerDocument>,
     private adminHierarchyCoreService: AdminHierarchyCoreService,
   ) {}
 
@@ -260,62 +261,90 @@ export class AdminDataAccessService {
       .sort({ role: 1, name: 1 })
       .exec();
   }
-
   /**
    * Get workers accessible by admin with detailed information
    */  async getAccessibleWorkers(adminId: string): Promise<any[]> {
     const admin = await this.adminHierarchyCoreService.getAdminWithHierarchy(adminId);
 
-    let query: any = {
-      role: Role.WORKER,
-    };
+    // First, get all workers from the Worker collection
+    const allWorkers = await this.workerModel
+      .find({})
+      .populate({
+        path: 'user',
+        populate: [
+          { path: 'state', select: 'name' },
+          { path: 'branch', select: 'name location' },
+          { path: 'zone', select: 'name' },
+          { path: 'approvedBy', select: 'name' }
+        ]
+      })
+      .exec();
+    
+    // Cast to proper type for populated user field
+    const populatedWorkers = allWorkers as any[];
 
-    // Filter based on requesting admin's jurisdiction
+    // Filter workers based on requesting admin's jurisdiction
+    let filteredWorkers = populatedWorkers;
+
     switch (admin.role) {
       case Role.SUPER_ADMIN:
         // Can see all workers
         break;
       case Role.STATE_ADMIN:
-        query.state = admin.state;
+        filteredWorkers = populatedWorkers.filter((worker: any) => 
+          worker.user?.state?._id?.toString() === admin.state._id.toString()
+        );
         break;
       case Role.BRANCH_ADMIN:
-        query.branch = admin.branch;
+        const branchId = admin.branch._id || admin.branch;
+        filteredWorkers = populatedWorkers.filter((worker: any) => 
+          worker.user?.branch?._id?.toString() === branchId.toString()
+        );
         break;
       case Role.ZONAL_ADMIN:
-        // Zonal admins can only see workers in their zone
-        query.zone = admin.zone;
+        const zoneId = admin.zone._id || admin.zone;
+        filteredWorkers = populatedWorkers.filter((worker: any) => 
+          worker.user?.zone?._id?.toString() === zoneId.toString()
+        );
         break;
       default:
         // Other roles can't access worker data
         return [];
     }
 
-    const workers = await this.userModel
-      .find(query)
-      .populate('state', 'name')
-      .populate('branch', 'name location')
-      .populate('zone', 'name')
-      .populate('approvedBy', 'name')
-      .select('name state branch zone isApproved approvedBy approvedAt isActive createdAt')
-      .sort({ createdAt: -1 })
-      .exec();    // Calculate actual guest counts for each worker
+    // Calculate actual guest counts for each worker
     const workersWithGuestCounts = await Promise.all(
-      workers.map(async (worker) => {
+      filteredWorkers.map(async (worker: any) => {
         // Count total invited guests for this worker (using registeredBy field)
         const totalInvitedGuests = await this.guestModel.countDocuments({
-          registeredBy: worker._id
+          registeredBy: worker.user._id
         });
 
         // Count checked-in guests for this worker (using checkedIn field)
         const totalCheckedInGuests = await this.guestModel.countDocuments({
-          registeredBy: worker._id,
+          registeredBy: worker.user._id,
           checkedIn: true
         });
 
         return {
-          ...worker.toObject(),
+          _id: worker.user._id,
+          name: worker.user.name,
+          email: worker.user.email,
+          phone: worker.user.phone,
+          state: worker.user.state,
+          branch: worker.user.branch,
+          zone: worker.user.zone,
+          isApproved: worker.user.isApproved,
+          approvedBy: worker.user.approvedBy,
+          approvedAt: worker.user.approvedAt,
+          isActive: worker.user.isActive,
+          createdAt: worker.user.createdAt,
           totalInvitedGuests,
-          totalCheckedInGuests
+          totalCheckedInGuests,
+          // Include worker-specific data
+          assignedEvents: worker.assignedEvents,
+          totalGuestsRegistered: worker.totalGuestsRegistered,
+          lastActivityDate: worker.lastActivityDate
         };
       })
     );

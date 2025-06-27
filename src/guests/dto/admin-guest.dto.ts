@@ -85,7 +85,7 @@ export class BulkGuestOperationDto {
 }
 
 export class UpdateGuestStatusDto {
-  @IsEnum(['invited', 'confirmed', 'checked_in', 'no_show', 'cancelled'])
+  @IsEnum(['invited', 'checked_in', 'no_show'])
   status: string;
 }
 

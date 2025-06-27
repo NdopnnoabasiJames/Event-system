@@ -32,10 +32,9 @@ export class Guest {
 
   @Prop({ type: String, required: false })
   checkInNotes: string;
-  
-  @Prop({ 
+    @Prop({ 
     type: String, 
-    enum: ['invited', 'confirmed', 'checked_in', 'no_show', 'cancelled'],
+    enum: ['invited', 'checked_in', 'no_show'],
     default: 'invited',
     index: true
   })

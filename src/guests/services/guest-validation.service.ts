@@ -67,17 +67,14 @@ export class GuestValidationService {
       throw new BadRequestException('Pickup station is not active');
     }
   }
-
   /**
    * Validate guest status transition
    */
   validateStatusTransition(currentStatus: GuestStatus, newStatus: GuestStatus): boolean {
     const validTransitions: Record<GuestStatus, GuestStatus[]> = {
-      [GuestStatus.INVITED]: [GuestStatus.CONFIRMED, GuestStatus.CANCELLED],
-      [GuestStatus.CONFIRMED]: [GuestStatus.CHECKED_IN, GuestStatus.NO_SHOW, GuestStatus.CANCELLED],
-      [GuestStatus.CHECKED_IN]: [], // Final state
-      [GuestStatus.NO_SHOW]: [GuestStatus.CHECKED_IN], // Late check-in allowed
-      [GuestStatus.CANCELLED]: [GuestStatus.INVITED] // Can be re-invited
+      [GuestStatus.INVITED]: [GuestStatus.CHECKED_IN, GuestStatus.NO_SHOW],
+      [GuestStatus.CHECKED_IN]: [], // Final state - cannot change once checked in
+      [GuestStatus.NO_SHOW]: [GuestStatus.CHECKED_IN] // Late check-in allowed
     };
 
     return validTransitions[currentStatus]?.includes(newStatus) || false;

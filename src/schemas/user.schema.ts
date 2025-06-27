@@ -45,10 +45,13 @@ export class User {
   // Total invited guests who actually checked in (for rating calculation)
   @Prop({ type: Number, default: 0 })
   totalCheckedInGuests: number;
-
   // Total guests invited across all events
   @Prop({ type: Number, default: 0 })
   totalInvitedGuests: number;
+
+  // Total score: 1 point per invited + 1 point per checked-in
+  @Prop({ type: Number, default: 0 })
+  totalScore: number;
   // Admin status for disable/enable functionality
   @Prop({ default: true })
   isActive: boolean;

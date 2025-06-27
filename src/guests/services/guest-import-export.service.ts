@@ -177,7 +177,7 @@ export class GuestImportExportService {
         email: 'jane@example.com',
         transportPreference: 'private',
         pickupStation: '',
-        status: 'confirmed'
+        status: 'invited'
       }
     ];
   }
@@ -220,11 +220,9 @@ export class GuestImportExportService {
       // Validate email if provided
       if (item.email && !this.isValidEmail(item.email)) {
         errors.push(`Row ${rowNumber}: Invalid email format`);
-      }
-
-      // Validate status if provided
-      if (item.status && !['invited', 'confirmed', 'checked_in', 'no_show', 'cancelled'].includes(item.status)) {
-        errors.push(`Row ${rowNumber}: Invalid status. Must be one of: invited, confirmed, checked_in, no_show, cancelled`);
+      }      // Validate status if provided
+      if (item.status && !['invited', 'checked_in', 'no_show'].includes(item.status)) {
+        errors.push(`Row ${rowNumber}: Invalid status. Must be one of: invited, checked_in, no_show`);
       }
     });
 

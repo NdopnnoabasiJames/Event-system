@@ -118,12 +118,11 @@ export class AdminHierarchyService {  constructor(
   async getAccessibleAdmins(adminId: string): Promise<UserDocument[]> {
     return this.adminDataAccessService.getAccessibleAdmins(adminId);
   }
-
   /**
    * Get workers accessible by requesting admin
-   */
-  async getAccessibleWorkers(adminId: string): Promise<UserDocument[]> {
-    return this.adminDataAccessService.getAccessibleWorkers(adminId);
+   */  async getAccessibleWorkers(adminId: string): Promise<UserDocument[]> {
+    const result = await this.adminDataAccessService.getAccessibleWorkers(adminId);
+    return result;
   }
 
   /**
@@ -251,6 +250,31 @@ export class AdminHierarchyService {  constructor(
    */
   async getMarketersPerformanceSummary(adminId: string): Promise<any[]> {
     return this.performanceAnalyticsService.getMarketersPerformanceSummary(adminId);
+  }
+
+  // ===============================
+  // Performance Rankings Methods
+  // ===============================
+
+  /**
+   * Get worker rankings with scope based on admin role
+   */
+  async getWorkerRankings(branchId?: string, stateId?: string, limit?: number): Promise<any[]> {
+    return this.performanceAnalyticsService.getWorkerRankings(branchId, stateId, limit);
+  }
+
+  /**
+   * Get branch rankings with scope based on admin role
+   */
+  async getBranchRankings(stateId?: string, limit?: number): Promise<any[]> {
+    return this.performanceAnalyticsService.getBranchRankings(stateId, limit);
+  }
+
+  /**
+   * Get state rankings (national level)
+   */
+  async getStateRankings(limit?: number): Promise<any[]> {
+    return this.performanceAnalyticsService.getStateRankings(limit);
   }
 
   // ===============================

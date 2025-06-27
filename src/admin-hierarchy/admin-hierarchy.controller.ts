@@ -31,6 +31,7 @@ import {
   AdminReplacementDto, 
   JurisdictionTransferDto 
 } from './dto/admin-jurisdiction.dto';
+import { ScoreUpdateService } from './services/score-update.service';
 
 @Controller('admin-hierarchy')
 @UseGuards(JwtAuthGuard, RolesGuard, JurisdictionGuard, PermissionsGuard)
@@ -39,6 +40,7 @@ export class AdminHierarchyController {  constructor(
     private hierarchicalEventService: HierarchicalEventCreationService,
     private hierarchicalEventSelectionService: HierarchicalEventSelectionService,
     private excelExportService: ExcelExportService,
+    private scoreUpdateService: ScoreUpdateService,
   ) {}
 
   @Get('profile')
@@ -502,6 +504,94 @@ export class AdminHierarchyController {  constructor(
       return await this.adminHierarchyService.getAccessibleGuests(req.user.userId);
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  // ===============================
+  // Performance Rankings Endpoints
+  // ===============================
+
+  @Get('rankings/workers')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
+  async getWorkerRankings(@Request() req, @Query() query: any) {
+    try {
+      const { branchId, stateId, limit } = query;
+      const admin = await this.adminHierarchyService.getAdminWithHierarchy(req.user.userId);
+      
+      // Determine scope based on admin role and permissions
+      let scopedBranchId = branchId;
+      let scopedStateId = stateId;
+      
+      if (admin.role === Role.BRANCH_ADMIN) {
+        scopedBranchId = admin.branch._id.toString();
+      } else if (admin.role === Role.STATE_ADMIN) {
+        scopedStateId = admin.state._id.toString();
+      }
+      
+      return await this.adminHierarchyService.getWorkerRankings(
+        scopedBranchId, 
+        scopedStateId, 
+        limit ? parseInt(limit) : undefined
+      );
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Get('rankings/branches')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN)
+  async getBranchRankings(@Request() req, @Query() query: any) {
+    try {
+      const { stateId, limit } = query;
+      const admin = await this.adminHierarchyService.getAdminWithHierarchy(req.user.userId);
+      
+      // Determine scope based on admin role and permissions
+      let scopedStateId = stateId;
+      if (admin.role === Role.STATE_ADMIN) {
+        scopedStateId = admin.state._id.toString();
+      }
+      
+      return await this.adminHierarchyService.getBranchRankings(
+        scopedStateId, 
+        limit ? parseInt(limit) : undefined
+      );
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Get('rankings/states')
+  @Roles(Role.SUPER_ADMIN)  async getStateRankings(@Query() query: any) {
+    try {
+      const { limit } = query;
+      return await this.adminHierarchyService.getStateRankings(
+        limit ? parseInt(limit) : undefined
+      );
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  // Score Management Endpoints
+  @Post('scores/update')
+  @Roles(Role.SUPER_ADMIN)
+  async updateAllScores() {
+    try {
+      await this.scoreUpdateService.updateAllScores();
+      return { message: 'All scores updated successfully' };
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post('scores/update-workers')
+  @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN)
+  async updateWorkerScores() {
+    try {
+      await this.scoreUpdateService.updateWorkerScores();
+      return { message: 'Worker scores updated successfully' };
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }

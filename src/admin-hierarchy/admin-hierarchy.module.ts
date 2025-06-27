@@ -9,6 +9,7 @@ import { Zone, ZoneSchema } from '../schemas/zone.schema';
 import { Event, EventSchema } from '../schemas/event.schema';
 import { PickupStation, PickupStationSchema } from '../schemas/pickup-station.schema';
 import { Guest, GuestSchema } from '../schemas/guest.schema';
+import { Worker, WorkerSchema } from '../schemas/worker.schema';
 import { HierarchicalEventCreationService } from '../events/hierarchical-event-creation.service';
 import { EventsModule } from '../events/events.module';
 
@@ -19,6 +20,7 @@ import { ZoneAdminApprovalService } from './services/zone-admin-approval.service
 import { PerformanceAnalyticsService } from './services/performance-analytics.service';
 import { AdminDataAccessService } from './services/admin-data-access.service';
 import { DashboardStatsService } from './services/dashboard-stats.service';
+import { ScoreUpdateService } from './services/score-update.service';
 
 @Module({
   imports: [
@@ -27,13 +29,12 @@ import { DashboardStatsService } from './services/dashboard-stats.service';
       { name: State.name, schema: StateSchema },
       { name: Branch.name, schema: BranchSchema },
       { name: Zone.name, schema: ZoneSchema },
-      { name: Event.name, schema: EventSchema },
-      { name: PickupStation.name, schema: PickupStationSchema },
+      { name: Event.name, schema: EventSchema },      { name: PickupStation.name, schema: PickupStationSchema },
       { name: Guest.name, schema: GuestSchema },
+      { name: Worker.name, schema: WorkerSchema },
     ]),
     forwardRef(() => EventsModule),
-  ],  controllers: [AdminHierarchyController],
-  providers: [
+  ],  controllers: [AdminHierarchyController],  providers: [
     AdminHierarchyService,
     AdminHierarchyCoreService,
     AdminManagementService,
@@ -41,6 +42,7 @@ import { DashboardStatsService } from './services/dashboard-stats.service';
     PerformanceAnalyticsService,
     AdminDataAccessService,
     DashboardStatsService,
+    ScoreUpdateService,
   ],
   exports: [AdminHierarchyService],
 })

@@ -24,9 +24,21 @@ export class Branch {
 
   @Prop()
   contact?: string;
-
   @Prop({ default: true, index: true })
   isActive: boolean;
+
+  // Performance tracking fields
+  @Prop({ type: Number, default: 0 })
+  totalScore: number;
+
+  @Prop({ type: Number, default: 0 })
+  totalInvitedGuests: number;
+
+  @Prop({ type: Number, default: 0 })
+  totalCheckedInGuests: number;
+
+  @Prop({ type: Number, default: 0 })
+  workersCount: number;
 }
 
 export const BranchSchema = SchemaFactory.createForClass(Branch);

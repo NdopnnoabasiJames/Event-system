@@ -23,9 +23,24 @@ export class State {
 
   @Prop({ default: 'Nigeria' })
   country: string;
-
   @Prop({ default: true, index: true })
   isActive: boolean;
+
+  // Performance tracking fields
+  @Prop({ type: Number, default: 0 })
+  totalScore: number;
+
+  @Prop({ type: Number, default: 0 })
+  totalInvitedGuests: number;
+
+  @Prop({ type: Number, default: 0 })
+  totalCheckedInGuests: number;
+
+  @Prop({ type: Number, default: 0 })
+  branchesCount: number;
+
+  @Prop({ type: Number, default: 0 })
+  workersCount: number;
 }
 
 export const StateSchema = SchemaFactory.createForClass(State);
