@@ -40,7 +40,10 @@ export class ZonesService {
         throw new ConflictException('Zone with this name already exists in the selected branch');
       }
 
-      const createdZone = new this.zoneModel(createZoneDto);
+      const createdZone = new this.zoneModel({
+        ...createZoneDto,
+        status: 'pending'
+      });
       return await createdZone.save();
     } catch (error) {
       if (error.code === 11000) {
@@ -377,5 +380,21 @@ export class ZonesService {
     );
 
     return zonesWithDetails;
+  }
+
+  async findByStatus(status: string): Promise<ZoneDocument[]> {
+    return this.zoneModel.find({ status }).populate({
+      path: 'branchId',
+      select: 'name location stateId isActive',
+      populate: { path: 'stateId', select: 'name code isActive' }
+    }).sort({ name: 1 }).exec();
+  }
+
+  async approveZone(id: string): Promise<ZoneDocument> {
+    return this.zoneModel.findByIdAndUpdate(id, { status: 'approved', isActive: true }, { new: true }).exec();
+  }
+
+  async rejectZone(id: string): Promise<ZoneDocument> {
+    return this.zoneModel.findByIdAndUpdate(id, { status: 'rejected', isActive: false }, { new: true }).exec();
   }
 }

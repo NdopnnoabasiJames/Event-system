@@ -13,6 +13,9 @@ export class Zone {
 
   @Prop({ default: true, index: true })
   isActive: boolean;
+
+  @Prop({ type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending', index: true })
+  status: string;
 }
 
 export const ZoneSchema = SchemaFactory.createForClass(Zone);

@@ -156,4 +156,25 @@ export class ZonesController {
     const include = includeInactive === 'true';
     return this.zonesService.findByStateAdmin(req.user, include);
   }
+
+  @Get('status/:status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SUPER_ADMIN)
+  findByStatus(@Param('status') status: string) {
+    return this.zonesService.findByStatus(status);
+  }
+
+  @Patch(':id/approve')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SUPER_ADMIN)
+  approveZone(@Param('id') id: string) {
+    return this.zonesService.approveZone(id);
+  }
+
+  @Patch(':id/reject')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SUPER_ADMIN)
+  rejectZone(@Param('id') id: string) {
+    return this.zonesService.rejectZone(id);
+  }
 }

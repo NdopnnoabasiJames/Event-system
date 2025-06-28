@@ -112,4 +112,25 @@ export class BranchesController {
     const include = includeInactive === 'true';
     return this.branchesService.findAllWithAdmins(include);
   }
+
+  @Get('status/:status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SUPER_ADMIN)
+  findByStatus(@Param('status') status: string) {
+    return this.branchesService.findByStatus(status);
+  }
+
+  @Patch(':id/approve')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SUPER_ADMIN)
+  approveBranch(@Param('id') id: string) {
+    return this.branchesService.approveBranch(id);
+  }
+
+  @Patch(':id/reject')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SUPER_ADMIN)
+  rejectBranch(@Param('id') id: string) {
+    return this.branchesService.rejectBranch(id);
+  }
 }

@@ -39,6 +39,9 @@ export class Branch {
 
   @Prop({ type: Number, default: 0 })
   workersCount: number;
+
+  @Prop({ type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending', index: true })
+  status: string;
 }
 
 export const BranchSchema = SchemaFactory.createForClass(Branch);

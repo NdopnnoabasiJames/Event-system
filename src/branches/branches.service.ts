@@ -39,7 +39,10 @@ export class BranchesService {  constructor(
         throw new ConflictException('Branch with this name already exists in the selected state');
       }
 
-      const createdBranch = new this.branchModel(createBranchDto);
+      const createdBranch = new this.branchModel({
+        ...createBranchDto,
+        status: 'pending'
+      });
       return await createdBranch.save();
     } catch (error) {
       if (error.code === 11000) {
@@ -366,5 +369,17 @@ export class BranchesService {  constructor(
     );
 
     return branchesWithAdmins;
+  }
+
+  async findByStatus(status: string): Promise<BranchDocument[]> {
+    return this.branchModel.find({ status }).populate('stateId', 'name code country isActive').sort({ name: 1 }).exec();
+  }
+
+  async approveBranch(id: string): Promise<BranchDocument> {
+    return this.branchModel.findByIdAndUpdate(id, { status: 'approved', isActive: true }, { new: true }).exec();
+  }
+
+  async rejectBranch(id: string): Promise<BranchDocument> {
+    return this.branchModel.findByIdAndUpdate(id, { status: 'rejected', isActive: false }, { new: true }).exec();
   }
 }
