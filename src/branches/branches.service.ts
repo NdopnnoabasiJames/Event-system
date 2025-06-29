@@ -174,7 +174,9 @@ export class BranchesService {  constructor(
     // Override the stateId to ensure it's the admin's state
     const branchData = {
       ...createBranchDto,
-      stateId
+      stateId,
+      status: 'pending', // Always pending for state admin
+      isActive: false    // Not active until approved by super admin
     };
 
     // Check if branch name already exists in this state
@@ -372,7 +374,8 @@ export class BranchesService {  constructor(
   }
 
   async findByStatus(status: string): Promise<BranchDocument[]> {
-    return this.branchModel.find({ status }).populate('stateId', 'name code country isActive').sort({ name: 1 }).exec();
+    const result = await this.branchModel.find({ status }).populate('stateId', 'name code country isActive').sort({ name: 1 }).exec();
+    return result;
   }
 
   async approveBranch(id: string): Promise<BranchDocument> {
@@ -381,5 +384,15 @@ export class BranchesService {  constructor(
 
   async rejectBranch(id: string): Promise<BranchDocument> {
     return this.branchModel.findByIdAndUpdate(id, { status: 'rejected', isActive: false }, { new: true }).exec();
+  }
+
+  // New: Find pending branches for state admin (only in their state)
+  async findPendingByStateAdmin(user: any): Promise<BranchDocument[]> {
+    const stateId = typeof user.state === 'string' ? user.state : user.state?._id;
+    if (!stateId) {
+      throw new ForbiddenException('State admin must be assigned to a state');
+    }
+    const result = await this.branchModel.find({ status: 'pending', stateId }).populate('stateId', 'name code country isActive').sort({ name: 1 }).exec();
+    return result;
   }
 }

@@ -133,4 +133,12 @@ export class BranchesController {
   rejectBranch(@Param('id') id: string) {
     return this.branchesService.rejectBranch(id);
   }
+
+  // New: Get pending branches for state admin (only in their state)
+  @Get('state-admin/pending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STATE_ADMIN)
+  async getPendingBranchesForStateAdmin(@Request() req) {
+    return this.branchesService.findPendingByStateAdmin(req.user);
+  }
 }
