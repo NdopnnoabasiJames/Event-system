@@ -395,4 +395,14 @@ export class BranchesService {  constructor(
     const result = await this.branchModel.find({ status: 'pending', stateId }).populate('stateId', 'name code country isActive').sort({ name: 1 }).exec();
     return result;
   }
+
+  // New: Find rejected branches for state admin (only in their state)
+  async findRejectedByStateAdmin(user: any): Promise<BranchDocument[]> {
+    const stateId = typeof user.state === 'string' ? user.state : user.state?._id;
+    if (!stateId) {
+      throw new ForbiddenException('State admin must be assigned to a state');
+    }
+    const result = await this.branchModel.find({ status: 'rejected', stateId }).populate('stateId', 'name code country isActive').sort({ name: 1 }).exec();
+    return result;
+  }
 }

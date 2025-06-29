@@ -141,4 +141,12 @@ export class BranchesController {
   async getPendingBranchesForStateAdmin(@Request() req) {
     return this.branchesService.findPendingByStateAdmin(req.user);
   }
+
+  // New: Get rejected branches for state admin (only in their state)
+  @Get('state-admin/rejected')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STATE_ADMIN)
+  async getRejectedBranchesForStateAdmin(@Request() req) {
+    return this.branchesService.findRejectedByStateAdmin(req.user);
+  }
 }

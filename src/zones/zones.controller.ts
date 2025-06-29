@@ -177,4 +177,20 @@ export class ZonesController {
   rejectZone(@Param('id') id: string) {
     return this.zonesService.rejectZone(id);
   }
+
+  // New: Get pending zones for branch admin (only in their branch)
+  @Get('branch-admin/pending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.BRANCH_ADMIN)
+  async getPendingZonesForBranchAdmin(@Req() req) {
+    return this.zonesService.findPendingByBranchAdmin(req.user);
+  }
+
+  // New: Get rejected zones for branch admin (only in their branch)
+  @Get('branch-admin/rejected')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.BRANCH_ADMIN)
+  async getRejectedZonesForBranchAdmin(@Req() req) {
+    return this.zonesService.findRejectedByBranchAdmin(req.user);
+  }
 }

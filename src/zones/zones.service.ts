@@ -397,4 +397,36 @@ export class ZonesService {
   async rejectZone(id: string): Promise<ZoneDocument> {
     return this.zoneModel.findByIdAndUpdate(id, { status: 'rejected', isActive: false }, { new: true }).exec();
   }
+
+  // New: Find pending zones for branch admin (only in their branch)
+  async findPendingByBranchAdmin(user: any): Promise<ZoneDocument[]> {
+    const branchId = typeof user.branch === 'string' ? user.branch : user.branch?._id;
+    if (!branchId) {
+      throw new BadRequestException('Branch admin must be assigned to a branch');
+    }
+    return this.zoneModel.find({ status: 'pending', branchId })
+      .populate({
+        path: 'branchId',
+        select: 'name location stateId isActive',
+        populate: { path: 'stateId', select: 'name code isActive' }
+      })
+      .sort({ name: 1 })
+      .exec();
+  }
+
+  // New: Find rejected zones for branch admin (only in their branch)
+  async findRejectedByBranchAdmin(user: any): Promise<ZoneDocument[]> {
+    const branchId = typeof user.branch === 'string' ? user.branch : user.branch?._id;
+    if (!branchId) {
+      throw new BadRequestException('Branch admin must be assigned to a branch');
+    }
+    return this.zoneModel.find({ status: 'rejected', branchId })
+      .populate({
+        path: 'branchId',
+        select: 'name location stateId isActive',
+        populate: { path: 'stateId', select: 'name code isActive' }
+      })
+      .sort({ name: 1 })
+      .exec();
+  }
 }
