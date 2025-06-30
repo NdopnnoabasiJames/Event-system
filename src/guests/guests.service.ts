@@ -4,17 +4,22 @@ import { Model } from 'mongoose';
 import { Guest, GuestDocument } from '../schemas/guest.schema';
 import { CreateGuestDto } from './dto/create-guest.dto';
 import { UpdateGuestDto } from './dto/update-guest.dto';
+import { ScoreUpdateService } from '../admin-hierarchy/services/score-update.service';
 
 @Injectable()
 export class GuestsService {
   constructor(
     @InjectModel(Guest.name) private guestModel: Model<GuestDocument>,
+    private readonly scoreUpdateService: ScoreUpdateService,
   ) {} 
 
   async create(createGuestDto: CreateGuestDto & { event: string; registeredBy: string }): Promise<GuestDocument> {
     try {
       const guest = new this.guestModel(createGuestDto);
-      return await guest.save();
+      const savedGuest = await guest.save();
+      // Update only affected worker, branch, and state
+      await this.scoreUpdateService.updateScoresForWorker(savedGuest.registeredBy.toString());
+      return savedGuest;
     } catch (error) {
       throw new HttpException(`Failed to create guest: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -193,7 +198,8 @@ export class GuestsService {
       if (!guest) {
         throw new NotFoundException('Guest not found');
       }
-
+      // Update only affected worker, branch, and state
+      await this.scoreUpdateService.updateScoresForWorker(guest.registeredBy.toString());
       return guest;
     } catch (error) {
       throw new HttpException(`Failed to check in guest: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);

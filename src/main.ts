@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import * as bodyParser from 'body-parser';
+import { ScoreUpdateService } from './admin-hierarchy/services/score-update.service';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -52,6 +53,19 @@ async function bootstrap() {
       },
     }),
   );
+  // --- Automatic score recalculation on startup (fixed DI) ---
+  try {
+    const scoreUpdateService = await app.resolve(ScoreUpdateService);
+    if (scoreUpdateService && typeof scoreUpdateService.updateAllScores === 'function') {
+      logger.log('Running initial score recalculation for all entities...');
+      await scoreUpdateService.updateAllScores();
+      logger.log('Initial score recalculation complete.');
+    } else {
+      logger.warn('ScoreUpdateService not found. Initial score recalculation skipped.');
+    }
+  } catch (err) {
+    logger.error('Error during initial score recalculation:', err);
+  }
   const port = configService.get('PORT');
   await app.listen(port, () => {
     console.log(`Server is running on port ${port}`);

@@ -95,7 +95,6 @@ export class MigrationService {
       stateId,
       name: branchData.name,
       location: branchData.address,
-      manager: 'TBD',
       contact: '+234-000-000-0000',
       isActive: true,
     });
@@ -158,7 +157,7 @@ export class MigrationService {
   }
 
   async patchFields(): Promise<void> {
-    this.logger.log('Patching all branches with new fields if missing...');
+    this.logger.log('Patching all branches and states with new fields if missing...');
     await this.branchModel.updateMany(
       {},
       {
@@ -171,6 +170,41 @@ export class MigrationService {
         }
       }
     );
-    this.logger.log('All branches patched with new fields.');
+    // Patch states: add isActive: true and country: 'Nigeria' if missing
+    await this.stateModel.updateMany(
+      {},
+      {
+        $set: {
+          isActive: true,
+          country: 'Nigeria',
+        }
+      }
+    );
+    // Patch branches: set manager field to approved branch admin if exists
+    await this.patchBranchManagers();
+    this.logger.log('All branches and states patched with new fields.');
+  }
+
+  /**
+   * For each branch, if there is an approved branch admin assigned to it, set the branch.manager field to that admin's user ID.
+   */
+  private async patchBranchManagers(): Promise<void> {
+    this.logger.log('Patching branch managers based on approved branch admins...');
+    // Dynamically import User model to avoid circular dependency
+    const userModel = (this as any).userModel || (this as any).constructor.userModel;
+    if (!userModel) {
+      this.logger.warn('User model not available, skipping branch manager patch.');
+      return;
+    }
+    // Find all approved branch admins
+    const branchAdmins = await userModel.find({ role: 'branch-admin', isApproved: true, branchId: { $exists: true } });
+    for (const admin of branchAdmins) {
+      await this.branchModel.updateOne(
+        { _id: admin.branchId },
+        { $set: { manager: admin._id } }
+      );
+      this.logger.log(`Set manager for branch ${admin.branchId} to user ${admin._id}`);
+    }
+    this.logger.log('Branch manager patch complete.');
   }
 }

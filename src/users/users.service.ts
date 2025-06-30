@@ -382,6 +382,15 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
 
     admin.isApproved = true;
     admin.approvedBy = new Types.ObjectId(approverId);
+
+    // If a branch admin is being approved, set the manager field on the corresponding branch
+    if (admin.role === Role.BRANCH_ADMIN && admin.branch) {
+      await this.branchModel.updateOne(
+        { _id: admin.branch },
+        { $set: { manager: admin._id } }
+      );
+    }
+
     return admin.save();
   }
 

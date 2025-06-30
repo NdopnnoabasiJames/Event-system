@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Delete, UseGuards, Patch } from '@nestjs/common';
 import { MigrationService } from './migration.service';
 import { NigeriaHierarchySeederService } from './nigeria-hierarchy-seeder.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -50,7 +50,7 @@ export class MigrationController {
     return await this.nigeriaHierarchySeederService.getHierarchyOverview();
   }
 
-  @Post('/patch-fields')
+  @Patch('/patch-fields')
   async patchFields() {
     await this.migrationService.patchFields();
     return { message: 'All existing branches updated with new fields (if missing)' };

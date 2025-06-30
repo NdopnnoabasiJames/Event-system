@@ -44,6 +44,9 @@ import { ScoreUpdateService } from './services/score-update.service';
     DashboardStatsService,
     ScoreUpdateService,
   ],
-  exports: [AdminHierarchyService],
+  exports: [
+    AdminHierarchyService,
+    ScoreUpdateService, // <-- Export ScoreUpdateService
+  ],
 })
 export class AdminHierarchyModule {}
