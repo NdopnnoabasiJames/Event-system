@@ -62,7 +62,7 @@ export class ZonesService {
         select: 'name location stateId isActive',
         populate: {
           path: 'stateId',
-          select: 'name code isActive'
+          select: 'name isActive'
         }
       })      .sort({ name: 1 })
       .exec();
@@ -75,7 +75,7 @@ export class ZonesService {
         select: 'name location stateId isActive',
         populate: {
           path: 'stateId',
-          select: 'name code isActive'
+          select: 'name isActive'
         }
       })
       .sort({ name: 1 })
@@ -130,7 +130,7 @@ export class ZonesService {
         select: 'name location stateId isActive',
         populate: {
           path: 'stateId',
-          select: 'name code isActive'
+          select: 'name isActive'
         }
       })
       .sort({ name: 1 })
@@ -158,7 +158,7 @@ export class ZonesService {
         select: 'name location stateId isActive',
         populate: {
           path: 'stateId',
-          select: 'name code isActive'
+          select: 'name isActive'
         }
       })
       .sort({ name: 1 })
@@ -177,7 +177,7 @@ export class ZonesService {
         select: 'name location stateId isActive',
         populate: {
           path: 'stateId',
-          select: 'name code isActive'
+          select: 'name isActive'
         }
       })
       .exec();
@@ -233,7 +233,7 @@ export class ZonesService {
         select: 'name location stateId isActive',
         populate: {
           path: 'stateId',
-          select: 'name code isActive'
+          select: 'name isActive'
         }
       })
       .exec();
@@ -386,7 +386,7 @@ export class ZonesService {
     return this.zoneModel.find({ status }).populate({
       path: 'branchId',
       select: 'name location stateId isActive',
-      populate: { path: 'stateId', select: 'name code isActive' }
+      populate: { path: 'stateId', select: 'name isActive' }
     }).sort({ name: 1 }).exec();
   }
 
@@ -408,7 +408,7 @@ export class ZonesService {
       .populate({
         path: 'branchId',
         select: 'name location stateId isActive',
-        populate: { path: 'stateId', select: 'name code isActive' }
+        populate: { path: 'stateId', select: 'name isActive' }
       })
       .sort({ name: 1 })
       .exec();
@@ -424,7 +424,7 @@ export class ZonesService {
       .populate({
         path: 'branchId',
         select: 'name location stateId isActive',
-        populate: { path: 'stateId', select: 'name code isActive' }
+        populate: { path: 'stateId', select: 'name isActive' }
       })
       .sort({ name: 1 })
       .exec();

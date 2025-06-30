@@ -3,7 +3,6 @@
 
 export interface MockState {
   name: string;
-  code: string;
   geopoliticalZone: string;
   branches: MockBranch[];
 }
@@ -12,6 +11,11 @@ export interface MockBranch {
   name: string;
   address: string;
   zones: MockZone[];
+  totalScore: number;
+  totalInvitedGuests: number;
+  totalCheckedInGuests: number;
+  workersCount: number;
+  status: string;
 }
 
 export interface MockZone {
@@ -23,7 +27,6 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
   // NORTH CENTRAL
   {
     name: "Federal Capital Territory",
-    code: "FCT",
     geopoliticalZone: "North Central",
     branches: [
       {
@@ -35,7 +38,12 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "Maitama Zone", description: "Maitama, Asokoro, Three Arms Zone" },
           { name: "Gwarinpa Zone", description: "Gwarinpa, Kado, Life Camp areas" },
           { name: "Kubwa Zone", description: "Kubwa, Bwari, Dutse areas" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       },
       {
         name: "Gwagwalada Branch",
@@ -44,13 +52,17 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "Gwagwalada Central Zone", description: "Gwagwalada town center" },
           { name: "University Zone", description: "University of Abuja and surrounding areas" },
           { name: "Dobi Zone", description: "Dobi, Ikwa, and neighboring communities" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       }
     ]
   },
   {
     name: "Plateau",
-    code: "PL",
     geopoliticalZone: "North Central",
     branches: [
       {
@@ -60,7 +72,12 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "Jos Central Zone", description: "Jos city center and commercial areas" },
           { name: "Bukuru Zone", description: "Bukuru and surrounding mining communities" },
           { name: "Vom Zone", description: "Vom, NVRI area, and agricultural settlements" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       },
       {
         name: "Jos South Branch",
@@ -68,13 +85,17 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
         zones: [
           { name: "Rayfield Zone", description: "Rayfield, Anglo Jos, and residential areas" },
           { name: "Du Zone", description: "Du district and surrounding communities" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       }
     ]
   },
   {
     name: "Niger",
-    code: "NG",
     geopoliticalZone: "North Central",
     branches: [
       {
@@ -84,7 +105,12 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "Minna Central Zone", description: "Minna city center and government areas" },
           { name: "Chanchaga Zone", description: "Chanchaga, Tunga, and surrounding areas" },
           { name: "Bosso Zone", description: "Bosso, FUT Minna, and academic district" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       }
     ]
   },
@@ -92,7 +118,6 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
   // SOUTH WEST
   {
     name: "Lagos",
-    code: "LA",
     geopoliticalZone: "South West",
     branches: [
       {
@@ -102,7 +127,12 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "Victoria Island Zone", description: "Victoria Island and Ikoyi business district" },
           { name: "Lagos Island Zone", description: "Lagos Island, Marina, and commercial core" },
           { name: "Lekki Zone", description: "Lekki Peninsula, Ajah, and coastal areas" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       },
       {
         name: "Lagos Mainland Branch",
@@ -112,7 +142,12 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "Surulere Zone", description: "Surulere, Iponri, and residential districts" },
           { name: "Ikeja Zone", description: "Ikeja, Allen Avenue, and airport area" },
           { name: "Maryland Zone", description: "Maryland, Anthony, and Gbagada areas" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       },
       {
         name: "Alimosho Branch",
@@ -121,13 +156,17 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "Igando Zone", description: "Igando, Ikotun, and Egbe areas" },
           { name: "Iyana Ipaja Zone", description: "Iyana Ipaja, Abule Egba, and Agege border" },
           { name: "Akowonjo Zone", description: "Akowonjo, Dopemu, and Agege areas" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       }
     ]
   },
   {
     name: "Ogun",
-    code: "OG",
     geopoliticalZone: "South West",
     branches: [
       {
@@ -137,7 +176,12 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "Abeokuta Central Zone", description: "Abeokuta city center and Olumo Rock area" },
           { name: "Obantoko Zone", description: "Obantoko, Adatan, and residential areas" },
           { name: "Kuto Zone", description: "Kuto, Lafenwa, and commercial districts" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       },
       {
         name: "Ijebu Ode Branch",
@@ -145,13 +189,17 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
         zones: [
           { name: "Ijebu Central Zone", description: "Ijebu Ode town center and traditional areas" },
           { name: "Molipa Zone", description: "Molipa, Ago-Iwoye, and educational district" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       }
     ]
   },
   {
     name: "Oyo",
-    code: "OY",
     geopoliticalZone: "South West",
     branches: [
       {
@@ -161,7 +209,12 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "University Zone", description: "University of Ibadan and Bodija areas" },
           { name: "Agodi Zone", description: "Agodi, GRA, and government residential area" },
           { name: "Mokola Zone", description: "Mokola, Sango, and commercial areas" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       },
       {
         name: "Ibadan South West Branch",
@@ -169,7 +222,12 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
         zones: [
           { name: "Ring Road Zone", description: "Ring Road, Challenge, and Felele areas" },
           { name: "Oke-Ado Zone", description: "Oke-Ado, Beere, and traditional core areas" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       }
     ]
   },
@@ -177,7 +235,6 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
   // SOUTH EAST
   {
     name: "Anambra",
-    code: "AN",
     geopoliticalZone: "South East",
     branches: [
       {
@@ -187,7 +244,12 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "Awka Central Zone", description: "Awka city center and government areas" },
           { name: "Unizik Zone", description: "Nnamdi Azikiwe University and academic areas" },
           { name: "Amawbia Zone", description: "Amawbia, Amaenyi, and surrounding communities" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       },
       {
         name: "Onitsha Branch",
@@ -196,13 +258,17 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "Onitsha Main Market Zone", description: "Main Market and commercial district" },
           { name: "Bridgehead Zone", description: "Niger Bridge head and transport hub" },
           { name: "Fegge Zone", description: "Fegge, New Parts, and residential areas" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       }
     ]
   },
   {
     name: "Enugu",
-    code: "EN",
     geopoliticalZone: "South East",
     branches: [
       {
@@ -212,7 +278,12 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "Coal City Zone", description: "Enugu city center and coal mine areas" },
           { name: "Independence Layout Zone", description: "Independence Layout and GRA areas" },
           { name: "New Haven Zone", description: "New Haven, Ogbete, and market areas" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       }
     ]
   },
@@ -220,7 +291,6 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
   // SOUTH SOUTH
   {
     name: "Rivers",
-    code: "RV",
     geopoliticalZone: "South South",
     branches: [
       {
@@ -231,7 +301,12 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "GRA Zone", description: "Government Residential Area and Woji" },
           { name: "Diobu Zone", description: "Mile 1, Mile 2, and Diobu communities" },
           { name: "Trans Amadi Zone", description: "Trans Amadi Industrial Layout" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       },
       {
         name: "Obio Akpor Branch",
@@ -239,13 +314,17 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
         zones: [
           { name: "Rumuokwuta Zone", description: "Rumuokwuta, Rumuola, and Rumuigbo areas" },
           { name: "Choba Zone", description: "Choba, University of Port Harcourt area" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       }
     ]
   },
   {
     name: "Delta",
-    code: "DL",
     geopoliticalZone: "South South",
     branches: [
       {
@@ -255,7 +334,12 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "Warri Central Zone", description: "Warri city center and commercial areas" },
           { name: "Effurun Zone", description: "Effurun, Udu, and industrial areas" },
           { name: "Uvwie Zone", description: "Uvwie, Airport Road, and residential areas" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       },
       {
         name: "Asaba Branch",
@@ -263,7 +347,12 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
         zones: [
           { name: "Asaba Central Zone", description: "Asaba city center and government house area" },
           { name: "Cable Point Zone", description: "Cable Point, Summit Road, and residential areas" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       }
     ]
   },
@@ -271,7 +360,6 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
   // NORTH WEST
   {
     name: "Kano",
-    code: "KN",
     geopoliticalZone: "North West",
     branches: [
       {
@@ -281,13 +369,17 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "Sabon Gari Zone", description: "Sabon Gari and commercial areas" },
           { name: "Fagge Zone", description: "Fagge, Kurmi Market, and traditional areas" },
           { name: "Nasarawa Zone", description: "Nasarawa, BUK area, and educational district" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       }
     ]
   },
   {
     name: "Kaduna",
-    code: "KD",
     geopoliticalZone: "North West",
     branches: [
       {
@@ -297,7 +389,12 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "Kaduna Central Zone", description: "Kaduna city center and commercial core" },
           { name: "Sabon Tasha Zone", description: "Sabon Tasha, Barnawa, and residential areas" },
           { name: "Tudun Wada Zone", description: "Tudun Wada and traditional communities" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       }
     ]
   },
@@ -305,7 +402,6 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
   // NORTH EAST
   {
     name: "Adamawa",
-    code: "AD",
     geopoliticalZone: "North East",
     branches: [
       {
@@ -315,7 +411,12 @@ export const NIGERIA_HIERARCHY_DATA: MockState[] = [
           { name: "Yola Central Zone", description: "Yola city center and Emir's palace area" },
           { name: "Jimeta Zone", description: "Jimeta, commercial district, and modern areas" },
           { name: "Modibo Adama Zone", description: "Modibo Adama University area" }
-        ]
+        ],
+        totalScore: 0,
+        totalInvitedGuests: 0,
+        totalCheckedInGuests: 0,
+        workersCount: 0,
+        status: 'approved',
       }
     ]
   }

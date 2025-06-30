@@ -69,12 +69,11 @@ export class MigrationService {
   }
 
   private async createStateWithHierarchy(stateData: MockState): Promise<void> {
-    this.logger.log(`Creating state: ${stateData.name} (${stateData.code})`);
+    this.logger.log(`Creating state: ${stateData.name}`);
 
     // Create state
     const state = new this.stateModel({
       name: stateData.name,
-      code: stateData.code,
       country: 'Nigeria',
       isActive: true,
     });
@@ -156,5 +155,22 @@ export class MigrationService {
       zones: zonesCount,
       pickupStations: pickupStationsCount,
     };
+  }
+
+  async patchFields(): Promise<void> {
+    this.logger.log('Patching all branches with new fields if missing...');
+    await this.branchModel.updateMany(
+      {},
+      {
+        $set: {
+          totalScore: 0,
+          totalInvitedGuests: 0,
+          totalCheckedInGuests: 0,
+          workersCount: 0,
+          status: 'approved',
+        }
+      }
+    );
+    this.logger.log('All branches patched with new fields.');
   }
 }

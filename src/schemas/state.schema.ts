@@ -8,19 +8,6 @@ export class State {
   @Prop({ required: true, unique: true, index: true })
   name: string;
 
-  @Prop({ 
-    index: true, 
-    unique: true, 
-    sparse: true, // Allows multiple documents with null/undefined values
-    validate: {
-      validator: function(v: string) {
-        return !v || v.length === 3;
-      },
-      message: 'State code must be exactly 3 characters'
-    }
-  })
-  code?: string;
-
   @Prop({ default: 'Nigeria' })
   country: string;
   @Prop({ default: true, index: true })

@@ -31,7 +31,6 @@ export class NigeriaHierarchySeederService {
           // Create state
           state = new this.stateModel({
             name: stateData.name,
-            code: stateData.code,
             geopoliticalZone: stateData.geopoliticalZone,
             isActive: true
           });

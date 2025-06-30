@@ -9,6 +9,25 @@ import { CreateBranchDto } from './dto/create-branch.dto';
 import { UpdateBranchDto } from './dto/update-branch.dto';
 import { Role } from '../common/enums/role.enum';
 
+// Utility to assign rank and medal based on points (handles ties correctly)
+function assignRanksAndMedals(entities: any[], pointsField = 'points') {
+  const sorted = [...entities].sort((a, b) => (b[pointsField] || 0) - (a[pointsField] || 0));
+  let lastPoints = null;
+  let uniqueRank = 0;
+  let medalMap = { 1: 'gold', 2: 'silver', 3: 'bronze' };
+  for (let i = 0; i < sorted.length; i++) {
+    const entity = sorted[i];
+    const pts = entity[pointsField] || 0;
+    if (lastPoints === null || pts !== lastPoints) {
+      uniqueRank++;
+    }
+    entity.rank = uniqueRank;
+    entity.medal = medalMap[uniqueRank] || null;
+    lastPoints = pts;
+  }
+  return sorted;
+}
+
 @Injectable()
 export class BranchesService {  constructor(
     @InjectModel(Branch.name) private branchModel: Model<BranchDocument>,
@@ -52,30 +71,35 @@ export class BranchesService {  constructor(
     }
   }
 
-  async findAll(includeInactive = false): Promise<BranchDocument[]> {
+  async findAll(includeInactive = false): Promise<any[]> {
     const filter = includeInactive ? {} : { isActive: true };
-    return await this.branchModel
+    const branches = await this.branchModel
       .find(filter)
-      .populate('stateId', 'name code country isActive')
+      .select('name location stateId isActive totalScore')
+      .populate('stateId', 'name country isActive')
       .sort({ name: 1 })
+      .lean()
       .exec();
+    console.log('DEBUG: Branches for ranking:', branches.map(b => ({ name: b.name, totalScore: b.totalScore })));
+    return assignRanksAndMedals(branches, 'totalScore');
   }
 
-  async findByState(stateId: string, includeInactive = false): Promise<BranchDocument[]> {
+  async findByState(stateId: string, includeInactive = false): Promise<any[]> {
     if (!Types.ObjectId.isValid(stateId)) {
       throw new BadRequestException('Invalid state ID');
     }
-
     const filter: any = { stateId };
     if (!includeInactive) {
       filter.isActive = true;
     }
-
-    return await this.branchModel
+    const branches = await this.branchModel
       .find(filter)
-      .populate('stateId', 'name code country isActive')
+      .select('name location stateId isActive totalScore')
+      .populate('stateId', 'name country isActive')
       .sort({ name: 1 })
+      .lean()
       .exec();
+    return assignRanksAndMedals(branches, 'totalScore');
   }
 
   async findOne(id: string): Promise<BranchDocument> {
@@ -85,7 +109,7 @@ export class BranchesService {  constructor(
 
     const branch = await this.branchModel
       .findById(id)
-      .populate('stateId', 'name code country isActive')
+      .populate('stateId', 'name country isActive')
       .exec();
     
     if (!branch) {
@@ -134,7 +158,7 @@ export class BranchesService {  constructor(
 
     const updatedBranch = await this.branchModel
       .findByIdAndUpdate(id, updateBranchDto, { new: true })
-      .populate('stateId', 'name code country isActive')
+      .populate('stateId', 'name country isActive')
       .exec();
 
     if (!updatedBranch) {
@@ -223,6 +247,7 @@ export class BranchesService {  constructor(
 
     const branches = await this.branchModel
       .find(filter)
+      .select('name location stateId isActive totalScore')
       .populate('stateId', 'name')
       .sort({ name: 1 })
       .lean()
@@ -257,8 +282,8 @@ export class BranchesService {  constructor(
         };
       })
     );
-
-    return branchesWithCounts;
+    console.log('DEBUG: BranchesWithCounts for ranking:', branchesWithCounts.map(b => ({ name: b.name, totalScore: b.totalScore })));
+    return assignRanksAndMedals(branchesWithCounts, 'totalScore');
   }
 
   async updateByStateAdmin(id: string, updateBranchDto: UpdateBranchDto, user: any): Promise<BranchDocument> {
@@ -326,10 +351,10 @@ export class BranchesService {  constructor(
   // Super Admin method to get all branches with admin details
   async findAllWithAdmins(includeInactive = false): Promise<any[]> {
     const filter = includeInactive ? {} : { isActive: true };
-      // Get all branches with state information
     const branches = await this.branchModel
       .find(filter)
-      .populate('stateId', 'name code country isActive')
+      .select('name location stateId isActive totalScore')
+      .populate('stateId', 'name country isActive')
       .sort({ name: 1 })
       .lean()
       .exec();
@@ -369,12 +394,12 @@ export class BranchesService {  constructor(
         };
       })
     );
-
-    return branchesWithAdmins;
+    console.log('DEBUG: BranchesWithAdmins for ranking:', branchesWithAdmins.map(b => ({ name: b.name, totalScore: b.totalScore })));
+    return assignRanksAndMedals(branchesWithAdmins, 'totalScore');
   }
 
   async findByStatus(status: string): Promise<BranchDocument[]> {
-    const result = await this.branchModel.find({ status }).populate('stateId', 'name code country isActive').sort({ name: 1 }).exec();
+    const result = await this.branchModel.find({ status }).populate('stateId', 'name country isActive').sort({ name: 1 }).exec();
     return result;
   }
 
@@ -392,7 +417,7 @@ export class BranchesService {  constructor(
     if (!stateId) {
       throw new ForbiddenException('State admin must be assigned to a state');
     }
-    const result = await this.branchModel.find({ status: 'pending', stateId }).populate('stateId', 'name code country isActive').sort({ name: 1 }).exec();
+    const result = await this.branchModel.find({ status: 'pending', stateId }).populate('stateId', 'name country isActive').sort({ name: 1 }).exec();
     return result;
   }
 
@@ -402,7 +427,7 @@ export class BranchesService {  constructor(
     if (!stateId) {
       throw new ForbiddenException('State admin must be assigned to a state');
     }
-    const result = await this.branchModel.find({ status: 'rejected', stateId }).populate('stateId', 'name code country isActive').sort({ name: 1 }).exec();
+    const result = await this.branchModel.find({ status: 'rejected', stateId }).populate('stateId', 'name country isActive').sort({ name: 1 }).exec();
     return result;
   }
 }

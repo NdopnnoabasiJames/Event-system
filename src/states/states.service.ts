@@ -27,26 +27,16 @@ export class StatesService {
         throw new ConflictException('State with this name already exists');
       }
 
-      // Check code uniqueness if provided
-      if (createStateDto.code) {
-        const existingByCode = await this.stateModel.findOne({ 
-          code: { $regex: new RegExp(`^${createStateDto.code}$`, 'i') }
-        });
-
-        if (existingByCode) {
-          throw new ConflictException('State with this code already exists');
-        }
-      }
-
-      const createdState = new this.stateModel(createStateDto);
-      return await createdState.save();
+      const state = new this.stateModel({
+        name: createStateDto.name,
+        country: 'Nigeria',
+        isActive: true,
+      });
+      return await state.save();
     } catch (error) {
       if (error.code === 11000) {
         if (error.keyPattern?.name) {
           throw new ConflictException('State with this name already exists');
-        }
-        if (error.keyPattern?.code) {
-          throw new ConflictException('State with this code already exists');
         }
         throw new ConflictException('Duplicate field error');
       }
@@ -127,18 +117,6 @@ export class StatesService {
 
       if (existingByName) {
         throw new ConflictException('State with this name already exists');
-      }
-    }
-
-    // Check if code already exists (excluding current state)
-    if (updateStateDto.code) {
-      const existingByCode = await this.stateModel.findOne({
-        code: { $regex: new RegExp(`^${updateStateDto.code}$`, 'i') },
-        _id: { $ne: id }
-      });
-
-      if (existingByCode) {
-        throw new ConflictException('State with this code already exists');
       }
     }
 

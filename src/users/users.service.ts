@@ -48,7 +48,7 @@ export class UsersService {
       // Try exact match first
     const user = await this.userModel
       .findOne({ email })
-      .populate('state', 'name code country isActive')
+      .populate('state', 'name country isActive')
       .populate('branch', 'name location stateId isActive')
       .populate('zone', 'name branchId isActive')
       .exec();
@@ -59,7 +59,7 @@ export class UsersService {
       // If no exact match, let's see if there's a case-insensitive match
       const userCaseInsensitive = await this.userModel
         .findOne({ email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') } })
-        .populate('state', 'name code country isActive')
+        .populate('state', 'name country isActive')
         .populate('branch', 'name location stateId isActive')
         .populate('zone', 'name branchId isActive')
         .exec();
@@ -78,7 +78,7 @@ export class UsersService {
     try {
       const user = await this.userModel
         .findById(id)
-        .populate('state', 'name code country isActive')
+        .populate('state', 'name country isActive')
         .populate('branch', 'name location stateId isActive')
         .populate('zone', 'name branchId isActive')
         .exec();
@@ -477,7 +477,7 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
               _id: '$isApproved',
               count: { $sum: 1 }
             }
-          }       ]),
+          }      ]),
 
         // Workers with breakdown
         this.userModel.aggregate([

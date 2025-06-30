@@ -49,6 +49,12 @@ export class MigrationController {
   async getHierarchyOverview() {
     return await this.nigeriaHierarchySeederService.getHierarchyOverview();
   }
+
+  @Post('/patch-fields')
+  async patchFields() {
+    await this.migrationService.patchFields();
+    return { message: 'All existing branches updated with new fields (if missing)' };
+  }
 }
 
 /*
