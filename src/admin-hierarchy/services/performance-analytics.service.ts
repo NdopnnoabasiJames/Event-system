@@ -252,11 +252,8 @@ export class PerformanceAnalyticsService {  constructor(
         }
       }
     ]);
-    return rankings.map((worker, index) => ({
-      ...worker,
-      rank: index + 1,
-      medal: this.getMedal(index + 1)
-    }));
+    const ranked = this.assignRanksAndMedals(rankings, 'totalScore');
+    return ranked;
   }
 
   /**
@@ -350,11 +347,8 @@ export class PerformanceAnalyticsService {  constructor(
         }
       }
     ]);
-    return rankings.map((branch, index) => ({
-      ...branch,
-      rank: index + 1,
-      medal: this.getMedal(index + 1)
-    }));
+    const ranked = this.assignRanksAndMedals(rankings, 'totalScore');
+    return ranked;
   }
 
   /**
@@ -436,22 +430,32 @@ export class PerformanceAnalyticsService {  constructor(
         }
       }
     ]);
-    return rankings.map((state, index) => ({
-      ...state,
-      rank: index + 1,
-      medal: this.getMedal(index + 1)
-    }));
+    const ranked = this.assignRanksAndMedals(rankings, 'totalScore');
+    return ranked;
   }
 
   /**
-   * Get medal for ranking position
+   * Utility to assign rank and medal based on points (handles ties correctly, medals only for top 3 unique scores, all with same score get same medal)
    */
-  private getMedal(rank: number): string {
-    switch (rank) {
-      case 1: return 'platinum';
-      case 2: return 'gold';
-      case 3: return 'silver';
-      default: return '';
+  private assignRanksAndMedals(entities: any[], pointsField = 'totalScore') {
+    const sorted = [...entities].sort((a, b) => (b[pointsField] || 0) - (a[pointsField] || 0));
+    let lastPoints = null;
+    let uniqueRank = 0;
+    let medalMap = { 1: 'gold', 2: 'platinum', 3: 'silver' };
+    
+    for (let i = 0; i < sorted.length; i++) {
+      const entity = sorted[i];
+      const pts = entity[pointsField] || 0;
+      
+      // Only increment rank when score changes
+      if (lastPoints === null || pts !== lastPoints) {
+        uniqueRank++;
+      }
+      
+      entity.rank = uniqueRank;
+      entity.medal = medalMap[uniqueRank] || '';
+      lastPoints = pts;
     }
+    return sorted;
   }
 }

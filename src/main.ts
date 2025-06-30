@@ -53,19 +53,6 @@ async function bootstrap() {
       },
     }),
   );
-  // --- Automatic score recalculation on startup (fixed DI) ---
-  try {
-    const scoreUpdateService = await app.resolve(ScoreUpdateService);
-    if (scoreUpdateService && typeof scoreUpdateService.updateAllScores === 'function') {
-      logger.log('Running initial score recalculation for all entities...');
-      await scoreUpdateService.updateAllScores();
-      logger.log('Initial score recalculation complete.');
-    } else {
-      logger.warn('ScoreUpdateService not found. Initial score recalculation skipped.');
-    }
-  } catch (err) {
-    logger.error('Error during initial score recalculation:', err);
-  }
   const port = configService.get('PORT');
   await app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
