@@ -757,4 +757,166 @@ export class RegistrarsService {  constructor(
       throw error;
     }
   }
+
+  // Super Admin Registrar Management Methods
+
+  /**
+   * Get all registrars for Super Admin with filtering
+   */
+  async getAllRegistrarsForSuperAdmin(filters: {
+    search?: string;
+    stateId?: string;
+    branchId?: string;
+  }): Promise<UserDocument[]> {
+    try {
+      let query: any = { role: Role.REGISTRAR };
+
+      // Apply state filter
+      if (filters.stateId) {
+        query.state = new Types.ObjectId(filters.stateId);
+      }
+
+      // Apply branch filter
+      if (filters.branchId) {
+        query.branch = new Types.ObjectId(filters.branchId);
+      }
+
+      // Build the aggregation pipeline
+      const pipeline: any[] = [
+        { $match: query },
+        {
+          $lookup: {
+            from: 'branches',
+            localField: 'branch',
+            foreignField: '_id',
+            as: 'branchInfo'
+          }
+        },
+        {
+          $lookup: {
+            from: 'states',
+            localField: 'state',
+            foreignField: '_id',
+            as: 'stateInfo'
+          }
+        },
+        {
+          $addFields: {
+            branch: { $arrayElemAt: ['$branchInfo', 0] },
+            state: { $arrayElemAt: ['$stateInfo', 0] }
+          }
+        },
+        {
+          $project: {
+            password: 0,
+            branchInfo: 0,
+            stateInfo: 0
+          }
+        }
+      ];
+
+      // Apply search filter
+      if (filters.search) {
+        const searchRegex = new RegExp(filters.search, 'i');
+        pipeline.unshift({
+          $match: {
+            $or: [
+              { name: searchRegex },
+              { email: searchRegex }
+            ]
+          }
+        });
+      }
+
+      // Add sorting
+      pipeline.push({ $sort: { createdAt: -1 } });
+
+      const registrars = await this.userModel.aggregate(pipeline).exec();
+      return registrars;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Get pending registrars for Super Admin with filtering
+   */
+  async getPendingRegistrarsForSuperAdmin(filters: {
+    search?: string;
+    stateId?: string;
+    branchId?: string;
+  }): Promise<UserDocument[]> {
+    try {
+      let query: any = { 
+        role: Role.REGISTRAR,
+        isApproved: false,
+        isActive: true
+      };
+
+      // Apply state filter
+      if (filters.stateId) {
+        query.state = new Types.ObjectId(filters.stateId);
+      }
+
+      // Apply branch filter
+      if (filters.branchId) {
+        query.branch = new Types.ObjectId(filters.branchId);
+      }
+
+      // Build the aggregation pipeline
+      const pipeline: any[] = [
+        { $match: query },
+        {
+          $lookup: {
+            from: 'branches',
+            localField: 'branch',
+            foreignField: '_id',
+            as: 'branchInfo'
+          }
+        },
+        {
+          $lookup: {
+            from: 'states',
+            localField: 'state',
+            foreignField: '_id',
+            as: 'stateInfo'
+          }
+        },
+        {
+          $addFields: {
+            branch: { $arrayElemAt: ['$branchInfo', 0] },
+            state: { $arrayElemAt: ['$stateInfo', 0] }
+          }
+        },
+        {
+          $project: {
+            password: 0,
+            branchInfo: 0,
+            stateInfo: 0
+          }
+        }
+      ];
+
+      // Apply search filter
+      if (filters.search) {
+        const searchRegex = new RegExp(filters.search, 'i');
+        pipeline.unshift({
+          $match: {
+            $or: [
+              { name: searchRegex },
+              { email: searchRegex }
+            ]
+          }
+        });
+      }
+
+      // Add sorting
+      pipeline.push({ $sort: { createdAt: -1 } });
+
+      const registrars = await this.userModel.aggregate(pipeline).exec();
+      return registrars;
+    } catch (error) {
+      throw error;
+    }
+  }
 }

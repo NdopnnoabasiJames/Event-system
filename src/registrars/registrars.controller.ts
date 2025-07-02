@@ -352,4 +352,68 @@ export class RegistrarsController {  constructor(
       throw error;
     }
   }
+
+  // Super Admin Registrar Management Endpoints
+  
+  /**
+   * Get all registrars in the system (Super Admin only)
+   */
+  @Get('super-admin/all')
+  @Roles(Role.SUPER_ADMIN)
+  async getAllRegistrars(@Query() query: any) {
+    try {
+      const { search, stateId, branchId } = query;
+      return await this.registrarsService.getAllRegistrarsForSuperAdmin({
+        search,
+        stateId,
+        branchId
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Get pending registrars for Super Admin approval
+   */
+  @Get('super-admin/pending')
+  @Roles(Role.SUPER_ADMIN)
+  async getPendingRegistrarsForSuperAdmin(@Query() query: any) {
+    try {
+      const { search, stateId, branchId } = query;
+      return await this.registrarsService.getPendingRegistrarsForSuperAdmin({
+        search,
+        stateId,
+        branchId
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Approve a registrar (Super Admin only)
+   */
+  @Post('super-admin/approve')
+  @Roles(Role.SUPER_ADMIN)
+  async approveRegistrarBySuperAdmin(@Body() approveDto: ApproveRegistrarDto, @Request() req) {
+    return this.registrarsService.approveRegistrar(
+      approveDto.registrarId,
+      req.user.userId,
+      req.user.name || req.user.email
+    );
+  }
+
+  /**
+   * Reject a registrar (Super Admin only)
+   */
+  @Post('super-admin/reject')
+  @Roles(Role.SUPER_ADMIN)
+  async rejectRegistrarBySuperAdmin(@Body() rejectDto: RejectRegistrarDto, @Request() req) {
+    return this.registrarsService.rejectRegistrar(
+      rejectDto.registrarId,
+      req.user.userId,
+      rejectDto.reason
+    );
+  }
 }
