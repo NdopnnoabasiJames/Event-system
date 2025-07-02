@@ -100,16 +100,22 @@ export class UsersService {
     }
   }
   async findAllWorkers(): Promise<UserDocument[]> {
-  try {
-    return await this.userModel.find({ role: Role.WORKER }).exec();
-  } catch (error) {
-    throw new HttpException(`Failed to retrieve workers: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    try {
+      // Find users who are currently workers (either by role or currentRole)
+      return await this.userModel.find({ 
+        $or: [
+          { role: Role.WORKER, currentRole: { $exists: false } },
+          { currentRole: Role.WORKER }
+        ]
+      }).exec();
+    } catch (error) {
+      throw new HttpException(`Failed to retrieve workers: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
-}
 
   async update(id: string, updateUserDto: UpdateUserDto, currentUser: any): Promise<UserDocument> {
     // Only admin can update other users, marketers can only update their own profile
-    if (currentUser.role !== Role.SUPER_ADMIN && currentUser.userId !== id) {
+    if (currentUser.currentRole !== Role.SUPER_ADMIN && currentUser.userId !== id) {
       throw new UnauthorizedException('You can only update your own profile');
     }
 
@@ -125,7 +131,7 @@ export class UsersService {
 
   async delete(id: string, currentUser: any): Promise<void> {
     // Only admin can delete users
-    if (currentUser.role !== Role.SUPER_ADMIN) {
+    if (currentUser.currentRole !== Role.SUPER_ADMIN) {
       throw new UnauthorizedException('Only super admins can delete users');
     }
 
@@ -231,7 +237,10 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
     }
 
     return this.userModel.find({
-      role: Role.WORKER,
+      $or: [
+        { role: Role.WORKER, currentRole: { $exists: false } },
+        { currentRole: Role.WORKER }
+      ],
       isApproved: false,
       branch: branchAdmin.branch
     })
@@ -248,7 +257,10 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
     }
 
     return this.userModel.find({
-      role: Role.WORKER,
+      $or: [
+        { role: Role.WORKER, currentRole: { $exists: false } },
+        { currentRole: Role.WORKER }
+      ],
       isApproved: true,
       branch: branchAdmin.branch
     })
@@ -275,7 +287,10 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
         : branchAdmin.branch;
       
       const registrars = await this.userModel.find({
-        role: Role.REGISTRAR,
+        $or: [
+          { currentRole: Role.REGISTRAR },
+          { role: Role.REGISTRAR, currentRole: { $exists: false } }
+        ],
         isApproved: false,
         isActive: true,
         branch: branchFilter
@@ -614,5 +629,122 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
     .select('name email role state branch zone approvedBy isActive createdAt')
     .sort({ createdAt: -1 })
     .exec();
+  }
+
+  // Role Conversion Methods
+  async convertWorkerToRegistrar(
+    userId: string, 
+    superAdminId: string, 
+    reason?: string
+  ): Promise<{ message: string; user: UserDocument }> {
+    try {
+      // Verify super admin
+      const superAdmin = await this.userModel.findById(superAdminId);
+      if (!superAdmin || superAdmin.role !== Role.SUPER_ADMIN) {
+        throw new ForbiddenException('Only super admins can convert user roles');
+      }
+
+      // Find the user to convert
+      const user = await this.userModel.findById(userId);
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Check if user is currently a worker
+      const currentRole = user.currentRole || user.role;
+      if (currentRole !== Role.WORKER) {
+        throw new BadRequestException('User must be a worker to convert to registrar');
+      }
+
+      // Check if user already has registrar role available
+      if (!user.availableRoles.includes(Role.REGISTRAR)) {
+        // Add registrar to available roles
+        user.availableRoles.push(Role.REGISTRAR);
+      }
+
+      // Update current role to registrar
+      const previousRole = user.currentRole || user.role;
+      user.currentRole = Role.REGISTRAR;
+
+      // Set registrar-specific fields
+      user.isApproved = true; // Auto-approve converted workers
+      user.approvedBy = new Types.ObjectId(superAdminId);
+      user.approverName = superAdmin.name;
+      user.approvedAt = new Date();
+
+      // Add to role history
+      user.roleHistory.push({
+        fromRole: previousRole,
+        toRole: Role.REGISTRAR,
+        convertedBy: new Types.ObjectId(superAdminId),
+        convertedAt: new Date(),
+        reason: reason || 'Converted by super admin'
+      });
+
+      await user.save();
+
+      return {
+        message: 'User successfully converted to registrar',
+        user: user
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async convertRegistrarToWorker(
+    userId: string, 
+    superAdminId: string, 
+    reason?: string
+  ): Promise<{ message: string; user: UserDocument }> {
+    try {
+      // Verify super admin
+      const superAdmin = await this.userModel.findById(superAdminId);
+      if (!superAdmin || superAdmin.role !== Role.SUPER_ADMIN) {
+        throw new ForbiddenException('Only super admins can convert user roles');
+      }
+
+      // Find the user to convert
+      const user = await this.userModel.findById(userId);
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Check if user is currently a registrar
+      const currentRole = user.currentRole || user.role;
+      if (currentRole !== Role.REGISTRAR) {
+        throw new BadRequestException('User must be a registrar to convert to worker');
+      }
+
+      // Check if user has worker role available
+      if (!user.availableRoles.includes(Role.WORKER)) {
+        throw new BadRequestException('User does not have worker role available');
+      }
+
+      // Update current role to worker
+      const previousRole = user.currentRole || user.role;
+      user.currentRole = Role.WORKER;
+
+      // Clear registrar-specific fields (but keep data for potential future conversion back)
+      user.assignedZones = [];
+
+      // Add to role history
+      user.roleHistory.push({
+        fromRole: previousRole,
+        toRole: Role.WORKER,
+        convertedBy: new Types.ObjectId(superAdminId),
+        convertedAt: new Date(),
+        reason: reason || 'Converted by super admin'
+      });
+
+      await user.save();
+
+      return {
+        message: 'User successfully converted to worker',
+        user: user
+      };
+    } catch (error) {
+      throw error;
+    }
   }
 }

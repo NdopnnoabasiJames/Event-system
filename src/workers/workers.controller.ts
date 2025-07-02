@@ -263,7 +263,7 @@ export class WorkersController {
   getMyPerformance(@Request() req, @Query('workerId') workerId?: string) {
     const userId = workerId || req.user.userId;
     // If workerId is provided and user is not admin, verify access
-    if (workerId && req.user.role !== Role.SUPER_ADMIN) {
+    if (workerId && req.user.currentRole !== Role.SUPER_ADMIN) {
       if (workerId !== req.user.userId) {
         throw new ForbiddenException('Cannot access another worker\'s performance stats');
       }
@@ -280,7 +280,7 @@ export class WorkersController {
   ) {
     const userId = workerId || req.user.userId;
     // If workerId is provided and user is not admin, verify access
-    if (workerId && req.user.role !== Role.SUPER_ADMIN) {
+    if (workerId && req.user.currentRole !== Role.SUPER_ADMIN) {
       if (workerId !== req.user.userId) {
         throw new ForbiddenException('Cannot access another worker\'s event performance stats');
       }

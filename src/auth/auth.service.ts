@@ -17,9 +17,19 @@ export class AuthService {
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
+
+      // Migration: Set currentRole for existing users who don't have it
+      if (!user.currentRole && user.role) {
+        user.currentRole = user.role;
+        user.availableRoles = [user.role];
+        await user.save();
+      }
+
       // Check if admin user is approved (super admins are always approved)
       const rolesRequiringApproval = ['state_admin', 'branch_admin', 'zonal_admin', 'worker', 'registrar'];
-      if (rolesRequiringApproval.includes(user.role) && !user.isApproved) {
+      const effectiveRole = user.currentRole || user.role;
+      
+      if (rolesRequiringApproval.includes(effectiveRole) && !user.isApproved) {
         throw new UnauthorizedException('Your account is pending approval');
       }
       
@@ -38,7 +48,9 @@ export class AuthService {
     try {      const payload = { 
         email: user.email, 
         sub: user._id ? user._id.toString() : user.id,
-        role: user.role,
+        role: user.currentRole || user.role,  // Use currentRole if available, fallback to role
+        originalRole: user.role,  // Keep track of original role
+        availableRoles: user.availableRoles || [],
         name: user.name,
         // If populated, the state/branch/zone will be objects with _id field
         // If not populated, they will be ObjectId strings

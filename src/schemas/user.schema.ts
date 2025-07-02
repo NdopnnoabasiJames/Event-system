@@ -17,6 +17,32 @@ export class User {
   @Prop({ required: true })
   password: string;  @Prop({ required: true, enum: Role, default: Role.GUEST, index: true })
   role: Role;
+
+  // Role conversion system
+  @Prop({ enum: Role, required: false, index: true })
+  currentRole?: Role;
+
+  @Prop({ type: [{ type: String, enum: Role }], default: [] })
+  availableRoles: Role[];
+
+  @Prop({
+    type: [{
+      fromRole: { type: String, enum: Role },
+      toRole: { type: String, enum: Role },
+      convertedBy: { type: Types.ObjectId, ref: 'User' },
+      convertedAt: { type: Date, default: Date.now },
+      reason: { type: String, required: false }
+    }],
+    default: []
+  })
+  roleHistory: Array<{
+    fromRole: Role;
+    toRole: Role;
+    convertedBy: Types.ObjectId;
+    convertedAt: Date;
+    reason?: string;
+  }>;
+
   // Admin hierarchy fields - ObjectId references
   @Prop({ type: Types.ObjectId, ref: 'State', required: false, index: true })
   state?: Types.ObjectId;
@@ -105,6 +131,8 @@ export const UserSchema = SchemaFactory.createForClass(User);
 
 // Add compound indexes
 UserSchema.index({ email: 1, role: 1 });
+UserSchema.index({ email: 1, currentRole: 1 });
+UserSchema.index({ currentRole: 1, availableRoles: 1 });
 UserSchema.index({ role: 1, eventParticipation: 1 });
 UserSchema.index({ role: 1, state: 1 });
 UserSchema.index({ role: 1, branch: 1 });

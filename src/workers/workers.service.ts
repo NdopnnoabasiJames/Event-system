@@ -47,7 +47,7 @@ export class WorkersService {
 
   async getWorkerProfile(workerId: string) {
     const user = await this.usersService.findById(workerId);
-    if (!user || user.role !== Role.WORKER) {
+    if (!user || user.currentRole !== Role.WORKER) {
       throw new NotFoundException('Worker not found');
     }    // Get worker performance data
     const performance = await this.getWorkerEventPerformance(workerId, '');
@@ -68,7 +68,7 @@ export class WorkersService {
   }
   async updateWorkerProfile(workerId: string, updateData: any) {
     const user = await this.usersService.findById(workerId);
-    if (!user || user.role !== Role.WORKER) {
+    if (!user || user.currentRole !== Role.WORKER) {
       throw new NotFoundException('Worker not found');
     }
 
@@ -104,12 +104,12 @@ export class WorkersService {
   }
   async rejectWorker(workerId: string, branchAdmin: any) {
     const branchAdminUser = await this.usersService.findById(branchAdmin.userId);
-    if (!branchAdminUser || branchAdminUser.role !== Role.BRANCH_ADMIN) {
+    if (!branchAdminUser || branchAdminUser.currentRole !== Role.BRANCH_ADMIN) {
       throw new ForbiddenException('Only branch admins can reject workers');
     }
 
     const worker = await this.usersService.findById(workerId);
-    if (!worker || worker.role !== Role.WORKER) {
+    if (!worker || worker.currentRole !== Role.WORKER) {
       throw new NotFoundException('Worker not found');
     }
 

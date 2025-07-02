@@ -12,6 +12,7 @@ import {
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ConvertToRegistrarDto, ConvertToWorkerDto } from './dto/role-conversion.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -54,15 +55,15 @@ export class UsersController {
   @Get('pending-admins')
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
   getPendingAdmins(@Request() req) {
-    const { role, state, branch } = req.user;
-    return this.usersService.getPendingAdmins(role, state, branch);
+    const { currentRole, state, branch } = req.user;
+    return this.usersService.getPendingAdmins(currentRole, state, branch);
   }
 
   @Get('approved-admins')
   @Roles(Role.SUPER_ADMIN, Role.STATE_ADMIN, Role.BRANCH_ADMIN)
   getApprovedAdmins(@Request() req) {
-    const { role, state, branch } = req.user;
-    return this.usersService.getApprovedAdmins(role, state, branch);
+    const { currentRole, state, branch } = req.user;
+    return this.usersService.getApprovedAdmins(currentRole, state, branch);
   }
 
   @Post('approve-admin/:id')
@@ -143,5 +144,26 @@ export class UsersController {
   @Roles(Role.SUPER_ADMIN)
   remove(@Param('id') id: string, @Request() req) {
     return this.usersService.delete(id, req.user);
+  }
+
+  // Role Conversion Endpoints (Super Admin Only)
+  @Post('convert-to-registrar')
+  @Roles(Role.SUPER_ADMIN)
+  convertToRegistrar(@Body() convertDto: ConvertToRegistrarDto, @Request() req) {
+    return this.usersService.convertWorkerToRegistrar(
+      convertDto.userId,
+      req.user.userId,
+      convertDto.reason
+    );
+  }
+
+  @Post('convert-to-worker')
+  @Roles(Role.SUPER_ADMIN)
+  convertToWorker(@Body() convertDto: ConvertToWorkerDto, @Request() req) {
+    return this.usersService.convertRegistrarToWorker(
+      convertDto.userId,
+      req.user.userId,
+      convertDto.reason
+    );
   }
 }

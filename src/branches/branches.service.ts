@@ -80,7 +80,6 @@ export class BranchesService {  constructor(
       .sort({ name: 1 })
       .lean()
       .exec();
-    console.log('DEBUG: Branches for ranking:', branches.map(b => ({ name: b.name, totalScore: b.totalScore })));
     return assignRanksAndMedals(branches, 'totalScore');
   }
 
@@ -282,7 +281,6 @@ export class BranchesService {  constructor(
         };
       })
     );
-    console.log('DEBUG: BranchesWithCounts for ranking:', branchesWithCounts.map(b => ({ name: b.name, totalScore: b.totalScore })));
     return assignRanksAndMedals(branchesWithCounts, 'totalScore');
   }
 
@@ -394,7 +392,6 @@ export class BranchesService {  constructor(
         };
       })
     );
-    console.log('DEBUG: BranchesWithAdmins for ranking:', branchesWithAdmins.map(b => ({ name: b.name, totalScore: b.totalScore })));
     return assignRanksAndMedals(branchesWithAdmins, 'totalScore');
   }
 

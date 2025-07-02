@@ -25,7 +25,7 @@ export class JurisdictionGuard implements CanActivate {
     const query = request.query;
 
     // Super Admin has access to everything
-    if (user.role === Role.SUPER_ADMIN) {
+    if (user.currentRole === Role.SUPER_ADMIN) {
       return true;
     }
 
@@ -40,25 +40,25 @@ export class JurisdictionGuard implements CanActivate {
     query: any,
     requiredJurisdictions: string[]
   ): boolean {
-    const { role, state, branch, zone } = user;
+    const { currentRole, state, branch, zone } = user;
 
     // For each required jurisdiction, check if user has access
     for (const jurisdiction of requiredJurisdictions) {
       switch (jurisdiction) {
         case 'state':
-          if (!this.hasStateAccess(role, state, params, body, query)) {
+          if (!this.hasStateAccess(currentRole, state, params, body, query)) {
             throw new ForbiddenException('Access denied: insufficient state jurisdiction');
           }
           break;
 
         case 'branch':
-          if (!this.hasBranchAccess(role, state, branch, params, body, query)) {
+          if (!this.hasBranchAccess(currentRole, state, branch, params, body, query)) {
             throw new ForbiddenException('Access denied: insufficient branch jurisdiction');
           }
           break;
 
         case 'zone':
-          if (!this.hasZoneAccess(role, state, branch, zone, params, body, query)) {
+          if (!this.hasZoneAccess(currentRole, state, branch, zone, params, body, query)) {
             throw new ForbiddenException('Access denied: insufficient zone jurisdiction');
           }
           break;

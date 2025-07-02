@@ -63,7 +63,9 @@ export class RegistrarsService {  constructor(
       email: registrationDto.email,
       phone: registrationDto.phone,
       password: hashedPassword,
-      role: Role.REGISTRAR,
+      role: Role.REGISTRAR, // Keep for backward compatibility
+      currentRole: Role.REGISTRAR,
+      availableRoles: [Role.REGISTRAR],
       state: new Types.ObjectId(registrationDto.state),
       branch: new Types.ObjectId(registrationDto.branch),
       isApproved: false, // Requires Branch Admin approval
@@ -95,7 +97,7 @@ export class RegistrarsService {  constructor(
       throw new NotFoundException('Registrar not found');
     }
 
-    if (registrar.role !== Role.REGISTRAR) {
+    if (registrar.currentRole !== Role.REGISTRAR) {
       throw new BadRequestException('User is not a registrar');
     }
 
@@ -190,7 +192,7 @@ export class RegistrarsService {  constructor(
     }
 
     return this.userModel.find({
-      role: Role.REGISTRAR,
+      currentRole: Role.REGISTRAR,
       branch: branchAdmin.branch,
       isApproved: true
     })
@@ -228,7 +230,10 @@ export class RegistrarsService {  constructor(
 
       // Find all approved registrars in the branch admin's branch
       const registrars = await this.userModel.find({
-        role: Role.REGISTRAR,
+        $or: [
+          { currentRole: Role.REGISTRAR },
+          { role: Role.REGISTRAR, currentRole: { $exists: false } }
+        ],
         branch: branchFilter,
         isApproved: true,
         isActive: true
@@ -260,7 +265,7 @@ export class RegistrarsService {  constructor(
       throw new NotFoundException('Registrar not found');
     }
 
-    if (registrar.role !== Role.REGISTRAR) {
+    if (registrar.currentRole !== Role.REGISTRAR) {
       throw new BadRequestException('User is not a registrar');
     }
 
@@ -295,7 +300,7 @@ export class RegistrarsService {  constructor(
       throw new NotFoundException('Registrar not found');
     }
 
-    if (registrar.role !== Role.REGISTRAR) {
+    if (registrar.currentRole !== Role.REGISTRAR) {
       throw new BadRequestException('User is not a registrar');
     }
 
@@ -337,7 +342,7 @@ export class RegistrarsService {  constructor(
       throw new NotFoundException('Registrar not found');
     }
 
-    if (registrar.role !== Role.REGISTRAR) {
+    if (registrar.currentRole !== Role.REGISTRAR) {
       throw new BadRequestException('User is not a registrar');
     }
 
@@ -371,7 +376,7 @@ export class RegistrarsService {  constructor(
       throw new NotFoundException('Registrar not found');
     }
 
-    if (registrar.role !== Role.REGISTRAR) {
+    if (registrar.currentRole !== Role.REGISTRAR) {
       throw new BadRequestException('User is not a registrar');
     }
 
@@ -384,7 +389,10 @@ export class RegistrarsService {  constructor(
     const admin = await this.adminHierarchyService.getAdminWithHierarchy(adminId);
     
     let query: any = {
-      role: Role.REGISTRAR,
+      $or: [
+        { currentRole: Role.REGISTRAR },
+        { role: Role.REGISTRAR, currentRole: { $exists: false } }
+      ],
       isApproved: true
     };    // Filter based on admin hierarchy
     switch (admin.role) {
@@ -429,7 +437,10 @@ export class RegistrarsService {  constructor(
     }
 
     return this.userModel.find({
-      role: Role.REGISTRAR,
+      $or: [
+        { currentRole: Role.REGISTRAR },
+        { role: Role.REGISTRAR, currentRole: { $exists: false } }
+      ],
       isApproved: true,
       assignedZones: { $in: [new Types.ObjectId(zoneId)] }
     })
@@ -480,7 +491,7 @@ export class RegistrarsService {  constructor(
         throw new NotFoundException('Registrar not found');
       }
 
-      if (registrar.role !== Role.REGISTRAR) {
+      if (registrar.currentRole !== Role.REGISTRAR) {
         throw new BadRequestException('User is not a registrar');
       }
 
@@ -535,7 +546,7 @@ export class RegistrarsService {  constructor(
         throw new NotFoundException('Registrar not found');
       }
 
-      if (registrar.role !== Role.REGISTRAR) {
+      if (registrar.currentRole !== Role.REGISTRAR) {
         throw new BadRequestException('User is not a registrar');
       }
 
@@ -668,7 +679,7 @@ export class RegistrarsService {  constructor(
           id: registrar._id,
           name: registrar.name,
           email: registrar.email,
-          role: registrar.role,
+          role: registrar.currentRole,
           isApproved: registrar.isApproved,
           isActive: registrar.isActive,
           branch: registrar.branch,
@@ -763,7 +774,12 @@ export class RegistrarsService {  constructor(
     branchId?: string;
   }): Promise<UserDocument[]> {
     try {
-      let query: any = { role: Role.REGISTRAR };
+      let query: any = {
+        $or: [
+          { currentRole: Role.REGISTRAR },
+          { role: Role.REGISTRAR, currentRole: { $exists: false } }
+        ]
+      };
 
       // Apply state filter
       if (filters.stateId) {
@@ -868,8 +884,11 @@ export class RegistrarsService {  constructor(
     branchId?: string;
   }): Promise<UserDocument[]> {
     try {
-      let query: any = { 
-        role: Role.REGISTRAR,
+      let query: any = {
+        $or: [
+          { currentRole: Role.REGISTRAR },
+          { role: Role.REGISTRAR, currentRole: { $exists: false } }
+        ],
         isApproved: false,
         isActive: true
       };
