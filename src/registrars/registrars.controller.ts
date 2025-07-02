@@ -42,7 +42,8 @@ export class RegistrarsController {  constructor(
   }
   /**
    * Get pending registrars for Branch Admin approval
-   */  @Get('pending')
+   */  
+  @Get('pending')
   @Roles(Role.BRANCH_ADMIN)
   async getPendingRegistrars(@Request() req) {
     try {
@@ -57,7 +58,8 @@ export class RegistrarsController {  constructor(
   
   /**
    * Get approved registrars for Branch Admin management
-   */  @Get('approved')
+   */  
+  @Get('approved')
   @Roles(Role.BRANCH_ADMIN)
   async getApprovedRegistrars(@Request() req) {
     try {
@@ -66,32 +68,6 @@ export class RegistrarsController {  constructor(
     } catch (error) {
       throw error;
     }
-  }
-  
-  /**
-   * Approve a registrar (Branch Admin only)
-   */
-  @Post('approve')
-  @Roles(Role.BRANCH_ADMIN)
-  async approveRegistrar(@Body() approveDto: ApproveRegistrarDto, @Request() req) {
-    return this.registrarsService.approveRegistrar(
-      approveDto.registrarId,
-      req.user.userId,
-      req.user.name || req.user.email
-    );
-  }
-  
-  /**
-   * Reject a registrar (Branch Admin only)
-   */
-  @Post('reject')
-  @Roles(Role.BRANCH_ADMIN)
-  async rejectRegistrar(@Body() rejectDto: RejectRegistrarDto, @Request() req) {
-    return this.registrarsService.rejectRegistrar(
-      rejectDto.registrarId,
-      req.user.userId,
-      rejectDto.reason
-    );
   }
 
   /**

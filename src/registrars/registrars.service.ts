@@ -245,13 +245,13 @@ export class RegistrarsService {  constructor(
     }
   }
   /**
-   * Phase 4.1: Approve registrar
+   * Phase 4.1: Approve registrar (Super Admin only)
    */
-  async approveRegistrar(registrarId: string, branchAdminId: string, approverName: string): Promise<{ message: string; registrar: UserDocument }> {
-    // Verify branch admin
-    const branchAdmin = await this.userModel.findById(branchAdminId);
-    if (!branchAdmin || branchAdmin.role !== Role.BRANCH_ADMIN) {
-      throw new ForbiddenException('Only branch admins can approve registrars');
+  async approveRegistrar(registrarId: string, superAdminId: string, approverName: string): Promise<{ message: string; registrar: UserDocument }> {
+    // Verify super admin
+    const superAdmin = await this.userModel.findById(superAdminId);
+    if (!superAdmin || superAdmin.role !== Role.SUPER_ADMIN) {
+      throw new ForbiddenException('Only super admins can approve registrars');
     }
 
     // Find the registrar
@@ -264,15 +264,13 @@ export class RegistrarsService {  constructor(
       throw new BadRequestException('User is not a registrar');
     }
 
-    if (registrar.branch?.toString() !== branchAdmin.branch?.toString()) {
-      throw new ForbiddenException('Can only approve registrars in your branch');
-    }
-
     if (registrar.isApproved) {
       throw new BadRequestException('Registrar is already approved');
-    }    // Update the registrar status
+    }
+
+    // Update the registrar status
     registrar.isApproved = true;
-    registrar.approvedBy = new Types.ObjectId(branchAdminId);
+    registrar.approvedBy = new Types.ObjectId(superAdminId);
     registrar.approverName = approverName;
     registrar.approvedAt = new Date();
     
@@ -284,12 +282,12 @@ export class RegistrarsService {  constructor(
     };
   }
   /**
-   * Phase 4.1: Reject registrar (custom implementation)
+   * Phase 4.1: Reject registrar (Super Admin only)
    */
-  async rejectRegistrar(registrarId: string, branchAdminId: string, rejectionReason?: string): Promise<{ message: string }> {
-    const branchAdmin = await this.userModel.findById(branchAdminId);
-    if (!branchAdmin || branchAdmin.role !== Role.BRANCH_ADMIN) {
-      throw new ForbiddenException('Only branch admins can reject registrars');
+  async rejectRegistrar(registrarId: string, superAdminId: string, rejectionReason?: string): Promise<{ message: string }> {
+    const superAdmin = await this.userModel.findById(superAdminId);
+    if (!superAdmin || superAdmin.role !== Role.SUPER_ADMIN) {
+      throw new ForbiddenException('Only super admins can reject registrars');
     }
 
     const registrar = await this.userModel.findById(registrarId);
@@ -301,18 +299,14 @@ export class RegistrarsService {  constructor(
       throw new BadRequestException('User is not a registrar');
     }
 
-    if (registrar.branch?.toString() !== branchAdmin.branch?.toString()) {
-      throw new ForbiddenException('Can only reject registrars in your branch');
-    }
-
     if (registrar.isApproved) {
       throw new BadRequestException('Cannot reject an already approved registrar');
     }
 
     // Mark as rejected by setting a flag or removing the record
     registrar.isActive = false;
-    registrar.rejectionReason = rejectionReason || 'Rejected by branch admin';
-    registrar.rejectedBy = new Types.ObjectId(branchAdminId);
+    registrar.rejectionReason = rejectionReason || 'Rejected by super admin';
+    registrar.rejectedBy = new Types.ObjectId(superAdminId);
     registrar.rejectedAt = new Date();
     await registrar.save();
 
