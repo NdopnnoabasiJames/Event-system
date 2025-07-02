@@ -795,16 +795,43 @@ export class RegistrarsService {  constructor(
           }
         },
         {
+          $lookup: {
+            from: 'guests',
+            let: { registrarId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$checkedInBy', '$$registrarId'] },
+                      { $eq: ['$checkedIn', true] }
+                    ]
+                  }
+                }
+              },
+              { $count: 'count' }
+            ],
+            as: 'checkedInGuestsCount'
+          }
+        },
+        {
           $addFields: {
             branch: { $arrayElemAt: ['$branchInfo', 0] },
-            state: { $arrayElemAt: ['$stateInfo', 0] }
+            state: { $arrayElemAt: ['$stateInfo', 0] },
+            totalCheckedIn: { 
+              $ifNull: [
+                { $arrayElemAt: ['$checkedInGuestsCount.count', 0] }, 
+                0
+              ] 
+            }
           }
         },
         {
           $project: {
             password: 0,
             branchInfo: 0,
-            stateInfo: 0
+            stateInfo: 0,
+            checkedInGuestsCount: 0
           }
         }
       ];
