@@ -37,6 +37,40 @@ export class RegistrarVolunteerService {
         };
       }
 
+      // Determine approval status based on event location
+      let approvalStatus = 'pending';
+      let message = 'Volunteer request submitted successfully';
+
+      // Auto-approve if:
+      // 1. Event is in registrar's own branch (selectedBranches includes registrar's branch)
+      // 2. Event is global/national (no selectedBranches or empty selectedBranches)
+      const registrarBranchId = registrar.branch?.toString();
+
+      console.log('DEBUG: Volunteer approval logic');
+      console.log('DEBUG: Registrar branch ID:', registrarBranchId);
+      console.log('DEBUG: Event selectedBranches:', event.selectedBranches);
+      console.log('DEBUG: Event selectedBranches length:', event.selectedBranches?.length);
+
+      if (!event.selectedBranches || event.selectedBranches.length === 0) {
+        // Global/National event - auto approve
+        approvalStatus = 'approved';
+        message = 'Volunteer request approved automatically (national event)';
+        console.log('DEBUG: Auto-approved - National event');
+      } else if (event.selectedBranches.length > 0) {
+        // Check if registrar's branch is in the selected branches
+        const isInSelectedBranches = event.selectedBranches.some(
+          branchId => branchId.toString() === registrarBranchId
+        );
+        console.log('DEBUG: Is in selected branches:', isInSelectedBranches);
+        if (isInSelectedBranches) {
+          approvalStatus = 'approved';
+          message = 'Volunteer request approved automatically (branch included in event)';
+          console.log('DEBUG: Auto-approved - Branch included');
+        } else {
+          console.log('DEBUG: Requires approval - Branch not included');
+        }
+      }
+
       // Add volunteer request
       if (!event.registrarRequests) {
         event.registrarRequests = [];
@@ -44,15 +78,16 @@ export class RegistrarVolunteerService {
 
       event.registrarRequests.push({
         registrarId: registrarId as any,
-        status: 'pending',
-        requestedAt: new Date()
+        status: approvalStatus,
+        requestedAt: new Date(),
+        ...(approvalStatus === 'approved' && { approvedAt: new Date() })
       });
 
       await event.save();
 
       return {
-        message: 'Volunteer request submitted successfully',
-        status: 'pending'
+        message,
+        status: approvalStatus
       };
     } catch (error) {
       throw new BadRequestException(`Failed to volunteer for event: ${error.message}`);

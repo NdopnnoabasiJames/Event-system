@@ -7,6 +7,7 @@ import { Event, EventDocument } from '../../schemas/event.schema';
 import { Zone, ZoneDocument } from '../../schemas/zone.schema';
 import { Role } from '../../common/enums/role.enum';
 import { GuestSearchDto, CheckInGuestDto } from '../dto';
+import { ScoreUpdateService } from '../../admin-hierarchy/services/score-update.service';
 
 @Injectable()
 export class CheckInService {
@@ -15,6 +16,7 @@ export class CheckInService {
     @InjectModel(Zone.name) private zoneModel: Model<ZoneDocument>,
     @InjectModel(Guest.name) private guestModel: Model<GuestDocument>,
     @InjectModel(Event.name) private eventModel: Model<EventDocument>,
+    private readonly scoreUpdateService: ScoreUpdateService,
   ) {}
 
   /**
@@ -141,7 +143,16 @@ export class CheckInService {
     if (!registrarBranches.includes(guest.branch.toString())) {
       throw new ForbiddenException('You do not have access to check in guests from this branch');
     }    // Update guest with check-in information
-    const now = new Date();    guest.checkedIn = true;
+    const now = new Date();
+
+    console.log(`🔄 Before check-in - Guest ${guest.name}:`, {
+      id: guest._id,
+      checkedIn: guest.checkedIn,
+      status: guest.status,
+      registeredBy: guest.registeredBy
+    });
+
+    guest.checkedIn = true;
     guest.checkedInBy = registrarId as any; // Cast to any to avoid type mismatch
     guest.checkedInTime = now;
     guest.status = 'checked_in';
@@ -150,7 +161,20 @@ export class CheckInService {
       guest.checkInNotes = checkInDto.notes;
     }
 
-    await guest.save();    return {
+    await guest.save();
+
+    console.log(`✅ After check-in - Guest ${guest.name}:`, {
+      id: guest._id,
+      checkedIn: guest.checkedIn,
+      status: guest.status,
+      checkedInTime: guest.checkedInTime,
+      registeredBy: guest.registeredBy
+    });
+
+    // Update worker scores after successful check-in
+    await this.scoreUpdateService.updateScoresForWorker(guest.registeredBy.toString());
+
+    return {
       success: true,
       message: 'Guest checked in successfully',
       guest: {

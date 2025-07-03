@@ -326,6 +326,11 @@ export class AdminDataAccessService {
           checkedIn: true
         });
 
+        // Debug logging
+        console.log(`🔍 Worker Debug - ${worker.user.name} (${worker.user._id}):`);
+        console.log(`  📊 Total invited guests: ${totalInvitedGuests}`);
+        console.log(`  ✅ Total checked-in guests: ${totalCheckedInGuests}`);
+
         return {
           _id: worker.user._id,
           name: worker.user.name,

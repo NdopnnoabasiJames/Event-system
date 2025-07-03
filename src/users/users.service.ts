@@ -274,15 +274,23 @@ async addEventParticipation(userId: string, eventId: string): Promise<UserDocume
         ? new Types.ObjectId(branchAdmin.branch)
         : branchAdmin.branch;
       
+      // Support both new and legacy role structures
+      const roleQuery = {
+        $or: [
+          { currentRole: Role.REGISTRAR },
+          { role: Role.REGISTRAR, currentRole: { $exists: false } }
+        ]
+      };
+      
       const registrars = await this.userModel.find({
-        role: Role.REGISTRAR,
+        ...roleQuery,
         isApproved: false,
         isActive: true,
         branch: branchFilter
       })
       .populate('state', 'name')
       .populate('branch', 'name')
-      .select('name email phone role state branch createdAt')
+      .select('name email phone role currentRole availableRoles state branch createdAt')
       .sort({ createdAt: -1 })
       .exec();
       

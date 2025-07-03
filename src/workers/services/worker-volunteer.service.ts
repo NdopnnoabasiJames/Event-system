@@ -121,21 +121,40 @@ export class WorkerVolunteerService {
       
       if (existingRequest || event.workers.includes(workerId as any)) {
         throw new BadRequestException('Already volunteered for this event');
-      }      // Check if event is in worker's own branch
+      }      // Check if event should be auto-approved for this worker
       const workerBranchId = worker.branch?._id?.toString() || worker.branch?.toString();
-      const isOwnBranch = event.selectedBranches?.some(
+      
+      // Auto-approve conditions:
+      // 1. National events (created by super admin) - auto-approve for all workers
+      // 2. Events where worker's branch is in availableBranches (delegated to their branch)
+      // 3. Events where worker's branch is in selectedBranches (their own branch events)
+      const isNationalEvent = event.scope === 'national' || event.creatorLevel === 'super_admin';
+      const isBranchAvailable = event.availableBranches?.some(
+        branchId => branchId.toString() === workerBranchId
+      ) || false;
+      const isBranchSelected = event.selectedBranches?.some(
         branchId => branchId.toString() === workerBranchId
       ) || false;
 
-      if (isOwnBranch) {
-        // Auto-approve for own branch
+      const shouldAutoApprove = isNationalEvent || isBranchAvailable || isBranchSelected;
+
+      console.log(`🔍 Worker Volunteer Debug for event ${event.name}:
+        🌍 National event: ${isNationalEvent} (scope: ${event.scope}, creatorLevel: ${event.creatorLevel})
+        🏢 Branch available: ${isBranchAvailable} (availableBranches: ${JSON.stringify(event.availableBranches)})
+        🎯 Branch selected: ${isBranchSelected} (selectedBranches: ${JSON.stringify(event.selectedBranches)})
+        ✅ Auto-approve: ${shouldAutoApprove}
+        👤 Worker branch: ${workerBranchId}
+        📋 Event details: createdBy=${event.createdBy}, scope=${event.scope}, creatorLevel=${event.creatorLevel}`);
+
+      if (shouldAutoApprove) {
+        // Auto-approve for eligible events
         await this.eventModel.findByIdAndUpdate(
           eventId,
           { $addToSet: { workers: workerId } }
         );
         return { message: 'Successfully volunteered for event', status: 'approved' };
       } else {
-        // Add to volunteer requests for other branches
+        // Add to volunteer requests for events requiring approval
         await this.eventModel.findByIdAndUpdate(
           eventId,
           {

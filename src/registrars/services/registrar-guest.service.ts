@@ -20,7 +20,7 @@ export class RegistrarGuestService {
       }
 
       const registrarRequest = event.registrarRequests?.find(
-        req => req.registrarId.toString() === registrarId && req.status === 'Approved'
+        req => req.registrarId.toString() === registrarId && req.status === 'approved'
       );
 
       if (!registrarRequest) {
@@ -52,7 +52,7 @@ export class RegistrarGuestService {
       }
 
       const registrarRequest = event.registrarRequests?.find(
-        req => req.registrarId.toString() === registrarId && req.status === 'Approved'
+        req => req.registrarId.toString() === registrarId && req.status === 'approved'
       );
 
       if (!registrarRequest) {
@@ -87,7 +87,7 @@ export class RegistrarGuestService {
       }
 
       const registrarRequest = event.registrarRequests?.find(
-        req => req.registrarId.toString() === registrarId && req.status === 'Approved'
+        req => req.registrarId.toString() === registrarId && req.status === 'approved'
       );
 
       if (!registrarRequest) {

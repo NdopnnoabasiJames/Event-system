@@ -240,7 +240,7 @@ export class GuestsService {
     try {
       return await this.guestModel.countDocuments({ 
         registeredBy: workerId, 
-        isCheckedIn: true 
+        checkedIn: true 
       }).exec();
     } catch (error) {      throw new HttpException(`Failed to count checked-in guests by worker: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }

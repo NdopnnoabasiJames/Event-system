@@ -3,6 +3,7 @@ import { EventsService } from '../events/events.service';
 import { RegistrarsService } from './registrars.service';
 import { CheckInDelegator } from './check-in.delegator';
 import { RegistrarVolunteerService } from './services/registrar-volunteer.service';
+import { RegistrarApprovalService } from './services/registrar-approval.service';
 import { RegistrarGuestService } from './services/registrar-guest.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -28,6 +29,7 @@ export class RegistrarsController {  constructor(
     private readonly registrarsService: RegistrarsService,
     private readonly checkInDelegator: CheckInDelegator,
     private readonly registrarVolunteerService: RegistrarVolunteerService,
+    private readonly registrarApprovalService: RegistrarApprovalService,
     private readonly registrarGuestService: RegistrarGuestService,
   ) {}
 
@@ -305,6 +307,31 @@ export class RegistrarsController {  constructor(
     }
   }
   /**
+   * Get registrar's approved volunteer events (alternative endpoint)
+   */
+  @Get('events/my')
+  @Roles(Role.REGISTRAR)
+  async getMyEvents(@Request() req) {
+    try {
+      return await this.registrarVolunteerService.getMyEvents(req.user.userId);
+    } catch (error) {
+      throw error;
+    }
+  }
+  
+  /**
+   * Get guests for a specific event
+   */
+  @Get('events/:eventId/guests')
+  @Roles(Role.REGISTRAR)
+  async getEventGuests(@Param('eventId') eventId: string, @Request() req) {
+    try {
+      return await this.registrarGuestService.getEventGuests(eventId, req.user.userId);
+    } catch (error) {
+      throw error;
+    }
+  }
+  /**
    * Debug endpoint to check registrar status in detail
    */
   @Get('debug/status')
@@ -324,6 +351,65 @@ export class RegistrarsController {  constructor(
   async debugEventStructure(@Request() req) {
     try {
       return await this.registrarsService.debugEventStructure();
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Branch Admin Approval Endpoints
+  
+  /**
+   * Get pending registrar volunteer requests for Branch Admin approval
+   */
+  @Get('admin/volunteer-requests/pending')
+  @Roles(Role.BRANCH_ADMIN)
+  async getPendingRegistrarRequests(@Request() req) {
+    try {
+      return await this.registrarApprovalService.getPendingRegistrarRequests(req.user.userId);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Approve a registrar volunteer request
+   */
+  @Post('admin/volunteer-requests/:eventId/approve/:registrarId')
+  @Roles(Role.BRANCH_ADMIN)
+  async approveRegistrarRequest(
+    @Param('eventId') eventId: string,
+    @Param('registrarId') registrarId: string,
+    @Request() req
+  ) {
+    try {
+      return await this.registrarApprovalService.approveRegistrarRequest(
+        req.user.userId,
+        eventId,
+        registrarId
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Reject a registrar volunteer request
+   */
+  @Post('admin/volunteer-requests/:eventId/reject/:registrarId')
+  @Roles(Role.BRANCH_ADMIN)
+  async rejectRegistrarRequest(
+    @Param('eventId') eventId: string,
+    @Param('registrarId') registrarId: string,
+    @Body() body: { reason?: string },
+    @Request() req
+  ) {
+    try {
+      return await this.registrarApprovalService.rejectRegistrarRequest(
+        req.user.userId,
+        eventId,
+        registrarId,
+        body.reason
+      );
     } catch (error) {
       throw error;
     }

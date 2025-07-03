@@ -200,7 +200,7 @@ export class PerformanceAnalyticsService {  constructor(
           pipeline: [
             { $match: { $expr: { $and: [
               { $eq: ['$registeredBy', '$$workerId'] },
-              { $eq: ['$status', 'checked_in'] }
+              { $eq: ['$checkedIn', true] }
             ]}}
             }
           ],

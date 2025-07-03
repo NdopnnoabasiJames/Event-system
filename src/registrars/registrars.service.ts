@@ -189,8 +189,16 @@ export class RegistrarsService {  constructor(
       throw new ForbiddenException('Only branch admins can view registrars in their branch');
     }
 
+    // Support both new and legacy role structures
+    const roleQuery = {
+      $or: [
+        { currentRole: Role.REGISTRAR },
+        { role: Role.REGISTRAR, currentRole: { $exists: false } }
+      ]
+    };
+
     return this.userModel.find({
-      role: Role.REGISTRAR,
+      ...roleQuery,
       branch: branchAdmin.branch,
       isApproved: true
     })
@@ -212,7 +220,8 @@ export class RegistrarsService {  constructor(
   }
   /**
    * Phase 4.1: Get approved registrars for management
-   */  async getApprovedRegistrars(branchAdminId: string): Promise<UserDocument[]> {
+   */  
+  async getApprovedRegistrars(branchAdminId: string): Promise<UserDocument[]> {
     try {
       // Get the branch admin to determine their branch
       const branchAdmin = await this.userModel.findById(branchAdminId);
@@ -226,16 +235,24 @@ export class RegistrarsService {  constructor(
         ? new Types.ObjectId(branchAdmin.branch) 
         : branchAdmin.branch;
 
+      // Support both new and legacy role structures
+      const roleQuery = {
+        $or: [
+          { currentRole: Role.REGISTRAR },
+          { role: Role.REGISTRAR, currentRole: { $exists: false } }
+        ]
+      };
+
       // Find all approved registrars in the branch admin's branch
       const registrars = await this.userModel.find({
-        role: Role.REGISTRAR,
+        ...roleQuery,
         branch: branchFilter,
         isApproved: true,
         isActive: true
       })
       .populate('branch', 'name')
       .populate('state', 'name')
-      .select('name email phone role state branch approvedAt approvedBy createdAt')
+      .select('name email phone role currentRole availableRoles state branch approvedAt approvedBy createdAt')
       .sort({ createdAt: -1 })
       .exec();
       
